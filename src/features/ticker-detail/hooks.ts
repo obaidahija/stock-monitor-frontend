@@ -1,8 +1,27 @@
 import { useQuery } from '@tanstack/react-query'
-import { getAnalysis, getCatalysts, getEarnings, getFilings, getNews } from '@/api/stocks'
+import {
+  getAnalysis,
+  getCatalysts,
+  getEarnings,
+  getFilings,
+  getNews,
+  getSentimentHistory,
+} from '@/api/stocks'
+import type { SentimentBucketGranularity } from '@/types/api'
 
 export function useAnalysis(ticker: string) {
   return useQuery({ queryKey: ['analysis', ticker], queryFn: () => getAnalysis(ticker) })
+}
+
+export function useSentimentHistory(
+  ticker: string,
+  bucket: SentimentBucketGranularity,
+  periods: number,
+) {
+  return useQuery({
+    queryKey: ['sentiment-history', ticker, bucket, periods],
+    queryFn: () => getSentimentHistory(ticker, bucket, periods),
+  })
 }
 
 export function useEarnings(ticker: string) {

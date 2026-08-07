@@ -108,6 +108,23 @@ export interface UnusualVolumeOut {
   volume_ratio: number
 }
 
+export type SentimentBucketGranularity = 'hour' | 'day' | 'week'
+
+export interface SentimentBucketOut {
+  bucket_start: string
+  avg_net_score: number | null
+  item_count: number
+  positive_count: number
+  negative_count: number
+  neutral_count: number
+}
+
+export interface SentimentHistoryOut {
+  ticker: string
+  bucket: SentimentBucketGranularity
+  buckets: SentimentBucketOut[]
+}
+
 // Raw dict shapes produced by digest_service.py (backend only types `payload` as `dict`).
 export interface DigestPremarket {
   price: number | null

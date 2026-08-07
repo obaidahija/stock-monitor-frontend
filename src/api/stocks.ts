@@ -6,6 +6,8 @@ import type {
   FilingOut,
   NewsClusterDetailOut,
   NewsClusterOut,
+  SentimentBucketGranularity,
+  SentimentHistoryOut,
 } from '@/types/api'
 
 export function getFilings(ticker: string, opts?: { form?: string; days?: number }) {
@@ -40,4 +42,14 @@ export function getCatalysts(ticker: string) {
 
 export function getAnalysis(ticker: string) {
   return apiClient.get<AnalysisOut>(`/v1/stocks/${encodeURIComponent(ticker)}/analysis`)
+}
+
+export function getSentimentHistory(
+  ticker: string,
+  bucket: SentimentBucketGranularity,
+  periods: number,
+) {
+  return apiClient.get<SentimentHistoryOut>(
+    `/v1/stocks/${encodeURIComponent(ticker)}/sentiment-history?bucket=${bucket}&periods=${periods}`,
+  )
 }

@@ -4,6 +4,7 @@ import { ErrorState } from '@/components/shared/error-state'
 import { formatDateTime, formatScore } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { useAnalysis } from './hooks'
+import { SentimentTrendChart } from './sentiment-trend-chart'
 import type { AnalysisLean } from '@/types/api'
 
 const LEAN_META: Record<AnalysisLean, string> = {
@@ -50,6 +51,8 @@ export function AnalysisTab({ ticker }: { ticker: string }) {
           </Card>
         ))}
       </div>
+
+      <SentimentTrendChart ticker={ticker} />
 
       {data.caveats.length > 0 && (
         <div className="text-muted-foreground space-y-1 text-sm">
