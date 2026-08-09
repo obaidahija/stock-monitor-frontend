@@ -12,6 +12,16 @@ export interface TrackedTickerOut {
   score_updated_at: string | null
 }
 
+export type EarningsResult = 'beat' | 'miss' | 'inline'
+
+export interface UniverseTickerOut extends TrackedTickerOut {
+  next_earnings_date: string | null
+  next_earnings_bmo_amc: string | null
+  last_earnings_result: EarningsResult | null
+  last_earnings_surprise_pct: number | null
+  is_reit: boolean
+}
+
 export interface FilingOut {
   id: number
   ticker: string | null

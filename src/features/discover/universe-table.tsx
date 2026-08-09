@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { Pin, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -14,11 +13,13 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState } from '@/components/shared/error-state'
 import { EmptyState } from '@/components/shared/empty-state'
-import { formatRelativeTime } from '@/lib/format'
+import { Pagination } from '@/components/shared/pagination'
+import { formatDate, formatRelativeTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { AddTickerDialog } from './add-ticker-dialog'
 import { useRemoveManualTicker, useUniverse } from './hooks'
 import type { UniverseParams } from '@/api/discover'
+import type { EarningsResult, UniverseTickerOut } from '@/types/api'
 
 const PAGE_SIZE = 25
 
@@ -26,7 +27,15 @@ const SORT_OPTIONS: { label: string; value: NonNullable<UniverseParams['sort']> 
   { label: 'Score', value: 'score' },
   { label: 'Ticker', value: 'ticker' },
   { label: 'Added', value: 'added_at' },
+  { label: 'Next earnings', value: 'next_earnings_date' },
 ]
+
+// First click on "Next earnings" should read soonest-first, unlike the other
+// fields (score/ticker/added_at), which default to desc on first click.
+const DEFAULT_ORDER_OVERRIDE: Partial<Record<NonNullable<UniverseParams['sort']>, 'asc' | 'desc'>> =
+  {
+    next_earnings_date: 'asc',
+  }
 
 const LEAN_META: Record<string, string> = {
   bullish: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
@@ -34,29 +43,107 @@ const LEAN_META: Record<string, string> = {
   neutral: 'bg-muted text-muted-foreground',
 }
 
+const EARNINGS_FILTER_OPTIONS: { label: string; value: EarningsResult | undefined }[] = [
+  { label: 'All', value: undefined },
+  { label: 'Beat', value: 'beat' },
+  { label: 'Miss', value: 'miss' },
+  { label: 'In-line', value: 'inline' },
+]
+
+const EARNINGS_RESULT_META: Record<EarningsResult, string> = {
+  beat: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
+  miss: 'bg-red-500/15 text-red-600 dark:text-red-400',
+  inline: 'bg-muted text-muted-foreground',
+}
+
+function EarningsCell({ item }: { item: UniverseTickerOut }) {
+  return (
+    <div className="space-y-0.5">
+      {item.is_reit ? (
+        <span
+          className="bg-muted text-muted-foreground inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+          title="REITs report GAAP EPS that isn't comparable to analyst FFO-based estimates, so beat/miss isn't shown."
+        >
+          REIT — not comparable
+        </span>
+      ) : (
+        item.last_earnings_result && (
+          <span
+            className={cn(
+              'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize',
+              EARNINGS_RESULT_META[item.last_earnings_result],
+            )}
+          >
+            {item.last_earnings_result}
+            {item.last_earnings_surprise_pct !== null &&
+              ` ${item.last_earnings_surprise_pct > 0 ? '+' : ''}${item.last_earnings_surprise_pct.toFixed(1)}%`}
+          </span>
+        )
+      )}
+      {item.next_earnings_date && (
+        <p className="text-muted-foreground text-xs">
+          Next {formatDate(item.next_earnings_date)}
+          {item.next_earnings_bmo_amc &&
+            item.next_earnings_bmo_amc !== 'unknown' &&
+            ` (${item.next_earnings_bmo_amc.toUpperCase()})`}
+        </p>
+      )}
+      {!item.is_reit && !item.last_earnings_result && !item.next_earnings_date && (
+        <span className="text-muted-foreground text-xs">—</span>
+      )}
+    </div>
+  )
+}
+
+const DEFAULT_SORT: NonNullable<UniverseParams['sort']> = 'score'
+const DEFAULT_ORDER: NonNullable<UniverseParams['order']> = 'desc'
+
 export function UniverseTable() {
-  const [sort, setSort] = useState<NonNullable<UniverseParams['sort']>>('score')
-  const [order, setOrder] = useState<UniverseParams['order']>('desc')
-  const [manualOnly, setManualOnly] = useState(false)
-  const [offset, setOffset] = useState(0)
+  // Sort/order/filters/page all live in the URL, not component state, so the
+  // back button, a bookmark, or a shared link all restore the exact same view.
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  const sort = (searchParams.get('sort') as UniverseParams['sort']) || DEFAULT_SORT
+  const order = (searchParams.get('order') as UniverseParams['order']) || DEFAULT_ORDER
+  const manualOnly = searchParams.get('manual_only') === 'true'
+  const earningsResult = (searchParams.get('earnings_result') as EarningsResult | null) ?? undefined
+  const page = Math.max(1, Number(searchParams.get('page')) || 1)
+  const offset = (page - 1) * PAGE_SIZE
 
   const { data, isPending, isError, error, refetch } = useUniverse({
     sort,
     order,
     manualOnly,
+    earningsResult,
     limit: PAGE_SIZE,
     offset,
   })
   const removeManualTicker = useRemoveManualTicker()
 
+  /** Merge partial updates into the URL's search params. Any filter/sort
+   * change resets to page 1 — a stale page number from a different, larger
+   * result set wouldn't make sense under the new one. */
+  function updateParams(updates: Record<string, string | undefined>, resetPage = true) {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      for (const [key, value] of Object.entries(updates)) {
+        if (value === undefined) {
+          next.delete(key)
+        } else {
+          next.set(key, value)
+        }
+      }
+      if (resetPage) next.delete('page')
+      return next
+    })
+  }
+
   function toggleSort(field: NonNullable<UniverseParams['sort']>) {
     if (sort === field) {
-      setOrder(order === 'desc' ? 'asc' : 'desc')
+      updateParams({ order: order === 'desc' ? 'asc' : 'desc' })
     } else {
-      setSort(field)
-      setOrder('desc')
+      updateParams({ sort: field, order: DEFAULT_ORDER_OVERRIDE[field] ?? 'desc' })
     }
-    setOffset(0)
   }
 
   return (
@@ -82,10 +169,7 @@ export function UniverseTable() {
         <Button
           size="sm"
           variant={manualOnly ? 'secondary' : 'ghost'}
-          onClick={() => {
-            setManualOnly((v) => !v)
-            setOffset(0)
-          }}
+          onClick={() => updateParams({ manual_only: manualOnly ? undefined : 'true' })}
           className="ml-2"
         >
           <Pin />
@@ -93,16 +177,30 @@ export function UniverseTable() {
         </Button>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-muted-foreground text-xs">Last earnings</span>
+        {EARNINGS_FILTER_OPTIONS.map((opt) => (
+          <Button
+            key={opt.label}
+            size="sm"
+            variant={earningsResult === opt.value ? 'secondary' : 'ghost'}
+            onClick={() => updateParams({ earnings_result: opt.value })}
+          >
+            {opt.label}
+          </Button>
+        ))}
+      </div>
+
       {isPending && <Skeleton className="h-64 rounded-xl" />}
       {isError && <ErrorState error={error} onRetry={() => refetch()} />}
-      {data && data.length === 0 && (
+      {data && data.items.length === 0 && (
         <EmptyState
           title={manualOnly ? 'No pinned tickers yet' : 'No tracked tickers yet'}
           description="Scores populate daily once universe_score has run."
         />
       )}
 
-      {data && data.length > 0 && (
+      {data && data.items.length > 0 && (
         <>
           <Table>
             <TableHeader>
@@ -111,12 +209,13 @@ export function UniverseTable() {
                 <TableHead>Company</TableHead>
                 <TableHead>Score</TableHead>
                 <TableHead>Lean</TableHead>
+                <TableHead>Earnings</TableHead>
                 <TableHead>Scored</TableHead>
                 <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.map((item) => (
+              {data.items.map((item) => (
                 <TableRow key={item.ticker}>
                   <TableCell className="font-medium">
                     <Link to={`/stocks/${item.ticker}`} className="hover:underline">
@@ -146,6 +245,9 @@ export function UniverseTable() {
                       '—'
                     )}
                   </TableCell>
+                  <TableCell>
+                    <EarningsCell item={item} />
+                  </TableCell>
                   <TableCell className="text-muted-foreground">
                     {formatRelativeTime(item.score_updated_at)}
                   </TableCell>
@@ -173,26 +275,13 @@ export function UniverseTable() {
 
           <div className="flex items-center justify-between">
             <p className="text-muted-foreground text-xs">
-              Showing {offset + 1}–{offset + data.length}
+              Showing {offset + 1}–{offset + data.items.length} of {data.total}
             </p>
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={offset === 0}
-                onClick={() => setOffset((o) => Math.max(0, o - PAGE_SIZE))}
-              >
-                Previous
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={data.length < PAGE_SIZE}
-                onClick={() => setOffset((o) => o + PAGE_SIZE)}
-              >
-                Next
-              </Button>
-            </div>
+            <Pagination
+              page={page}
+              totalPages={Math.max(1, Math.ceil(data.total / PAGE_SIZE))}
+              onPageChange={(p) => updateParams({ page: p > 1 ? String(p) : undefined }, false)}
+            />
           </div>
         </>
       )}

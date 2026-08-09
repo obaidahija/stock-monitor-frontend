@@ -1,9 +1,11 @@
 import { apiClient } from '@/lib/api-client'
 import type {
+  EarningsResult,
   FilingOut,
   GapperOut,
   TrackedTickerOut,
   TrendingSocialOut,
+  UniverseTickerOut,
   UnusualVolumeOut,
 } from '@/types/api'
 
@@ -12,21 +14,32 @@ export function getNotableFilings() {
 }
 
 export interface UniverseParams {
-  sort?: 'score' | 'ticker' | 'added_at'
+  sort?: 'score' | 'ticker' | 'added_at' | 'next_earnings_date'
   order?: 'asc' | 'desc'
   limit?: number
   offset?: number
   manualOnly?: boolean
+  earningsResult?: EarningsResult
 }
 
-export function getUniverse(params: UniverseParams = {}) {
+export interface UniversePage {
+  items: UniverseTickerOut[]
+  total: number
+}
+
+export async function getUniverse(params: UniverseParams = {}): Promise<UniversePage> {
   const qs = new URLSearchParams()
   if (params.sort) qs.set('sort', params.sort)
   if (params.order) qs.set('order', params.order)
   if (params.limit !== undefined) qs.set('limit', String(params.limit))
   if (params.offset !== undefined) qs.set('offset', String(params.offset))
   if (params.manualOnly !== undefined) qs.set('manual_only', String(params.manualOnly))
-  return apiClient.get<TrackedTickerOut[]>(`/v1/discover/universe?${qs.toString()}`)
+  if (params.earningsResult) qs.set('earnings_result', params.earningsResult)
+  const { data, response } = await apiClient.getWithResponse<UniverseTickerOut[]>(
+    `/v1/discover/universe?${qs.toString()}`,
+  )
+  const total = Number(response.headers.get('X-Total-Count') ?? data.length)
+  return { items: data, total }
 }
 
 export function addManualTicker(ticker: string, note?: string) {
