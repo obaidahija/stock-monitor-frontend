@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { RefreshCw } from 'lucide-react'
+import { toast } from 'sonner'
 import { Card, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -7,7 +9,7 @@ import { EmptyState } from '@/components/shared/empty-state'
 import { SentimentBadge } from '@/components/shared/sentiment-badge'
 import { formatRelativeTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import { useNews } from './hooks'
+import { useNews, useRefreshNews } from './hooks'
 import { NewsClusterDetailDialog } from './news-cluster-detail-dialog'
 
 const WINDOWS = [
@@ -20,26 +22,63 @@ export function NewsTab({ ticker }: { ticker: string }) {
   const [hours, setHours] = useState(24)
   const [openClusterId, setOpenClusterId] = useState<number | null>(null)
   const { data, isPending, isError, error, refetch } = useNews(ticker, hours)
+  const refreshNews = useRefreshNews(ticker)
+
+  function runRefresh() {
+    refreshNews.mutate(undefined, {
+      onSuccess: (result) => {
+        const parts = [`${result.new} new`]
+        if (result.duplicates) parts.push(`${result.duplicates} duplicates`)
+        if (result.errors.length) parts.push(`${result.errors.length} source errors`)
+        toast[result.errors.length ? 'error' : 'success'](
+          `Refreshed news for ${result.ticker}: ${parts.join(', ')}`,
+        )
+      },
+      onError: () => toast.error(`Failed to refresh news for ${ticker}`),
+    })
+  }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-1">
-        {WINDOWS.map((w) => (
-          <Button
-            key={w.hours}
-            size="sm"
-            variant={hours === w.hours ? 'secondary' : 'ghost'}
-            onClick={() => setHours(w.hours)}
-          >
-            {w.label}
-          </Button>
-        ))}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1">
+          {WINDOWS.map((w) => (
+            <Button
+              key={w.hours}
+              size="sm"
+              variant={hours === w.hours ? 'secondary' : 'ghost'}
+              onClick={() => setHours(w.hours)}
+            >
+              {w.label}
+            </Button>
+          ))}
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={refreshNews.isPending}
+          onClick={runRefresh}
+        >
+          <RefreshCw className={cn(refreshNews.isPending && 'animate-spin')} />
+          Refresh
+        </Button>
       </div>
 
       {isPending && <Skeleton className="h-64 rounded-xl" />}
       {isError && <ErrorState error={error} onRetry={() => refetch()} />}
 
-      {data && data.length === 0 && <EmptyState title="No news in this window" />}
+      {data && data.length === 0 && (
+        <EmptyState
+          title="No news in this window"
+          description="This ticker may not be in the tracked universe yet (e.g. an ETF like QQQ) — try refreshing to pull news for it directly."
+          action={
+            <Button size="sm" variant="outline" disabled={refreshNews.isPending} onClick={runRefresh}>
+              <RefreshCw className={cn(refreshNews.isPending && 'animate-spin')} />
+              Refresh news
+            </Button>
+          }
+        />
+      )}
 
       {data && data.length > 0 && (
         <div className="space-y-2">

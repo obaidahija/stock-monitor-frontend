@@ -2,12 +2,16 @@ import { apiClient } from '@/lib/api-client'
 import type {
   AnalysisOut,
   CatalystOut,
+  EarningsRefreshResult,
   EarningsSummary,
   FilingOut,
   NewsClusterDetailOut,
   NewsClusterOut,
+  NewsRefreshResult,
   SentimentBucketGranularity,
   SentimentHistoryOut,
+  SocialStatOut,
+  TrackedTickerOut,
 } from '@/types/api'
 
 export function getFilings(ticker: string, opts?: { form?: string; days?: number }) {
@@ -24,9 +28,27 @@ export function getEarnings(ticker: string) {
   return apiClient.get<EarningsSummary>(`/v1/stocks/${encodeURIComponent(ticker)}/earnings`)
 }
 
+export function refreshEarnings(ticker: string) {
+  return apiClient.post<EarningsRefreshResult>(
+    `/v1/stocks/${encodeURIComponent(ticker)}/earnings/refresh`,
+  )
+}
+
+export function getUniverseScore(ticker: string) {
+  return apiClient.get<TrackedTickerOut | null>(
+    `/v1/stocks/${encodeURIComponent(ticker)}/universe-score`,
+  )
+}
+
 export function getNews(ticker: string, hours = 24) {
   return apiClient.get<NewsClusterOut[]>(
     `/v1/stocks/${encodeURIComponent(ticker)}/news?hours=${hours}`,
+  )
+}
+
+export function refreshNews(ticker: string) {
+  return apiClient.post<NewsRefreshResult>(
+    `/v1/stocks/${encodeURIComponent(ticker)}/news/refresh`,
   )
 }
 
@@ -42,6 +64,10 @@ export function getCatalysts(ticker: string) {
 
 export function getAnalysis(ticker: string) {
   return apiClient.get<AnalysisOut>(`/v1/stocks/${encodeURIComponent(ticker)}/analysis`)
+}
+
+export function getSocial(ticker: string) {
+  return apiClient.get<SocialStatOut | null>(`/v1/stocks/${encodeURIComponent(ticker)}/social`)
 }
 
 export function getSentimentHistory(

@@ -1,3 +1,6 @@
+import { RefreshCw } from 'lucide-react'
+import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
@@ -11,10 +14,34 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState } from '@/components/shared/error-state'
 import { EmptyState } from '@/components/shared/empty-state'
 import { formatDate, formatNumber } from '@/lib/format'
-import { useEarnings } from './hooks'
+import { cn } from '@/lib/utils'
+import { useEarnings, useRefreshEarnings } from './hooks'
 
 export function EarningsTab({ ticker }: { ticker: string }) {
   const { data, isPending, isError, error, refetch } = useEarnings(ticker)
+  const refreshEarnings = useRefreshEarnings(ticker)
+
+  function runRefresh() {
+    refreshEarnings.mutate(undefined, {
+      onSuccess: (result) => {
+        if (result.error) {
+          toast.error(`Failed to refresh earnings for ${result.ticker}: ${result.error}`)
+        } else {
+          toast.success(
+            `Refreshed earnings for ${result.ticker}: ${result.new} new, ${result.updated} updated`,
+          )
+        }
+      },
+      onError: () => toast.error(`Failed to refresh earnings for ${ticker}`),
+    })
+  }
+
+  const refreshButton = (
+    <Button size="sm" variant="outline" disabled={refreshEarnings.isPending} onClick={runRefresh}>
+      <RefreshCw className={cn(refreshEarnings.isPending && 'animate-spin')} />
+      Refresh
+    </Button>
+  )
 
   if (isPending) return <Skeleton className="h-72 rounded-xl" />
   if (isError) return <ErrorState error={error} onRetry={() => refetch()} />
@@ -22,6 +49,8 @@ export function EarningsTab({ ticker }: { ticker: string }) {
 
   return (
     <div className="space-y-4">
+      <div className="flex justify-end">{refreshButton}</div>
+
       {data.next ? (
         <Card>
           <CardHeader>
@@ -39,7 +68,11 @@ export function EarningsTab({ ticker }: { ticker: string }) {
           </CardContent>
         </Card>
       ) : (
-        <EmptyState title="No upcoming earnings date known" />
+        <EmptyState
+          title="No upcoming earnings date known"
+          description="This may be an ETF or a ticker outside the tracked universe — try refreshing to check Finnhub directly."
+          action={refreshButton}
+        />
       )}
 
       {data.history.length > 0 ? (

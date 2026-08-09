@@ -1,11 +1,15 @@
 // Mirrors app/schemas/*.py in the stock-monitor backend, field-for-field.
 
-export interface WatchlistItem {
+export interface TrackedTickerOut {
   id: number
   ticker: string
-  note: string | null
   company_name: string | null
+  is_manual: boolean
+  note: string | null
   added_at: string
+  score: number | null
+  lean: string | null
+  score_updated_at: string | null
 }
 
 export interface FilingOut {
@@ -39,6 +43,13 @@ export interface EarningsSummary {
   history: EarningsEventOut[]
 }
 
+export interface EarningsRefreshResult {
+  ticker: string
+  new: number
+  updated: number
+  error: string | null
+}
+
 export interface NewsClusterOut {
   id: number
   ticker: string | null
@@ -69,6 +80,14 @@ export interface NewsClusterDetailOut extends NewsClusterOut {
   items: NewsItemOut[]
 }
 
+export interface NewsRefreshResult {
+  ticker: string
+  new: number
+  duplicates: number
+  filtered_irrelevant: number
+  errors: { source: string; error: string }[]
+}
+
 export interface CatalystOut {
   catalyst_type: string
   event_date: string
@@ -82,13 +101,51 @@ export interface ComponentScoreOut {
   explanation: string
 }
 
+export interface SocialStatOut {
+  ticker: string
+  source: string
+  snapshot_at: string
+  buzz_score: number | null
+  mentions: number | null
+  sentiment_score: number | null
+  bullish_pct: number | null
+  bearish_pct: number | null
+  trend: string | null
+}
+
+export interface TrendingSocialOut {
+  ticker: string
+  source: string
+  buzz_score: number | null
+  mentions: number | null
+  sentiment_score: number | null
+  trend: string | null
+}
+
 export type AnalysisLean = 'bullish' | 'neutral' | 'bearish'
+
+export type PriceLevelPosition =
+  | 'near_support'
+  | 'near_resistance'
+  | 'mid_range'
+  | 'below_support'
+  | 'above_resistance'
+
+export interface PriceLevelsOut {
+  support: number | null
+  support_label: string
+  resistance: number | null
+  resistance_label: string
+  position: PriceLevelPosition
+  note: string
+}
 
 export interface AnalysisOut {
   ticker: string
   lean: AnalysisLean
   overall_score: number
   components: ComponentScoreOut[]
+  price_levels: PriceLevelsOut | null
   caveats: string[]
   generated_at: string
 }

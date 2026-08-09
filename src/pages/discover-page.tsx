@@ -1,33 +1,23 @@
-import { TrendingUp } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { UniverseTable } from '@/features/discover/universe-table'
 import { GappersSection } from '@/features/discover/gappers-section'
 import { UnusualVolumeSection } from '@/features/discover/unusual-volume-section'
 import { NotableFilingsSection } from '@/features/discover/notable-filings-section'
+import { TrendingSection } from '@/features/discover/trending-section'
 
 export function DiscoverPage() {
   return (
     <div className="space-y-8">
-      <PageHeader title="Discover" description="Market-wide scan, independent of your watchlist." />
+      <PageHeader
+        title="Discover"
+        description="The full S&P 500 + extras, scored 0-100 daily. Pin a custom ticker to track it fully regardless of score."
+      />
 
+      <UniverseTable />
       <GappersSection />
       <UnusualVolumeSection />
       <NotableFilingsSection />
-
-      <section className="space-y-3">
-        <h2 className="font-semibold">Trending</h2>
-        <Card className="opacity-60">
-          <CardHeader className="flex flex-row items-center gap-2">
-            <TrendingUp className="text-muted-foreground size-4" />
-            <CardTitle>Mention velocity — coming in phase 2</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground text-sm">
-              Ranked by social mention z-score vs. a 7-day baseline. Not built on the backend yet.
-            </p>
-          </CardContent>
-        </Card>
-      </section>
+      <TrendingSection />
     </div>
   )
 }

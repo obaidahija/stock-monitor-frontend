@@ -5,7 +5,7 @@ const TIER_META: Record<number, { label: string; className: string }> = {
   2: { label: 'Earnings', className: 'bg-orange-500/15 text-orange-600 dark:text-orange-400' },
   3: { label: 'Sentiment', className: 'bg-violet-500/15 text-violet-600 dark:text-violet-400' },
   4: { label: 'News volume', className: 'bg-blue-500/15 text-blue-600 dark:text-blue-400' },
-  5: { label: 'Watchlist', className: 'bg-muted text-muted-foreground' },
+  5: { label: 'Tracked', className: 'bg-muted text-muted-foreground' },
 }
 
 export function TierBadge({ tier }: { tier: number }) {

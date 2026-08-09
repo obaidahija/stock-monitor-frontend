@@ -17,7 +17,7 @@ export function DigestPage() {
       <PageHeader
         title="Morning digest"
         description={
-          digest ? `Generated ${formatDateTime(digest.generated_at)}` : 'Ranked watchlist signals'
+          digest ? `Generated ${formatDateTime(digest.generated_at)}` : 'Top-scored discovery signals'
         }
         actions={
           <Button
@@ -55,7 +55,10 @@ export function DigestPage() {
       )}
 
       {digest && digest.payload.items.length === 0 && (
-        <EmptyState title="Watchlist is empty" description="Add a ticker to see it here." />
+        <EmptyState
+          title="No tracked tickers yet"
+          description="Scores populate daily once universe_score has run, or pin a ticker on Discover."
+        />
       )}
 
       {digest && digest.payload.items.length > 0 && (

@@ -28,21 +28,29 @@ type JobGroup = {
 const JOB_GROUPS: JobGroup[] = [
   {
     key: 'ticker-sync',
-    title: 'Per-ticker sync',
+    title: 'Tracked-universe pipeline',
     description:
-      'Run these in order after adding a new ticker to the watchlist, so it has data ' +
+      'Run these in order to refresh data (and daily scores) for every tracked ticker ' +
       'immediately instead of waiting for the schedule. sentiment_classify depends on ' +
-      'news_ingest having run first — jobs below are numbered in the order to run them.',
-    jobNames: ['edgar_poll', 'earnings_sync', 'news_ingest', 'sentiment_classify'],
+      'news_ingest, and universe_score depends on all the others having run first — ' +
+      'jobs below are numbered in the order to run them.',
+    jobNames: [
+      'edgar_poll_tracked',
+      'earnings_sync',
+      'news_ingest',
+      'sentiment_classify',
+      'reddit_scan',
+      'universe_score',
+    ],
     ordered: true,
   },
   {
     key: 'market-wide',
     title: 'Market-wide',
     description:
-      'Not ticker-specific — these cover the whole market or the premarket window, so a ' +
-      'new watchlist ticker doesn’t need them re-run. Run order doesn’t matter.',
-    jobNames: ['premarket_snapshot', 'market_context_sync', 'digest_build'],
+      'Not ticker-specific — a single call regardless of how many tickers are tracked, ' +
+      'so it never needs re-running for one new ticker. Run order doesn’t matter.',
+    jobNames: ['edgar_poll', 'premarket_snapshot', 'market_context_sync', 'digest_build'],
     ordered: false,
   },
 ]

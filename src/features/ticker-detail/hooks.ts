@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   getAnalysis,
   getCatalysts,
@@ -6,11 +6,26 @@ import {
   getFilings,
   getNews,
   getSentimentHistory,
+  getSocial,
+  getUniverseScore,
+  refreshEarnings,
+  refreshNews,
 } from '@/api/stocks'
 import type { SentimentBucketGranularity } from '@/types/api'
 
 export function useAnalysis(ticker: string) {
   return useQuery({ queryKey: ['analysis', ticker], queryFn: () => getAnalysis(ticker) })
+}
+
+export function useUniverseScore(ticker: string) {
+  return useQuery({
+    queryKey: ['universe-score', ticker],
+    queryFn: () => getUniverseScore(ticker),
+  })
+}
+
+export function useSocial(ticker: string) {
+  return useQuery({ queryKey: ['social', ticker], queryFn: () => getSocial(ticker) })
 }
 
 export function useSentimentHistory(
@@ -28,8 +43,24 @@ export function useEarnings(ticker: string) {
   return useQuery({ queryKey: ['earnings', ticker], queryFn: () => getEarnings(ticker) })
 }
 
+export function useRefreshEarnings(ticker: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => refreshEarnings(ticker),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['earnings', ticker] }),
+  })
+}
+
 export function useNews(ticker: string, hours: number) {
   return useQuery({ queryKey: ['news', ticker, hours], queryFn: () => getNews(ticker, hours) })
+}
+
+export function useRefreshNews(ticker: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => refreshNews(ticker),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['news', ticker] }),
+  })
 }
 
 export function useFilings(ticker: string) {
