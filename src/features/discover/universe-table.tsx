@@ -1,7 +1,9 @@
 import { Link, useSearchParams } from 'react-router'
-import { Pin, Trash2 } from 'lucide-react'
+import { AlertCircle, Pin, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Table,
   TableBody,
@@ -14,7 +16,13 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState } from '@/components/shared/error-state'
 import { EmptyState } from '@/components/shared/empty-state'
 import { Pagination } from '@/components/shared/pagination'
-import { formatDate, formatRelativeTime } from '@/lib/format'
+import {
+  formatCurrency,
+  formatDate,
+  formatNumber,
+  formatRelativeTime,
+  formatSignedPct,
+} from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { AddTickerDialog } from './add-ticker-dialog'
 import { useRemoveManualTicker, useUniverse } from './hooks'
@@ -23,15 +31,24 @@ import type { EarningsResult, UniverseTickerOut } from '@/types/api'
 
 const PAGE_SIZE = 25
 
+// Quick-filter chip thresholds — match the previous standalone Gappers/
+// Unusual Volume panels' defaults, so the merged table's "one click" view is
+// the same set a user would have seen before.
+const GAP_CHIP_THRESHOLD = 3
+const VOLUME_RATIO_CHIP_THRESHOLD = 2
+
 const SORT_OPTIONS: { label: string; value: NonNullable<UniverseParams['sort']> }[] = [
   { label: 'Score', value: 'score' },
   { label: 'Ticker', value: 'ticker' },
   { label: 'Added', value: 'added_at' },
   { label: 'Next earnings', value: 'next_earnings_date' },
+  { label: 'Change %', value: 'change_pct' },
+  { label: 'Volume ratio', value: 'volume_ratio' },
 ]
 
 // First click on "Next earnings" should read soonest-first, unlike the other
-// fields (score/ticker/added_at), which default to desc on first click.
+// fields (score/ticker/added_at/change_pct/volume_ratio), which default to
+// desc on first click.
 const DEFAULT_ORDER_OVERRIDE: Partial<Record<NonNullable<UniverseParams['sort']>, 'asc' | 'desc'>> =
   {
     next_earnings_date: 'asc',
@@ -107,6 +124,10 @@ export function UniverseTable() {
   const order = (searchParams.get('order') as UniverseParams['order']) || DEFAULT_ORDER
   const manualOnly = searchParams.get('manual_only') === 'true'
   const earningsResult = (searchParams.get('earnings_result') as EarningsResult | null) ?? undefined
+  const minGapPctRaw = searchParams.get('min_gap_pct')
+  const minVolumeRatioRaw = searchParams.get('min_volume_ratio')
+  const minGapPct = minGapPctRaw !== null ? Number(minGapPctRaw) : undefined
+  const minVolumeRatio = minVolumeRatioRaw !== null ? Number(minVolumeRatioRaw) : undefined
   const page = Math.max(1, Number(searchParams.get('page')) || 1)
   const offset = (page - 1) * PAGE_SIZE
 
@@ -115,6 +136,8 @@ export function UniverseTable() {
     order,
     manualOnly,
     earningsResult,
+    minGapPct,
+    minVolumeRatio,
     limit: PAGE_SIZE,
     offset,
   })
@@ -143,6 +166,29 @@ export function UniverseTable() {
       updateParams({ order: order === 'desc' ? 'asc' : 'desc' })
     } else {
       updateParams({ sort: field, order: DEFAULT_ORDER_OVERRIDE[field] ?? 'desc' })
+    }
+  }
+
+  /** Chips both set a filter threshold and switch sort to that metric in one
+   * click — a shortcut on top of the raw numeric inputs below, which stay
+   * the source of truth (toggling a chip off just clears the filter). */
+  function toggleGapChip() {
+    if (minGapPct !== undefined) {
+      updateParams({ min_gap_pct: undefined })
+    } else {
+      updateParams({ min_gap_pct: String(GAP_CHIP_THRESHOLD), sort: 'change_pct', order: 'desc' })
+    }
+  }
+
+  function toggleVolumeRatioChip() {
+    if (minVolumeRatio !== undefined) {
+      updateParams({ min_volume_ratio: undefined })
+    } else {
+      updateParams({
+        min_volume_ratio: String(VOLUME_RATIO_CHIP_THRESHOLD),
+        sort: 'volume_ratio',
+        order: 'desc',
+      })
     }
   }
 
@@ -191,6 +237,54 @@ export function UniverseTable() {
         ))}
       </div>
 
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-muted-foreground text-xs">Movement</span>
+        <Button
+          size="sm"
+          variant={minGapPct !== undefined ? 'secondary' : 'ghost'}
+          onClick={toggleGapChip}
+        >
+          Gapping ≥{GAP_CHIP_THRESHOLD}%
+        </Button>
+        <Button
+          size="sm"
+          variant={minVolumeRatio !== undefined ? 'secondary' : 'ghost'}
+          onClick={toggleVolumeRatioChip}
+        >
+          Unusual volume ≥{VOLUME_RATIO_CHIP_THRESHOLD}×
+        </Button>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="min-gap" className="text-muted-foreground text-xs">
+            Min gap %
+          </Label>
+          <Input
+            id="min-gap"
+            type="number"
+            step="0.5"
+            min="0"
+            placeholder="any"
+            value={minGapPct ?? ''}
+            onChange={(e) => updateParams({ min_gap_pct: e.target.value || undefined })}
+            className="w-20"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="min-ratio" className="text-muted-foreground text-xs">
+            Min volume ×
+          </Label>
+          <Input
+            id="min-ratio"
+            type="number"
+            step="0.5"
+            min="1"
+            placeholder="any"
+            value={minVolumeRatio ?? ''}
+            onChange={(e) => updateParams({ min_volume_ratio: e.target.value || undefined })}
+            className="w-20"
+          />
+        </div>
+      </div>
+
       {isPending && <Skeleton className="h-64 rounded-xl" />}
       {isError && <ErrorState error={error} onRetry={() => refetch()} />}
       {data && data.items.length === 0 && (
@@ -209,6 +303,11 @@ export function UniverseTable() {
                 <TableHead>Company</TableHead>
                 <TableHead>Score</TableHead>
                 <TableHead>Lean</TableHead>
+                <TableHead>Price</TableHead>
+                <TableHead>Change</TableHead>
+                <TableHead>Volume</TableHead>
+                <TableHead>Ratio</TableHead>
+                <TableHead>Catalyst</TableHead>
                 <TableHead>Earnings</TableHead>
                 <TableHead>Scored</TableHead>
                 <TableHead className="w-10" />
@@ -240,6 +339,35 @@ export function UniverseTable() {
                         )}
                       >
                         {item.lean}
+                      </span>
+                    ) : (
+                      '—'
+                    )}
+                  </TableCell>
+                  <TableCell>{formatCurrency(item.price)}</TableCell>
+                  <TableCell
+                    className={cn(
+                      'tabular-nums',
+                      item.change_pct === null
+                        ? undefined
+                        : item.change_pct >= 0
+                          ? 'text-emerald-600 dark:text-emerald-400'
+                          : 'text-red-600 dark:text-red-400',
+                    )}
+                  >
+                    {formatSignedPct(item.change_pct)}
+                  </TableCell>
+                  <TableCell>{formatNumber(item.volume)}</TableCell>
+                  <TableCell className="tabular-nums">
+                    {item.volume_ratio !== null ? `${item.volume_ratio.toFixed(1)}×` : '—'}
+                  </TableCell>
+                  <TableCell className="max-w-48 truncate">
+                    {item.catalyst ? (
+                      item.catalyst
+                    ) : item.change_pct !== null ? (
+                      <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                        <AlertCircle className="size-3.5" />
+                        No catalyst found
                       </span>
                     ) : (
                       '—'

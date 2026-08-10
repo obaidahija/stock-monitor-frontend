@@ -1,7 +1,5 @@
 import { PageHeader } from '@/components/shared/page-header'
 import { UniverseTable } from '@/features/discover/universe-table'
-import { GappersSection } from '@/features/discover/gappers-section'
-import { UnusualVolumeSection } from '@/features/discover/unusual-volume-section'
 import { NotableFilingsSection } from '@/features/discover/notable-filings-section'
 import { TrendingSection } from '@/features/discover/trending-section'
 
@@ -14,8 +12,6 @@ export function DiscoverPage() {
       />
 
       <UniverseTable />
-      <GappersSection />
-      <UnusualVolumeSection />
       <NotableFilingsSection />
       <TrendingSection />
     </div>

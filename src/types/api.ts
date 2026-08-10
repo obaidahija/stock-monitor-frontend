@@ -20,6 +20,13 @@ export interface UniverseTickerOut extends TrackedTickerOut {
   last_earnings_result: EarningsResult | null
   last_earnings_surprise_pct: number | null
   is_reit: boolean
+  price: number | null
+  change_pct: number | null
+  volume: number | null
+  avg_volume_20d: number | null
+  volume_ratio: number | null
+  catalyst: string | null
+  quote_updated_at: string | null
 }
 
 export interface FilingOut {

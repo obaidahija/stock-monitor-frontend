@@ -2,11 +2,9 @@ import { apiClient } from '@/lib/api-client'
 import type {
   EarningsResult,
   FilingOut,
-  GapperOut,
   TrackedTickerOut,
   TrendingSocialOut,
   UniverseTickerOut,
-  UnusualVolumeOut,
 } from '@/types/api'
 
 export function getNotableFilings() {
@@ -14,12 +12,14 @@ export function getNotableFilings() {
 }
 
 export interface UniverseParams {
-  sort?: 'score' | 'ticker' | 'added_at' | 'next_earnings_date'
+  sort?: 'score' | 'ticker' | 'added_at' | 'next_earnings_date' | 'change_pct' | 'volume_ratio'
   order?: 'asc' | 'desc'
   limit?: number
   offset?: number
   manualOnly?: boolean
   earningsResult?: EarningsResult
+  minGapPct?: number
+  minVolumeRatio?: number
 }
 
 export interface UniversePage {
@@ -35,6 +35,8 @@ export async function getUniverse(params: UniverseParams = {}): Promise<Universe
   if (params.offset !== undefined) qs.set('offset', String(params.offset))
   if (params.manualOnly !== undefined) qs.set('manual_only', String(params.manualOnly))
   if (params.earningsResult) qs.set('earnings_result', params.earningsResult)
+  if (params.minGapPct !== undefined) qs.set('min_gap_pct', String(params.minGapPct))
+  if (params.minVolumeRatio !== undefined) qs.set('min_volume_ratio', String(params.minVolumeRatio))
   const { data, response } = await apiClient.getWithResponse<UniverseTickerOut[]>(
     `/v1/discover/universe?${qs.toString()}`,
   )
@@ -52,12 +54,4 @@ export function removeManualTicker(ticker: string) {
 
 export function getTrending(limit = 20) {
   return apiClient.get<TrendingSocialOut[]>(`/v1/discover/trending?limit=${limit}`)
-}
-
-export function getGappers(minGapPct = 3) {
-  return apiClient.get<GapperOut[]>(`/v1/discover/gappers?min_gap_pct=${minGapPct}`)
-}
-
-export function getUnusualVolume(minRatio = 2) {
-  return apiClient.get<UnusualVolumeOut[]>(`/v1/discover/unusual-volume?min_ratio=${minRatio}`)
 }
