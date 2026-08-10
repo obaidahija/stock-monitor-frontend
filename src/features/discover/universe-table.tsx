@@ -1,5 +1,5 @@
 import { Link, useSearchParams } from 'react-router'
-import { AlertCircle, Pin, Trash2 } from 'lucide-react'
+import { AlertCircle, Pin, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -128,6 +128,7 @@ export function UniverseTable() {
   const minVolumeRatioRaw = searchParams.get('min_volume_ratio')
   const minGapPct = minGapPctRaw !== null ? Number(minGapPctRaw) : undefined
   const minVolumeRatio = minVolumeRatioRaw !== null ? Number(minVolumeRatioRaw) : undefined
+  const sector = searchParams.get('sector') ?? undefined
   const page = Math.max(1, Number(searchParams.get('page')) || 1)
   const offset = (page - 1) * PAGE_SIZE
 
@@ -138,6 +139,7 @@ export function UniverseTable() {
     earningsResult,
     minGapPct,
     minVolumeRatio,
+    sector,
     limit: PAGE_SIZE,
     offset,
   })
@@ -198,6 +200,20 @@ export function UniverseTable() {
         <h2 className="font-semibold">Tracked universe</h2>
         <AddTickerDialog />
       </div>
+
+      {sector && (
+        <div className="flex items-center gap-2">
+          <span className="text-muted-foreground text-xs">Filtered by sector</span>
+          <button
+            type="button"
+            onClick={() => updateParams({ sector: undefined })}
+            className="bg-secondary text-secondary-foreground inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
+          >
+            {sector}
+            <X className="size-3" />
+          </button>
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-muted-foreground text-xs">Sort</span>

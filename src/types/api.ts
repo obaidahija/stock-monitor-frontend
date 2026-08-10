@@ -10,6 +10,7 @@ export interface TrackedTickerOut {
   score: number | null
   lean: string | null
   score_updated_at: string | null
+  sector: string | null
 }
 
 export type EarningsResult = 'beat' | 'miss' | 'inline'

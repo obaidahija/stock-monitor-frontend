@@ -1,6 +1,7 @@
 import { useParams } from 'react-router'
 import { PageHeader } from '@/components/shared/page-header'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { PriceChart } from '@/features/ticker-detail/price-chart'
 import { AnalysisTab } from '@/features/ticker-detail/analysis-tab'
 import { EarningsTab } from '@/features/ticker-detail/earnings-tab'
 import { NewsTab } from '@/features/ticker-detail/news-tab'
@@ -18,6 +19,8 @@ export function TickerDetailPage() {
         title={symbol}
         description="Analysis, earnings, news, social, filings, and catalysts."
       />
+
+      <PriceChart ticker={symbol} />
 
       <Tabs defaultValue="analysis">
         <TabsList>
