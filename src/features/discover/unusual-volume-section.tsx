@@ -23,7 +23,7 @@ export function UnusualVolumeSection() {
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="font-semibold">Unusual premarket volume</h2>
+        <h2 className="font-semibold">Unusual volume</h2>
         <div className="flex items-center gap-2">
           <Label htmlFor="min-ratio" className="text-muted-foreground text-xs">
             Min ratio ×
