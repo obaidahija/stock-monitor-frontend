@@ -25,7 +25,12 @@ function UniverseScoreBadge({ ticker }: { ticker: string }) {
     refreshUniverseScore.mutate(undefined, {
       onSuccess: (result) => {
         if (result.scored) {
-          toast.success(`Refreshed universe score for ${result.ticker}: ${result.score}/100`)
+          const newsPart = result.news_classified
+            ? `, ${result.news_classified} news article${result.news_classified === 1 ? '' : 's'} classified`
+            : ''
+          toast.success(
+            `Refreshed universe score for ${result.ticker}: ${result.score}/100${newsPart}`,
+          )
         } else {
           toast.error(`Failed to refresh universe score for ${result.ticker}: ${result.error}`)
         }

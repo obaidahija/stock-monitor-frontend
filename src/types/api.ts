@@ -74,6 +74,7 @@ export interface UniverseScoreRefreshResult {
   score?: number
   lean?: string
   error?: string
+  news_classified: number
 }
 
 export interface NewsClusterOut {
