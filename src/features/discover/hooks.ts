@@ -23,6 +23,16 @@ export function useUniverse(params: UniverseParams) {
   })
 }
 
+// Full tracked-universe list, kept warm client-side so ticker search can
+// filter as-you-type without hitting the API on every keystroke.
+export function useUniverseSearchIndex() {
+  return useQuery({
+    queryKey: ['discover', 'universe', 'search-index'],
+    queryFn: () => getUniverse({ limit: 508, sort: 'ticker', order: 'asc' }),
+    staleTime: 5 * 60_000,
+  })
+}
+
 export function useAddManualTicker() {
   const queryClient = useQueryClient()
   return useMutation({
