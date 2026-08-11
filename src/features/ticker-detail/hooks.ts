@@ -10,6 +10,7 @@ import {
   getUniverseScore,
   refreshEarnings,
   refreshNews,
+  refreshUniverseScore,
 } from '@/api/stocks'
 import type { SentimentBucketGranularity } from '@/types/api'
 
@@ -21,6 +22,14 @@ export function useUniverseScore(ticker: string) {
   return useQuery({
     queryKey: ['universe-score', ticker],
     queryFn: () => getUniverseScore(ticker),
+  })
+}
+
+export function useRefreshUniverseScore(ticker: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => refreshUniverseScore(ticker),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['universe-score', ticker] }),
   })
 }
 

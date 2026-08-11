@@ -1,9 +1,13 @@
+import { RefreshCw } from 'lucide-react'
+import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState } from '@/components/shared/error-state'
+import { ApiError } from '@/lib/api-client'
 import { formatCurrency, formatDateTime, formatRelativeTime, formatScore } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import { useAnalysis, useUniverseScore } from './hooks'
+import { useAnalysis, useRefreshUniverseScore, useUniverseScore } from './hooks'
 import { SentimentTrendChart } from './sentiment-trend-chart'
 import type { AnalysisLean, PriceLevelPosition, PriceLevelsOut } from '@/types/api'
 
@@ -15,13 +19,48 @@ const LEAN_META: Record<AnalysisLean, string> = {
 
 function UniverseScoreBadge({ ticker }: { ticker: string }) {
   const { data, isPending } = useUniverseScore(ticker)
+  const refreshUniverseScore = useRefreshUniverseScore(ticker)
+
+  function runRefresh() {
+    refreshUniverseScore.mutate(undefined, {
+      onSuccess: (result) => {
+        if (result.scored) {
+          toast.success(`Refreshed universe score for ${result.ticker}: ${result.score}/100`)
+        } else {
+          toast.error(`Failed to refresh universe score for ${result.ticker}: ${result.error}`)
+        }
+      },
+      onError: (err) => {
+        toast.error(
+          err instanceof ApiError && typeof err.detail === 'string'
+            ? err.detail
+            : `Failed to refresh universe score for ${ticker}`,
+        )
+      },
+    })
+  }
+
+  const refreshButton = (
+    <Button
+      size="sm"
+      variant="outline"
+      disabled={refreshUniverseScore.isPending}
+      onClick={runRefresh}
+    >
+      <RefreshCw className={cn(refreshUniverseScore.isPending && 'animate-spin')} />
+      Refresh score
+    </Button>
+  )
 
   if (isPending) return null
 
   if (!data || data.score === null) {
     return (
-      <span className="text-muted-foreground text-sm">
-        Not in tracked universe — no daily universe score
+      <span className="inline-flex items-center gap-2">
+        <span className="text-muted-foreground text-sm">
+          Not in tracked universe — no daily universe score
+        </span>
+        {refreshButton}
       </span>
     )
   }
@@ -41,6 +80,7 @@ function UniverseScoreBadge({ ticker }: { ticker: string }) {
       <span className="text-muted-foreground text-xs">
         updated {formatRelativeTime(data.score_updated_at)}
       </span>
+      {refreshButton}
     </span>
   )
 }

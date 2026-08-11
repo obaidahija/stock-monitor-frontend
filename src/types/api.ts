@@ -68,6 +68,14 @@ export interface EarningsRefreshResult {
   error: string | null
 }
 
+export interface UniverseScoreRefreshResult {
+  ticker: string
+  scored: boolean
+  score?: number
+  lean?: string
+  error?: string
+}
+
 export interface NewsClusterOut {
   id: number
   ticker: string | null

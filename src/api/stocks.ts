@@ -12,6 +12,7 @@ import type {
   SentimentHistoryOut,
   SocialStatOut,
   TrackedTickerOut,
+  UniverseScoreRefreshResult,
 } from '@/types/api'
 
 export function getFilings(ticker: string, opts?: { form?: string; days?: number }) {
@@ -37,6 +38,12 @@ export function refreshEarnings(ticker: string) {
 export function getUniverseScore(ticker: string) {
   return apiClient.get<TrackedTickerOut | null>(
     `/v1/stocks/${encodeURIComponent(ticker)}/universe-score`,
+  )
+}
+
+export function refreshUniverseScore(ticker: string) {
+  return apiClient.post<UniverseScoreRefreshResult>(
+    `/v1/stocks/${encodeURIComponent(ticker)}/universe-score/refresh`,
   )
 }
 
