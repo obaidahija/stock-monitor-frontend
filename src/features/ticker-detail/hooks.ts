@@ -68,7 +68,10 @@ export function useRefreshNews(ticker: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: () => refreshNews(ticker),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['news', ticker] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['news', ticker] })
+      queryClient.invalidateQueries({ queryKey: ['universe-score', ticker] })
+    },
   })
 }
 

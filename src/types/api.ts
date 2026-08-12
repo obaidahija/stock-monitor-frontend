@@ -113,6 +113,7 @@ export interface NewsRefreshResult {
   duplicates: number
   filtered_irrelevant: number
   errors: { source: string; error: string }[]
+  score: UniverseScoreRefreshResult | null
 }
 
 export interface CatalystOut {
