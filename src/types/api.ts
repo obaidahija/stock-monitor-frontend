@@ -291,10 +291,32 @@ export interface SourceStatus {
   latency_ms: number | null
 }
 
+export interface TwitterQueueCounts {
+  queued: number
+  running: number
+  deferred: number
+}
+
+export type TwitterAuthState =
+  | 'checking'
+  | 'valid'
+  | 'missing'
+  | 'invalid'
+  | 'unavailable'
+  | 'rate_limited'
+
+export interface TwitterHealthOut {
+  worker_running: boolean
+  auth_state: TwitterAuthState
+  cooldown_until: string | null
+  queue: TwitterQueueCounts
+}
+
 export interface HealthResponse {
   status: string
   scheduler_running: boolean
   sources: SourceStatus[]
+  twitter: TwitterHealthOut
 }
 
 export interface JobInfo {
@@ -309,4 +331,145 @@ export interface JobRunResult {
   status: string
   detail: Record<string, unknown> | null
   error: string | null
+}
+
+// --- Twitter (mirrors app/schemas/twitter.py) ---
+
+export interface TwitterAuthStateOut {
+  state: TwitterAuthState
+  checked_at: string | null
+  public_message: string | null
+  cooldown_until: string | null
+}
+
+export type TwitterOperationStatus = 'queued' | 'running' | 'deferred' | 'succeeded' | 'failed'
+
+export interface TwitterOperationOut {
+  id: string
+  kind: string
+  status: TwitterOperationStatus
+  priority: number
+  attempts: number
+  max_attempts: number
+  created_at: string
+  started_at: string | null
+  finished_at: string | null
+  public_error_code: string | null
+  public_error_message: string | null
+}
+
+export interface TwitterAuthRecheckOut {
+  auth: TwitterAuthStateOut
+  operation: TwitterOperationOut | null
+}
+
+export type TwitterTrustedAccountStatus = 'pending' | 'active' | 'invalid'
+
+export interface TwitterTrustedAccountOut {
+  id: number
+  x_user_id: string | null
+  username: string
+  status: TwitterTrustedAccountStatus
+  validation_started_at: string | null
+  validated_at: string | null
+  public_error_code: string | null
+  public_error_message: string | null
+  operation: TwitterOperationOut | null
+}
+
+export interface TwitterTrustedAccountCreateOut {
+  account: TwitterTrustedAccountOut
+  operation: TwitterOperationOut
+}
+
+export interface TwitterPostMetricsOut {
+  views: number
+  likes: number
+  retweets: number
+  replies: number
+  quotes: number
+  bookmarks: number
+}
+
+export interface TwitterTickerMatchOut {
+  ticker: string
+  match_kind: string
+  relevance_points: number
+}
+
+export interface TwitterRiskRuleMatchOut {
+  rule_id: string
+  penalty_points: number
+  explanation: string
+}
+
+export interface TwitterSignalExplanationOut {
+  component: string
+  explanation: string
+}
+
+export interface TwitterViralityBreakdownOut {
+  view_points: number
+  action_points: number
+  velocity_points: number
+  prior_snapshot_captured_at: string | null
+}
+
+export interface TwitterSignalScoreOut {
+  version: string
+  calculated_at: string
+  relevance_score: number
+  virality_score: number
+  source_trust_score: number
+  freshness_score: number
+  corroboration_score: number
+  risk_penalty_score: number
+  final_score: number
+  virality_breakdown: TwitterViralityBreakdownOut
+  corroborating_sources: string[]
+  matched_risk_rules: TwitterRiskRuleMatchOut[]
+  explanations: TwitterSignalExplanationOut[]
+}
+
+export interface TwitterPostOut {
+  id: string
+  text: string
+  author_id: string
+  author_username: string
+  author_name: string
+  author_verified: boolean
+  created_at: string
+  url: string
+  ticker_matches: TwitterTickerMatchOut[]
+  metrics: TwitterPostMetricsOut
+  is_trusted: boolean
+  is_viral: boolean
+  link_domains: string[]
+  signal_score: TwitterSignalScoreOut | null
+  sentiment_label: string | null
+  sentiment_score: number | null
+}
+
+export interface TwitterSearchResultOut {
+  items: TwitterPostOut[]
+  cache_fetched_at: string | null
+  cache_age_seconds: number | null
+  operation: TwitterOperationOut | null
+  stale: boolean
+  stale_reason: string | null
+}
+
+export interface TwitterPageOut {
+  items: TwitterPostOut[]
+  total: number
+  page: number
+  page_size: number
+  generated_at: string
+  stale: boolean
+  reason: string | null
+}
+
+export interface TwitterFeedRefreshOut {
+  trusted_operations: TwitterOperationOut[]
+  viral_operations: TwitterOperationOut[]
 }

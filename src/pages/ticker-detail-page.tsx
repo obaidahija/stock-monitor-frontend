@@ -8,6 +8,7 @@ import { NewsTab } from '@/features/ticker-detail/news-tab'
 import { FilingsTab } from '@/features/ticker-detail/filings-tab'
 import { CatalystsTab } from '@/features/ticker-detail/catalysts-tab'
 import { SocialTab } from '@/features/ticker-detail/social-tab'
+import { TwitterTab } from '@/features/ticker-detail/twitter-tab'
 
 export function TickerDetailPage() {
   const { ticker = '' } = useParams<{ ticker: string }>()
@@ -28,6 +29,7 @@ export function TickerDetailPage() {
           <TabsTrigger value="earnings">Earnings</TabsTrigger>
           <TabsTrigger value="news">News</TabsTrigger>
           <TabsTrigger value="social">Social</TabsTrigger>
+          <TabsTrigger value="twitter">Twitter</TabsTrigger>
           <TabsTrigger value="filings">Filings</TabsTrigger>
           <TabsTrigger value="catalysts">Catalysts</TabsTrigger>
         </TabsList>
@@ -42,6 +44,9 @@ export function TickerDetailPage() {
         </TabsContent>
         <TabsContent value="social">
           <SocialTab ticker={symbol} />
+        </TabsContent>
+        <TabsContent value="twitter">
+          <TwitterTab ticker={symbol} />
         </TabsContent>
         <TabsContent value="filings">
           <FilingsTab ticker={symbol} />
