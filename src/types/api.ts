@@ -168,12 +168,35 @@ export interface PriceLevelsOut {
   note: string
 }
 
+export interface AnalystActionOut {
+  firm: string
+  action: string | null
+  from_grade: string | null
+  to_grade: string | null
+  date: string
+}
+
+export interface AnalystDetailOut {
+  strong_buy: number | null
+  buy: number | null
+  hold: number | null
+  sell: number | null
+  strong_sell: number | null
+  price_target_low: number | null
+  price_target_high: number | null
+  price_target_mean: number | null
+  price_target_median: number | null
+  num_analysts: number | null
+  recent_actions: AnalystActionOut[]
+}
+
 export interface AnalysisOut {
   ticker: string
   lean: AnalysisLean
   overall_score: number
   components: ComponentScoreOut[]
   price_levels: PriceLevelsOut | null
+  analyst_detail: AnalystDetailOut | null
   caveats: string[]
   generated_at: string
 }

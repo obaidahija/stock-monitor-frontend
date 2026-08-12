@@ -5,11 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState } from '@/components/shared/error-state'
 import { ApiError } from '@/lib/api-client'
-import { formatCurrency, formatDateTime, formatRelativeTime, formatScore } from '@/lib/format'
+import { formatCurrency, formatDate, formatDateTime, formatRelativeTime, formatScore } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { useAnalysis, useRefreshUniverseScore, useUniverseScore } from './hooks'
 import { SentimentTrendChart } from './sentiment-trend-chart'
-import type { AnalysisLean, PriceLevelPosition, PriceLevelsOut } from '@/types/api'
+import type { AnalystDetailOut, AnalysisLean, PriceLevelPosition, PriceLevelsOut } from '@/types/api'
 
 const LEAN_META: Record<AnalysisLean, string> = {
   bullish: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
@@ -141,6 +141,114 @@ function PriceLevelsCard({ priceLevels }: { priceLevels: PriceLevelsOut }) {
   )
 }
 
+const RATING_BAR_META: {
+  key: keyof Pick<AnalystDetailOut, 'strong_buy' | 'buy' | 'hold' | 'sell' | 'strong_sell'>
+  label: string
+  barClassName: string
+  dotClassName: string
+}[] = [
+  { key: 'strong_buy', label: 'Strong buy', barClassName: 'bg-emerald-600', dotClassName: 'bg-emerald-600' },
+  { key: 'buy', label: 'Buy', barClassName: 'bg-emerald-400', dotClassName: 'bg-emerald-400' },
+  { key: 'hold', label: 'Hold', barClassName: 'bg-muted-foreground/40', dotClassName: 'bg-muted-foreground/40' },
+  { key: 'sell', label: 'Sell', barClassName: 'bg-red-400', dotClassName: 'bg-red-400' },
+  { key: 'strong_sell', label: 'Strong sell', barClassName: 'bg-red-600', dotClassName: 'bg-red-600' },
+]
+
+function AnalystDetailCard({ detail }: { detail: AnalystDetailOut }) {
+  const ratingCounts = RATING_BAR_META.map((meta) => ({ ...meta, count: detail[meta.key] ?? 0 }))
+  const totalRatings = ratingCounts.reduce((sum, r) => sum + r.count, 0)
+  const hasTargets =
+    detail.price_target_low !== null ||
+    detail.price_target_mean !== null ||
+    detail.price_target_median !== null ||
+    detail.price_target_high !== null
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle>Analyst detail</CardTitle>
+        {detail.num_analysts !== null && (
+          <span className="text-muted-foreground text-sm">{detail.num_analysts} analysts</span>
+        )}
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {totalRatings > 0 && (
+          <div className="space-y-2">
+            <div className="border-border flex h-2.5 overflow-hidden rounded-full border">
+              {ratingCounts.map(
+                (r) =>
+                  r.count > 0 && (
+                    <div
+                      key={r.key}
+                      className={cn(r.barClassName)}
+                      style={{ width: `${(r.count / totalRatings) * 100}%` }}
+                      title={`${r.label}: ${r.count}`}
+                    />
+                  ),
+              )}
+            </div>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+              {ratingCounts.map(
+                (r) =>
+                  r.count > 0 && (
+                    <span key={r.key} className="text-muted-foreground inline-flex items-center gap-1.5">
+                      <span className={cn('inline-block size-2 rounded-full', r.dotClassName)} />
+                      {r.label} {r.count}
+                    </span>
+                  ),
+              )}
+            </div>
+          </div>
+        )}
+
+        {hasTargets && (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="border-border rounded-lg border px-3 py-2">
+              <p className="text-muted-foreground text-xs">Low</p>
+              <p className="text-sm font-medium">{formatCurrency(detail.price_target_low)}</p>
+            </div>
+            <div className="border-border rounded-lg border px-3 py-2">
+              <p className="text-muted-foreground text-xs">Median</p>
+              <p className="text-sm font-medium">{formatCurrency(detail.price_target_median)}</p>
+            </div>
+            <div className="border-border rounded-lg border px-3 py-2">
+              <p className="text-muted-foreground text-xs">Mean</p>
+              <p className="text-sm font-medium">{formatCurrency(detail.price_target_mean)}</p>
+            </div>
+            <div className="border-border rounded-lg border px-3 py-2">
+              <p className="text-muted-foreground text-xs">High</p>
+              <p className="text-sm font-medium">{formatCurrency(detail.price_target_high)}</p>
+            </div>
+          </div>
+        )}
+
+        {detail.recent_actions.length > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-muted-foreground text-xs">Recent rating actions</p>
+            <div className="space-y-1">
+              {detail.recent_actions.map((action, i) => (
+                <div
+                  key={i}
+                  className="border-border flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 border-b py-1 text-sm last:border-b-0"
+                >
+                  <span className="font-medium">{action.firm}</span>
+                  <span className="text-muted-foreground text-xs">
+                    {action.from_grade && action.to_grade
+                      ? `${action.from_grade} → ${action.to_grade}`
+                      : action.to_grade ?? action.action ?? '—'}
+                    {' · '}
+                    {formatDate(action.date)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 export function AnalysisTab({ ticker }: { ticker: string }) {
   const { data, isPending, isError, error, refetch } = useAnalysis(ticker)
 
@@ -182,6 +290,7 @@ export function AnalysisTab({ ticker }: { ticker: string }) {
       </div>
 
       {data.price_levels && <PriceLevelsCard priceLevels={data.price_levels} />}
+      {data.analyst_detail && <AnalystDetailCard detail={data.analyst_detail} />}
 
       <SentimentTrendChart ticker={ticker} />
 
