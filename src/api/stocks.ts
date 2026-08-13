@@ -7,6 +7,7 @@ import type {
   FilingOut,
   NewsClusterDetailOut,
   NewsClusterOut,
+  NewsItemExtractOut,
   NewsRefreshResult,
   SentimentBucketGranularity,
   SentimentHistoryOut,
@@ -62,6 +63,12 @@ export function refreshNews(ticker: string) {
 export function getNewsClusterDetail(ticker: string, clusterId: number) {
   return apiClient.get<NewsClusterDetailOut>(
     `/v1/stocks/${encodeURIComponent(ticker)}/news/${clusterId}`,
+  )
+}
+
+export function extractNewsItem(ticker: string, itemId: number) {
+  return apiClient.post<NewsItemExtractOut>(
+    `/v1/stocks/${encodeURIComponent(ticker)}/news/${itemId}/extract`,
   )
 }
 

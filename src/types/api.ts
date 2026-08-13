@@ -96,6 +96,7 @@ export interface NewsItemOut {
   url: string
   title: string
   summary: string | null
+  ai_summary: string | null
   published_at: string
   fetched_at: string
   sentiment_label: string | null
@@ -105,6 +106,13 @@ export interface NewsItemOut {
 
 export interface NewsClusterDetailOut extends NewsClusterOut {
   items: NewsItemOut[]
+}
+
+export interface NewsItemExtractOut {
+  id: number
+  ai_summary: string | null
+  cached: boolean
+  error: string | null
 }
 
 export interface NewsRefreshResult {

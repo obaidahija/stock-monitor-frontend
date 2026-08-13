@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  extractNewsItem,
   getAnalysis,
   getCatalysts,
   getEarnings,
@@ -71,6 +72,16 @@ export function useRefreshNews(ticker: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['news', ticker] })
       queryClient.invalidateQueries({ queryKey: ['universe-score', ticker] })
+    },
+  })
+}
+
+export function useExtractNewsItem(ticker: string, clusterId: number | null) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (itemId: number) => extractNewsItem(ticker, itemId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['news-cluster-detail', ticker, clusterId] })
     },
   })
 }
