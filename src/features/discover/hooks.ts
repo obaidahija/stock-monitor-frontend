@@ -2,11 +2,14 @@ import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   addManualTicker,
+  archiveTicker,
   getNotableFilings,
   getTrending,
   getUniverse,
+  hardDeleteTicker,
   removeManualTicker,
   searchUniverse,
+  unarchiveTicker,
   type UniverseParams,
 } from '@/api/discover'
 
@@ -58,6 +61,30 @@ export function useRemoveManualTicker() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (ticker: string) => removeManualTicker(ticker),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['discover', 'universe'] }),
+  })
+}
+
+export function useArchiveTicker() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (ticker: string) => archiveTicker(ticker),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['discover', 'universe'] }),
+  })
+}
+
+export function useUnarchiveTicker() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (ticker: string) => unarchiveTicker(ticker),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['discover', 'universe'] }),
+  })
+}
+
+export function useHardDeleteTicker() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (ticker: string) => hardDeleteTicker(ticker),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['discover', 'universe'] }),
   })
 }

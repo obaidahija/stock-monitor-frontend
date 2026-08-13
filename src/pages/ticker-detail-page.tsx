@@ -1,6 +1,7 @@
-import { useParams } from 'react-router'
+import { useNavigate, useParams } from 'react-router'
 import { PageHeader } from '@/components/shared/page-header'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { RemoveTickerDialog } from '@/features/discover/remove-ticker-dialog'
 import { PriceChart } from '@/features/ticker-detail/price-chart'
 import { AnalysisTab } from '@/features/ticker-detail/analysis-tab'
 import { EarningsTab } from '@/features/ticker-detail/earnings-tab'
@@ -13,12 +14,20 @@ import { TwitterTab } from '@/features/ticker-detail/twitter-tab'
 export function TickerDetailPage() {
   const { ticker = '' } = useParams<{ ticker: string }>()
   const symbol = ticker.toUpperCase()
+  const navigate = useNavigate()
 
   return (
     <div className="space-y-6">
       <PageHeader
         title={symbol}
         description="Analysis, earnings, news, social, filings, and catalysts."
+        actions={
+          <RemoveTickerDialog
+            ticker={symbol}
+            trigger="labeled"
+            onRemoved={() => navigate('/discover')}
+          />
+        }
       />
 
       <PriceChart ticker={symbol} />

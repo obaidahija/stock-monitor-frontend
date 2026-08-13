@@ -55,6 +55,22 @@ export function removeManualTicker(ticker: string) {
   return apiClient.delete<void>(`/v1/discover/universe/${encodeURIComponent(ticker)}`)
 }
 
+export function archiveTicker(ticker: string) {
+  return apiClient.post<TrackedTickerOut>(
+    `/v1/discover/universe/${encodeURIComponent(ticker)}/archive`,
+  )
+}
+
+export function unarchiveTicker(ticker: string) {
+  return apiClient.post<TrackedTickerOut>(
+    `/v1/discover/universe/${encodeURIComponent(ticker)}/unarchive`,
+  )
+}
+
+export function hardDeleteTicker(ticker: string) {
+  return apiClient.delete<void>(`/v1/discover/universe/${encodeURIComponent(ticker)}/hard`)
+}
+
 export function getTrending(limit = 20) {
   return apiClient.get<TrendingSocialOut[]>(`/v1/discover/trending?limit=${limit}`)
 }

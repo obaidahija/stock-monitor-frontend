@@ -11,6 +11,8 @@ export interface TrackedTickerOut {
   lean: string | null
   score_updated_at: string | null
   sector: string | null
+  is_archived: boolean
+  archived_at: string | null
 }
 
 export interface TickerSearchResult {

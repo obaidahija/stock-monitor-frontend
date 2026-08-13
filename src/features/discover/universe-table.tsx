@@ -26,6 +26,7 @@ import {
 import { cn } from '@/lib/utils'
 import { AddTickerDialog } from './add-ticker-dialog'
 import { useRemoveManualTicker, useUniverse } from './hooks'
+import { RemoveTickerDialog } from './remove-ticker-dialog'
 import type { UniverseParams } from '@/api/discover'
 import type { EarningsResult, UniverseTickerOut } from '@/types/api'
 
@@ -326,12 +327,12 @@ export function UniverseTable() {
                 <TableHead>Catalyst</TableHead>
                 <TableHead>Earnings</TableHead>
                 <TableHead>Scored</TableHead>
-                <TableHead className="w-10" />
+                <TableHead className="bg-background sticky right-0 w-10 border-l" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {data.items.map((item) => (
-                <TableRow key={item.ticker}>
+                <TableRow key={item.ticker} className="group">
                   <TableCell className="font-medium">
                     <Link to={`/stocks/${item.ticker}`} className="hover:underline">
                       {item.ticker}
@@ -395,22 +396,25 @@ export function UniverseTable() {
                   <TableCell className="text-muted-foreground">
                     {formatRelativeTime(item.score_updated_at)}
                   </TableCell>
-                  <TableCell>
-                    {item.is_manual && (
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label={`Unpin ${item.ticker}`}
-                        onClick={() =>
-                          removeManualTicker.mutate(item.ticker, {
-                            onSuccess: () => toast.success(`${item.ticker} unpinned`),
-                            onError: () => toast.error(`Failed to unpin ${item.ticker}`),
-                          })
-                        }
-                      >
-                        <Trash2 />
-                      </Button>
-                    )}
+                  <TableCell className="bg-background sticky right-0 border-l">
+                    <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                      {item.is_manual && (
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label={`Unpin ${item.ticker}`}
+                          onClick={() =>
+                            removeManualTicker.mutate(item.ticker, {
+                              onSuccess: () => toast.success(`${item.ticker} unpinned`),
+                              onError: () => toast.error(`Failed to unpin ${item.ticker}`),
+                            })
+                          }
+                        >
+                          <Trash2 />
+                        </Button>
+                      )}
+                      <RemoveTickerDialog ticker={item.ticker} />
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
