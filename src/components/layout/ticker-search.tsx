@@ -1,33 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
-import { useUniverseSearchIndex } from '@/features/discover/hooks'
-import type { UniverseTickerOut } from '@/types/api'
-
-const MAX_RESULTS = 8
-
-function rankMatches(items: UniverseTickerOut[], query: string): UniverseTickerOut[] {
-  const q = query.trim().toUpperCase()
-  if (!q) return []
-
-  const scored: { item: UniverseTickerOut; rank: number }[] = []
-  for (const item of items) {
-    const ticker = item.ticker.toUpperCase()
-    const name = item.company_name?.toUpperCase() ?? ''
-    let rank: number
-    if (ticker === q) rank = 0
-    else if (ticker.startsWith(q)) rank = 1
-    else if (ticker.includes(q)) rank = 2
-    else if (name.startsWith(q)) rank = 3
-    else if (name.includes(q)) rank = 4
-    else continue
-    scored.push({ item, rank })
-  }
-
-  scored.sort((a, b) => a.rank - b.rank || a.item.ticker.localeCompare(b.item.ticker))
-  return scored.slice(0, MAX_RESULTS).map((s) => s.item)
-}
+import { useUniverseTickerSearch } from '@/features/discover/hooks'
 
 export function TickerSearch() {
   const [value, setValue] = useState('')
@@ -36,8 +11,8 @@ export function TickerSearch() {
   const navigate = useNavigate()
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const { data } = useUniverseSearchIndex()
-  const matches = useMemo(() => rankMatches(data?.items ?? [], value), [data, value])
+  const { data } = useUniverseTickerSearch(value)
+  const matches = data ?? []
 
   useEffect(() => {
     setHighlighted(0)

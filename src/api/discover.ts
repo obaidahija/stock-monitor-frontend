@@ -2,6 +2,7 @@ import { apiClient } from '@/lib/api-client'
 import type {
   EarningsResult,
   FilingOut,
+  TickerSearchResult,
   TrackedTickerOut,
   TrendingSocialOut,
   UniverseTickerOut,
@@ -56,4 +57,9 @@ export function removeManualTicker(ticker: string) {
 
 export function getTrending(limit = 20) {
   return apiClient.get<TrendingSocialOut[]>(`/v1/discover/trending?limit=${limit}`)
+}
+
+export function searchUniverse(q: string, limit = 8) {
+  const qs = new URLSearchParams({ q, limit: String(limit) })
+  return apiClient.get<TickerSearchResult[]>(`/v1/discover/universe/search?${qs.toString()}`)
 }

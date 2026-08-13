@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   addManualTicker,
@@ -5,6 +6,7 @@ import {
   getTrending,
   getUniverse,
   removeManualTicker,
+  searchUniverse,
   type UniverseParams,
 } from '@/api/discover'
 
@@ -23,13 +25,23 @@ export function useUniverse(params: UniverseParams) {
   })
 }
 
-// Full tracked-universe list, kept warm client-side so ticker search can
-// filter as-you-type without hitting the API on every keystroke.
-export function useUniverseSearchIndex() {
+// Debounced, server-side ticker/company-name search (the header "jump to
+// ticker" box) — avoids ever shipping the full tracked universe (~916+
+// tickers and growing) to the browser just to filter it client-side.
+export function useUniverseTickerSearch(query: string, debounceMs = 200) {
+  const [debounced, setDebounced] = useState(query)
+
+  useEffect(() => {
+    const handle = setTimeout(() => setDebounced(query), debounceMs)
+    return () => clearTimeout(handle)
+  }, [query, debounceMs])
+
+  const trimmed = debounced.trim()
   return useQuery({
-    queryKey: ['discover', 'universe', 'search-index'],
-    queryFn: () => getUniverse({ limit: 508, sort: 'ticker', order: 'asc' }),
-    staleTime: 5 * 60_000,
+    queryKey: ['discover', 'universe', 'search', trimmed],
+    queryFn: () => searchUniverse(trimmed),
+    enabled: trimmed.length > 0,
+    staleTime: 60_000,
   })
 }
 

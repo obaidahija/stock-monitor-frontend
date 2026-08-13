@@ -13,6 +13,11 @@ export interface TrackedTickerOut {
   sector: string | null
 }
 
+export interface TickerSearchResult {
+  ticker: string
+  company_name: string | null
+}
+
 export type EarningsResult = 'beat' | 'miss' | 'inline'
 
 export interface UniverseTickerOut extends TrackedTickerOut {
