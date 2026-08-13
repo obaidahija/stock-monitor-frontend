@@ -2,6 +2,7 @@ import { apiClient } from '@/lib/api-client'
 import type {
   AnalysisOut,
   CatalystOut,
+  ChartPatternOut,
   EarningsRefreshResult,
   EarningsSummary,
   FilingOut,
@@ -76,12 +77,17 @@ export function getCatalysts(ticker: string) {
   return apiClient.get<CatalystOut[]>(`/v1/stocks/${encodeURIComponent(ticker)}/catalysts`)
 }
 
-export function getAnalysis(ticker: string) {
-  return apiClient.get<AnalysisOut>(`/v1/stocks/${encodeURIComponent(ticker)}/analysis`)
+export function getAnalysis(ticker: string, includeChartPattern = false) {
+  const qs = includeChartPattern ? '?include_chart_pattern=true' : ''
+  return apiClient.get<AnalysisOut>(`/v1/stocks/${encodeURIComponent(ticker)}/analysis${qs}`)
 }
 
 export function getSocial(ticker: string) {
   return apiClient.get<SocialStatOut | null>(`/v1/stocks/${encodeURIComponent(ticker)}/social`)
+}
+
+export function getChartPattern(ticker: string) {
+  return apiClient.get<ChartPatternOut>(`/v1/stocks/${encodeURIComponent(ticker)}/chart-pattern`)
 }
 
 export function getSentimentHistory(

@@ -1,4 +1,5 @@
 import { RefreshCw } from 'lucide-react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -7,6 +8,7 @@ import { ErrorState } from '@/components/shared/error-state'
 import { ApiError } from '@/lib/api-client'
 import { formatCurrency, formatDate, formatDateTime, formatRelativeTime, formatScore } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { ChartPatternCard } from './chart-pattern-card'
 import { useAnalysis, useRefreshUniverseScore, useUniverseScore } from './hooks'
 import { SentimentTrendChart } from './sentiment-trend-chart'
 import type { AnalystDetailOut, AnalysisLean, PriceLevelPosition, PriceLevelsOut } from '@/types/api'
@@ -250,11 +252,24 @@ function AnalystDetailCard({ detail }: { detail: AnalystDetailOut }) {
 }
 
 export function AnalysisTab({ ticker }: { ticker: string }) {
-  const { data, isPending, isError, error, refetch } = useAnalysis(ticker)
+  const [detectRequested, setDetectRequested] = useState(false)
+  const base = useAnalysis(ticker)
+  const withPattern = useAnalysis(ticker, true, detectRequested)
 
-  if (isPending) return <Skeleton className="h-72 rounded-xl" />
-  if (isError) return <ErrorState error={error} onRetry={() => refetch()} />
-  if (!data) return null
+  if (base.isPending) return <Skeleton className="h-72 rounded-xl" />
+  if (base.isError) return <ErrorState error={base.error} onRetry={() => base.refetch()} />
+  if (!base.data) return null
+
+  const data = withPattern.data ?? base.data
+  const chartPatternLoading = detectRequested && withPattern.isFetching
+
+  function handleDetect() {
+    if (detectRequested) {
+      withPattern.refetch()
+    } else {
+      setDetectRequested(true)
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -291,6 +306,13 @@ export function AnalysisTab({ ticker }: { ticker: string }) {
 
       {data.price_levels && <PriceLevelsCard priceLevels={data.price_levels} />}
       {data.analyst_detail && <AnalystDetailCard detail={data.analyst_detail} />}
+      <ChartPatternCard
+        ticker={ticker}
+        chartPattern={data.chart_pattern}
+        isLoading={chartPatternLoading}
+        isError={detectRequested && withPattern.isError}
+        onDetect={handleDetect}
+      />
 
       <SentimentTrendChart ticker={ticker} />
 

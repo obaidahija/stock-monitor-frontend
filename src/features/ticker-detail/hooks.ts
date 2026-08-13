@@ -15,8 +15,12 @@ import {
 } from '@/api/stocks'
 import type { SentimentBucketGranularity } from '@/types/api'
 
-export function useAnalysis(ticker: string) {
-  return useQuery({ queryKey: ['analysis', ticker], queryFn: () => getAnalysis(ticker) })
+export function useAnalysis(ticker: string, includeChartPattern = false, enabled = true) {
+  return useQuery({
+    queryKey: ['analysis', ticker, includeChartPattern],
+    queryFn: () => getAnalysis(ticker, includeChartPattern),
+    enabled,
+  })
 }
 
 export function useUniverseScore(ticker: string) {

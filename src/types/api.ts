@@ -205,8 +205,33 @@ export interface AnalysisOut {
   components: ComponentScoreOut[]
   price_levels: PriceLevelsOut | null
   analyst_detail: AnalystDetailOut | null
+  chart_pattern: ChartPatternOut | null
   caveats: string[]
   generated_at: string
+}
+
+export type ChartPatternBias = 'bullish' | 'bearish' | 'neutral'
+
+export interface DetectedPatternOut {
+  label: string
+  confidence: number
+  bbox: number[]
+  bias: ChartPatternBias
+  description: string
+}
+
+export interface ChartPatternSourceOut {
+  ok: boolean
+  error: string | null
+}
+
+export interface ChartPatternOut {
+  ticker: string
+  patterns: DetectedPatternOut[]
+  annotated_image_base64: string | null
+  caveat: string
+  generated_at: string
+  source: ChartPatternSourceOut
 }
 
 export interface GapperOut {
