@@ -50,7 +50,7 @@ const JOB_GROUPS: JobGroup[] = [
     description:
       'Not ticker-specific — a single call regardless of how many tickers are tracked, ' +
       'so it never needs re-running for one new ticker. Run order doesn’t matter.',
-    jobNames: ['edgar_poll', 'premarket_snapshot', 'market_context_sync', 'digest_build'],
+    jobNames: ['edgar_poll', 'market_context_sync', 'digest_build'],
     ordered: false,
   },
 ]
