@@ -213,6 +213,7 @@ export interface AnalysisOut {
   price_levels: PriceLevelsOut | null
   analyst_detail: AnalystDetailOut | null
   chart_pattern: ChartPatternOut | null
+  forecast: ForecastOut | null
   caveats: string[]
   generated_at: string
 }
@@ -239,6 +240,32 @@ export interface ChartPatternOut {
   caveat: string
   generated_at: string
   source: ChartPatternSourceOut
+}
+
+export interface ForecastPointOut {
+  date: string
+  open: number
+  high: number
+  low: number
+  close: number
+  volume: number
+}
+
+export interface ForecastSourceOut {
+  ok: boolean
+  error: string | null
+}
+
+export interface ForecastOut {
+  ticker: string
+  lookback_days: number
+  pred_len_days: number
+  points: ForecastPointOut[]
+  forecast_return_pct: number | null
+  chart_image_base64: string | null
+  caveat: string
+  generated_at: string
+  source: ForecastSourceOut
 }
 
 export interface GapperOut {

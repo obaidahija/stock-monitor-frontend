@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { AnalysisExtras } from '@/api/stocks'
 import {
   extractNewsItem,
   getAnalysis,
@@ -15,10 +16,10 @@ import {
 } from '@/api/stocks'
 import type { SentimentBucketGranularity } from '@/types/api'
 
-export function useAnalysis(ticker: string, includeChartPattern = false, enabled = true) {
+export function useAnalysis(ticker: string, extras: AnalysisExtras = {}, enabled = true) {
   return useQuery({
-    queryKey: ['analysis', ticker, includeChartPattern],
-    queryFn: () => getAnalysis(ticker, includeChartPattern),
+    queryKey: ['analysis', ticker, extras.includeChartPattern ?? false, extras.includeForecast ?? false],
+    queryFn: () => getAnalysis(ticker, extras),
     enabled,
   })
 }

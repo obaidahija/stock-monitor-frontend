@@ -9,6 +9,7 @@ import { ApiError } from '@/lib/api-client'
 import { formatCurrency, formatDate, formatDateTime, formatRelativeTime, formatScore } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { ChartPatternCard } from './chart-pattern-card'
+import { ForecastCard } from './forecast-card'
 import { useAnalysis, useRefreshUniverseScore, useUniverseScore } from './hooks'
 import { SentimentTrendChart } from './sentiment-trend-chart'
 import type { AnalystDetailOut, AnalysisLean, PriceLevelPosition, PriceLevelsOut } from '@/types/api'
@@ -252,22 +253,35 @@ function AnalystDetailCard({ detail }: { detail: AnalystDetailOut }) {
 }
 
 export function AnalysisTab({ ticker }: { ticker: string }) {
-  const [detectRequested, setDetectRequested] = useState(false)
+  const [extras, setExtras] = useState({ chartPattern: false, forecast: false })
   const base = useAnalysis(ticker)
-  const withPattern = useAnalysis(ticker, true, detectRequested)
+  const extrasQuery = useAnalysis(
+    ticker,
+    { includeChartPattern: extras.chartPattern, includeForecast: extras.forecast },
+    extras.chartPattern || extras.forecast,
+  )
 
   if (base.isPending) return <Skeleton className="h-72 rounded-xl" />
   if (base.isError) return <ErrorState error={base.error} onRetry={() => base.refetch()} />
   if (!base.data) return null
 
-  const data = withPattern.data ?? base.data
-  const chartPatternLoading = detectRequested && withPattern.isFetching
+  const data = extrasQuery.data ?? base.data
+  const chartPatternLoading = extras.chartPattern && extrasQuery.isFetching
+  const forecastLoading = extras.forecast && extrasQuery.isFetching
 
-  function handleDetect() {
-    if (detectRequested) {
-      withPattern.refetch()
+  function handleDetectChartPattern() {
+    if (extras.chartPattern) {
+      extrasQuery.refetch()
     } else {
-      setDetectRequested(true)
+      setExtras((e) => ({ ...e, chartPattern: true }))
+    }
+  }
+
+  function handleGenerateForecast() {
+    if (extras.forecast) {
+      extrasQuery.refetch()
+    } else {
+      setExtras((e) => ({ ...e, forecast: true }))
     }
   }
 
@@ -310,8 +324,15 @@ export function AnalysisTab({ ticker }: { ticker: string }) {
         ticker={ticker}
         chartPattern={data.chart_pattern}
         isLoading={chartPatternLoading}
-        isError={detectRequested && withPattern.isError}
-        onDetect={handleDetect}
+        isError={extras.chartPattern && extrasQuery.isError}
+        onDetect={handleDetectChartPattern}
+      />
+      <ForecastCard
+        ticker={ticker}
+        forecast={data.forecast}
+        isLoading={forecastLoading}
+        isError={extras.forecast && extrasQuery.isError}
+        onGenerate={handleGenerateForecast}
       />
 
       <SentimentTrendChart ticker={ticker} />
