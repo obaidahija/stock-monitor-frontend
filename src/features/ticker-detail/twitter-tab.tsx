@@ -75,12 +75,6 @@ export function TwitterTab({ ticker }: { ticker: string }) {
         <EmptyState
           title={`No tweets loaded for ${ticker} yet`}
           description="Click refresh to search X directly for this ticker."
-          action={
-            <Button size="sm" variant="outline" disabled={isRefreshing} onClick={runSearch}>
-              <RefreshCw className={cn(isRefreshing && 'animate-spin')} />
-              Refresh
-            </Button>
-          }
         />
       )}
 
