@@ -400,6 +400,20 @@ export interface JobRunResult {
   error: string | null
 }
 
+// --- Job progress (mirrors app/schemas/job_progress.py) ---
+
+export type JobProgressStatus = 'started' | 'progress' | 'completed' | 'failed'
+
+export interface JobProgressEvent {
+  job_name: string
+  status: JobProgressStatus
+  processed: number
+  total: number
+  errors: number
+  message: string | null
+  ts: string
+}
+
 // --- Twitter (mirrors app/schemas/twitter.py) ---
 
 export interface TwitterAuthStateOut {

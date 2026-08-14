@@ -15,6 +15,8 @@ import { ErrorState } from '@/components/shared/error-state'
 import { StatusPill } from '@/components/shared/status-pill'
 import { formatRelativeTime } from '@/lib/format'
 import { useJobs, useRunJob, useRunJobsInOrder } from './hooks'
+import { JobProgressBar } from './job-progress-bar'
+import { PROGRESS_CAPABLE_JOBS } from './job-progress-config'
 import type { JobInfo } from '@/types/api'
 
 type JobGroup = {
@@ -67,39 +69,48 @@ function JobRow({
   onRun: () => void
 }) {
   return (
-    <TableRow>
-      <TableCell className="font-medium">
-        <span className="inline-flex items-center gap-2">
-          {order !== undefined && (
-            <span className="bg-muted text-muted-foreground flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
-              {order}
-            </span>
-          )}
-          {job.name}
-        </span>
-      </TableCell>
-      <TableCell>
-        {job.last_run_at ? (
+    <>
+      <TableRow>
+        <TableCell className="font-medium">
           <span className="inline-flex items-center gap-2">
-            <StatusPill ok={job.last_run_status === 'success'} label={job.last_run_status ?? '—'} />
-            <span className="text-muted-foreground text-xs">
-              {formatRelativeTime(job.last_run_at)}
-            </span>
+            {order !== undefined && (
+              <span className="bg-muted text-muted-foreground flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
+                {order}
+              </span>
+            )}
+            {job.name}
           </span>
-        ) : (
-          <span className="text-muted-foreground text-xs">never run</span>
-        )}
-      </TableCell>
-      <TableCell className="text-muted-foreground text-xs">
-        {job.next_run_at ? formatRelativeTime(job.next_run_at) : '—'}
-      </TableCell>
-      <TableCell>
-        <Button variant="outline" size="sm" disabled={disabled} onClick={onRun}>
-          <Play />
-          Run
-        </Button>
-      </TableCell>
-    </TableRow>
+        </TableCell>
+        <TableCell>
+          {job.last_run_at ? (
+            <span className="inline-flex items-center gap-2">
+              <StatusPill ok={job.last_run_status === 'success'} label={job.last_run_status ?? '—'} />
+              <span className="text-muted-foreground text-xs">
+                {formatRelativeTime(job.last_run_at)}
+              </span>
+            </span>
+          ) : (
+            <span className="text-muted-foreground text-xs">never run</span>
+          )}
+        </TableCell>
+        <TableCell className="text-muted-foreground text-xs">
+          {job.next_run_at ? formatRelativeTime(job.next_run_at) : '—'}
+        </TableCell>
+        <TableCell>
+          <Button variant="outline" size="sm" disabled={disabled} onClick={onRun}>
+            <Play />
+            Run
+          </Button>
+        </TableCell>
+      </TableRow>
+      {PROGRESS_CAPABLE_JOBS.has(job.name) && (
+        <TableRow className="hover:bg-transparent">
+          <TableCell colSpan={4} className="pt-0 pb-2">
+            <JobProgressBar jobName={job.name} />
+          </TableCell>
+        </TableRow>
+      )}
+    </>
   )
 }
 
