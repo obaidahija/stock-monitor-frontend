@@ -5,11 +5,13 @@ import {
   archiveTicker,
   getNotableFilings,
   getTrending,
+  getTwitterBestStocks,
   getUniverse,
   hardDeleteTicker,
   removeManualTicker,
   searchUniverse,
   unarchiveTicker,
+  refreshTwitterBestStocks,
   type UniverseParams,
 } from '@/api/discover'
 import { disableMonitoredTicker, enableMonitoredTicker } from '@/api/twitter'
@@ -20,6 +22,23 @@ export function useNotableFilings() {
 
 export function useTrending(limit: number) {
   return useQuery({ queryKey: ['discover', 'trending', limit], queryFn: () => getTrending(limit) })
+}
+
+export function useTwitterBestStocks(limit: number) {
+  return useQuery({
+    queryKey: ['discover', 'twitter-best-stocks', limit],
+    queryFn: () => getTwitterBestStocks(limit),
+    refetchInterval: (query) => (query.state.data?.refresh_active ? 15_000 : 60_000),
+  })
+}
+
+export function useRefreshTwitterBestStocks() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: refreshTwitterBestStocks,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ['discover', 'twitter-best-stocks'] }),
+  })
 }
 
 export function useUniverse(params: UniverseParams) {
@@ -94,7 +113,10 @@ export function useEnableMonitoredTicker() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (ticker: string) => enableMonitoredTicker(ticker),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['discover', 'universe'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['discover', 'universe'] })
+      queryClient.invalidateQueries({ queryKey: ['discover', 'twitter-best-stocks'] })
+    },
   })
 }
 
@@ -102,6 +124,9 @@ export function useDisableMonitoredTicker() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (ticker: string) => disableMonitoredTicker(ticker),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['discover', 'universe'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['discover', 'universe'] })
+      queryClient.invalidateQueries({ queryKey: ['discover', 'twitter-best-stocks'] })
+    },
   })
 }

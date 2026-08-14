@@ -3,6 +3,7 @@ import { UniverseTable } from '@/features/discover/universe-table'
 import { SectorHeatmap } from '@/features/discover/sector-heatmap'
 import { NotableFilingsSection } from '@/features/discover/notable-filings-section'
 import { TrendingSection } from '@/features/discover/trending-section'
+import { TwitterBestStocksSection } from '@/features/discover/twitter-best-stocks-section'
 
 export function DiscoverPage() {
   return (
@@ -16,6 +17,7 @@ export function DiscoverPage() {
       <UniverseTable />
       <NotableFilingsSection />
       <TrendingSection />
+      <TwitterBestStocksSection />
     </div>
   )
 }

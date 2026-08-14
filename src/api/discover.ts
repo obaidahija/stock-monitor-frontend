@@ -5,6 +5,8 @@ import type {
   TickerSearchResult,
   TrackedTickerOut,
   TrendingSocialOut,
+  TwitterBestStocksOut,
+  TwitterBestStocksRefreshOut,
   UniverseTickerOut,
 } from '@/types/api'
 
@@ -77,6 +79,14 @@ export function hardDeleteTicker(ticker: string) {
 
 export function getTrending(limit = 20) {
   return apiClient.get<TrendingSocialOut[]>(`/v1/discover/trending?limit=${limit}`)
+}
+
+export function getTwitterBestStocks(limit = 20) {
+  return apiClient.get<TwitterBestStocksOut>(`/v1/discover/twitter-best-stocks?limit=${limit}`)
+}
+
+export function refreshTwitterBestStocks() {
+  return apiClient.post<TwitterBestStocksRefreshOut>('/v1/discover/twitter-best-stocks/refresh')
 }
 
 export function searchUniverse(q: string, limit = 8) {

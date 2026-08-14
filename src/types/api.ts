@@ -166,6 +166,43 @@ export interface TrendingSocialOut {
   trend: string | null
 }
 
+export interface TwitterBestStockOut {
+  rank: number
+  ticker: string
+  unique_authors: number
+  unique_posts: number
+  representative_views: number
+  sentiment_score: number | null
+  monitoring_enabled: boolean
+  company_name: string | null
+  symbols: {
+    ticker: string
+    monitoring_enabled: boolean
+  }[]
+}
+
+export interface TwitterBestStocksOut {
+  items: TwitterBestStockOut[]
+  generated_at: string | null
+  window_started_at: string | null
+  window_ended_at: string | null
+  qualified_sample_size: number
+  searches_attempted: number
+  searches_succeeded: number
+  phrases_covered: number
+  phrases_total: number
+  refresh_active: boolean
+  active_run_id: string | null
+  stale: boolean
+  stale_reason: string | null
+}
+
+export interface TwitterBestStocksRefreshOut {
+  run_id: string
+  status: string
+  reused: boolean
+}
+
 export type AnalysisLean = 'bullish' | 'neutral' | 'bearish'
 
 export type PriceLevelPosition =
