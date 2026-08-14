@@ -1,5 +1,5 @@
 import { Link, useSearchParams } from 'react-router'
-import { AlertCircle, Pin, Trash2, X } from 'lucide-react'
+import { AlertCircle, AtSign, Loader2, Pin, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,7 +25,12 @@ import {
 } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { AddTickerDialog } from './add-ticker-dialog'
-import { useRemoveManualTicker, useUniverse } from './hooks'
+import {
+  useDisableMonitoredTicker,
+  useEnableMonitoredTicker,
+  useRemoveManualTicker,
+  useUniverse,
+} from './hooks'
 import { RemoveTickerDialog } from './remove-ticker-dialog'
 import type { UniverseParams } from '@/api/discover'
 import type { EarningsResult, UniverseTickerOut } from '@/types/api'
@@ -124,6 +129,7 @@ export function UniverseTable() {
   const sort = (searchParams.get('sort') as UniverseParams['sort']) || DEFAULT_SORT
   const order = (searchParams.get('order') as UniverseParams['order']) || DEFAULT_ORDER
   const manualOnly = searchParams.get('manual_only') === 'true'
+  const twitterMonitoredOnly = searchParams.get('twitter_monitored_only') === 'true'
   const earningsResult = (searchParams.get('earnings_result') as EarningsResult | null) ?? undefined
   const minGapPctRaw = searchParams.get('min_gap_pct')
   const minVolumeRatioRaw = searchParams.get('min_volume_ratio')
@@ -137,6 +143,7 @@ export function UniverseTable() {
     sort,
     order,
     manualOnly,
+    twitterMonitoredOnly,
     earningsResult,
     minGapPct,
     minVolumeRatio,
@@ -145,6 +152,9 @@ export function UniverseTable() {
     offset,
   })
   const removeManualTicker = useRemoveManualTicker()
+  const enableMonitoring = useEnableMonitoredTicker()
+  const disableMonitoring = useDisableMonitoredTicker()
+  const monitoredCount = useUniverse({ twitterMonitoredOnly: true, limit: 1, offset: 0 })
 
   /** Merge partial updates into the URL's search params. Any filter/sort
    * change resets to page 1 — a stale page number from a different, larger
@@ -237,6 +247,18 @@ export function UniverseTable() {
         >
           <Pin />
           Pinned only
+        </Button>
+        <Button
+          size="sm"
+          variant={twitterMonitoredOnly ? 'secondary' : 'ghost'}
+          onClick={() =>
+            updateParams({
+              twitter_monitored_only: twitterMonitoredOnly ? undefined : 'true',
+            })
+          }
+        >
+          <AtSign />
+          {monitoredCount.data?.total ?? 0}/50 monitored
         </Button>
       </div>
 
@@ -340,6 +362,12 @@ export function UniverseTable() {
                     {item.is_manual && (
                       <Pin className="text-muted-foreground ml-1.5 inline size-3" />
                     )}
+                    {item.twitter_monitoring_enabled && (
+                      <AtSign
+                        className="ml-1.5 inline size-3 text-sky-600 dark:text-sky-400"
+                        aria-label="Monitored on Twitter"
+                      />
+                    )}
                   </TableCell>
                   <TableCell className="text-muted-foreground max-w-60 truncate">
                     {item.company_name ?? '—'}
@@ -398,6 +426,38 @@ export function UniverseTable() {
                   </TableCell>
                   <TableCell className="bg-background sticky right-0 border-l">
                     <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={`${item.twitter_monitoring_enabled ? 'Stop monitoring' : 'Monitor'} ${item.ticker} on Twitter`}
+                        disabled={enableMonitoring.isPending || disableMonitoring.isPending}
+                        onClick={() => {
+                          const mutation = item.twitter_monitoring_enabled
+                            ? disableMonitoring
+                            : enableMonitoring
+                          mutation.mutate(item.ticker, {
+                            onSuccess: () =>
+                              toast.success(
+                                item.twitter_monitoring_enabled
+                                  ? `${item.ticker} Twitter monitoring stopped`
+                                  : `${item.ticker} Twitter monitoring enabled`,
+                              ),
+                            onError: () =>
+                              toast.error(`Failed to update Twitter monitoring for ${item.ticker}`),
+                          })
+                        }}
+                      >
+                        {enableMonitoring.isPending || disableMonitoring.isPending ? (
+                          <Loader2 className="animate-spin" />
+                        ) : (
+                          <AtSign
+                            className={cn(
+                              item.twitter_monitoring_enabled &&
+                                'text-sky-600 dark:text-sky-400',
+                            )}
+                          />
+                        )}
+                      </Button>
                       {item.is_manual && (
                         <Button
                           variant="ghost"

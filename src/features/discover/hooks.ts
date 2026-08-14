@@ -12,6 +12,7 @@ import {
   unarchiveTicker,
   type UniverseParams,
 } from '@/api/discover'
+import { disableMonitoredTicker, enableMonitoredTicker } from '@/api/twitter'
 
 export function useNotableFilings() {
   return useQuery({ queryKey: ['discover', 'filings'], queryFn: getNotableFilings })
@@ -85,6 +86,22 @@ export function useHardDeleteTicker() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (ticker: string) => hardDeleteTicker(ticker),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['discover', 'universe'] }),
+  })
+}
+
+export function useEnableMonitoredTicker() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (ticker: string) => enableMonitoredTicker(ticker),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['discover', 'universe'] }),
+  })
+}
+
+export function useDisableMonitoredTicker() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (ticker: string) => disableMonitoredTicker(ticker),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['discover', 'universe'] }),
   })
 }

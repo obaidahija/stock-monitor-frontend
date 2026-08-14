@@ -22,7 +22,7 @@ export function TwitterPage() {
     <div className="space-y-8">
       <PageHeader
         title="Twitter"
-        description="Trusted-account and viral tweet feed, signal scoring, and X auth status."
+        description="Trusted-account and selected-ticker tweet feed, signal scoring, and X auth status."
       />
 
       <AuthStatusBanner />

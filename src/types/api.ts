@@ -5,6 +5,7 @@ export interface TrackedTickerOut {
   ticker: string
   company_name: string | null
   is_manual: boolean
+  twitter_monitoring_enabled: boolean
   note: string | null
   added_at: string
   score: number | null
@@ -552,5 +553,11 @@ export interface TwitterPageOut {
 
 export interface TwitterFeedRefreshOut {
   trusted_operations: TwitterOperationOut[]
-  viral_operations: TwitterOperationOut[]
+  monitored_ticker_operations: TwitterOperationOut[]
+}
+
+export interface TwitterMonitoredTickerOut {
+  ticker: string
+  twitter_monitoring_enabled: boolean
+  operation: TwitterOperationOut | null
 }

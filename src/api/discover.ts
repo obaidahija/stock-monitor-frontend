@@ -18,6 +18,7 @@ export interface UniverseParams {
   limit?: number
   offset?: number
   manualOnly?: boolean
+  twitterMonitoredOnly?: boolean
   earningsResult?: EarningsResult
   minGapPct?: number
   minVolumeRatio?: number
@@ -36,6 +37,9 @@ export async function getUniverse(params: UniverseParams = {}): Promise<Universe
   if (params.limit !== undefined) qs.set('limit', String(params.limit))
   if (params.offset !== undefined) qs.set('offset', String(params.offset))
   if (params.manualOnly !== undefined) qs.set('manual_only', String(params.manualOnly))
+  if (params.twitterMonitoredOnly !== undefined) {
+    qs.set('twitter_monitored_only', String(params.twitterMonitoredOnly))
+  }
   if (params.earningsResult) qs.set('earnings_result', params.earningsResult)
   if (params.minGapPct !== undefined) qs.set('min_gap_pct', String(params.minGapPct))
   if (params.minVolumeRatio !== undefined) qs.set('min_volume_ratio', String(params.minVolumeRatio))
