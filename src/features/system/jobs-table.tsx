@@ -55,6 +55,20 @@ const JOB_GROUPS: JobGroup[] = [
     jobNames: ['edgar_poll', 'market_context_sync', 'digest_build'],
     ordered: false,
   },
+  {
+    key: 'twitter-collection',
+    title: 'Twitter collection',
+    description:
+      'Trusted accounts and selected monitored tickers refresh every four hours. ' +
+      'Sentiment classification and retention run independently; each job can be triggered manually.',
+    jobNames: [
+      'twitter_trusted_sweep',
+      'twitter_monitored_ticker_sweep',
+      'twitter_sentiment_classify',
+      'twitter_retention',
+    ],
+    ordered: false,
+  },
 ]
 
 function JobRow({
