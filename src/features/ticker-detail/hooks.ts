@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { AnalysisExtras } from '@/api/stocks'
 import {
   extractNewsItem,
+  getAiResearch,
   getAnalysis,
   getCatalysts,
   getEarnings,
@@ -10,6 +11,7 @@ import {
   getSentimentHistory,
   getSocial,
   getUniverseScore,
+  refreshAiResearch,
   refreshEarnings,
   refreshNews,
   refreshUniverseScore,
@@ -97,4 +99,20 @@ export function useFilings(ticker: string) {
 
 export function useCatalysts(ticker: string) {
   return useQuery({ queryKey: ['catalysts', ticker], queryFn: () => getCatalysts(ticker) })
+}
+
+export function useAiResearch(ticker: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['ai-research', ticker],
+    queryFn: () => getAiResearch(ticker),
+    enabled,
+  })
+}
+
+export function useRefreshAiResearch(ticker: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => refreshAiResearch(ticker),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['ai-research', ticker] }),
+  })
 }

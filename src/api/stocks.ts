@@ -1,5 +1,6 @@
 import { apiClient } from '@/lib/api-client'
 import type {
+  AiResearchOut,
   AnalysisOut,
   CatalystOut,
   ChartPatternOut,
@@ -103,6 +104,16 @@ export function getChartPattern(ticker: string) {
 
 export function getForecast(ticker: string) {
   return apiClient.get<ForecastOut>(`/v1/stocks/${encodeURIComponent(ticker)}/forecast`)
+}
+
+export function getAiResearch(ticker: string) {
+  return apiClient.get<AiResearchOut>(`/v1/stocks/${encodeURIComponent(ticker)}/ai-research`)
+}
+
+export function refreshAiResearch(ticker: string) {
+  return apiClient.post<AiResearchOut>(
+    `/v1/stocks/${encodeURIComponent(ticker)}/ai-research/refresh`,
+  )
 }
 
 export function getSentimentHistory(

@@ -7,18 +7,13 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState } from '@/components/shared/error-state'
 import { ApiError } from '@/lib/api-client'
 import { formatCurrency, formatDate, formatDateTime, formatRelativeTime, formatScore } from '@/lib/format'
+import { LEAN_COLOR_CLASSES } from '@/lib/lean-colors'
 import { cn } from '@/lib/utils'
 import { ChartPatternCard } from './chart-pattern-card'
 import { ForecastCard } from './forecast-card'
 import { useAnalysis, useRefreshUniverseScore, useUniverseScore } from './hooks'
 import { SentimentTrendChart } from './sentiment-trend-chart'
 import type { AnalystDetailOut, AnalysisLean, PriceLevelPosition, PriceLevelsOut } from '@/types/api'
-
-const LEAN_META: Record<AnalysisLean, string> = {
-  bullish: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
-  bearish: 'bg-red-500/15 text-red-600 dark:text-red-400',
-  neutral: 'bg-muted text-muted-foreground',
-}
 
 function UniverseScoreBadge({ ticker }: { ticker: string }) {
   const { data, isPending } = useUniverseScore(ticker)
@@ -73,7 +68,9 @@ function UniverseScoreBadge({ ticker }: { ticker: string }) {
     )
   }
 
-  const leanClass = data.lean ? (LEAN_META[data.lean as AnalysisLean] ?? LEAN_META.neutral) : LEAN_META.neutral
+  const leanClass = data.lean
+    ? (LEAN_COLOR_CLASSES[data.lean as AnalysisLean] ?? LEAN_COLOR_CLASSES.neutral)
+    : LEAN_COLOR_CLASSES.neutral
 
   return (
     <span className="inline-flex items-center gap-2 text-sm">
@@ -291,7 +288,7 @@ export function AnalysisTab({ ticker }: { ticker: string }) {
         <span
           className={cn(
             'inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold capitalize',
-            LEAN_META[data.lean],
+            LEAN_COLOR_CLASSES[data.lean],
           )}
         >
           {data.lean}

@@ -1,0 +1,88 @@
+import { Sparkles } from 'lucide-react'
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+import { useAiResearch, useRefreshAiResearch } from '../hooks'
+import { DriversRisks } from './drivers-risks'
+import { EvidencePanel } from './evidence-panel'
+import { PriceReferenceLadder } from './price-reference-ladder'
+import { ProgressPanel } from './progress-panel'
+import { ScoreGauge } from './score-gauge'
+
+export function AiResearchTab({ ticker }: { ticker: string }) {
+  const [started, setStarted] = useState(false)
+  const query = useAiResearch(ticker, started)
+  const refresh = useRefreshAiResearch(ticker)
+
+  const isLoading = query.isFetching || refresh.isPending
+  const data = refresh.data ?? query.data
+  const isError = started && !isLoading && !data && (query.isError || refresh.isError)
+
+  function handleGenerate() {
+    setStarted(true)
+  }
+
+  function handleRefresh() {
+    refresh.mutate()
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-muted-foreground text-sm">
+          LLM-synthesized research read combining quantitative facts, news, and X/Twitter
+          discussion — informational only, not a trading signal.
+        </p>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={isLoading}
+          onClick={data ? handleRefresh : handleGenerate}
+        >
+          <Sparkles className={cn(isLoading && 'animate-pulse')} />
+          {isLoading ? 'Generating…' : data ? 'Refresh' : 'Generate AI research'}
+        </Button>
+      </div>
+
+      <ProgressPanel ticker={ticker} active={isLoading} />
+
+      {!data && !isLoading && !isError && (
+        <p className="text-muted-foreground text-sm">
+          Click "Generate AI research" to run this — takes 20-60s and calls a local or hosted
+          LLM.
+        </p>
+      )}
+
+      {!data && !isLoading && isError && (
+        <p className="text-sm text-red-600 dark:text-red-400">
+          Couldn't generate AI research for {ticker}.
+        </p>
+      )}
+
+      {data && !data.source.ok && (
+        <p className="text-muted-foreground text-sm">
+          AI research unavailable right now{data.source.error ? `: ${data.source.error}` : '.'}
+        </p>
+      )}
+
+      {data && data.source.ok && data.lean && data.score !== null && data.confidence !== null && (
+        <div className="space-y-4">
+          <ScoreGauge score={data.score} confidence={data.confidence} lean={data.lean} />
+
+          <PriceReferenceLadder
+            priceReference={data.price_reference}
+            currentPrice={data.current_price}
+          />
+
+          <DriversRisks keyDrivers={data.key_drivers} risks={data.risks} />
+
+          {data.summary && <p className="text-sm">{data.summary}</p>}
+
+          <EvidencePanel inputsUsed={data.inputs_used} />
+
+          <p className="text-muted-foreground text-xs">{data.caveat}</p>
+        </div>
+      )}
+    </div>
+  )
+}

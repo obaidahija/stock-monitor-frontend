@@ -306,6 +306,46 @@ export interface ForecastOut {
   source: ForecastSourceOut
 }
 
+export interface PriceReferenceOut {
+  entry_primary: number | null
+  entry_secondary: number | null
+  stop_loss: number | null
+  take_profit: number | null
+  note: string
+}
+
+export interface AiResearchInputsOut {
+  news_item_ids: number[]
+  news_item_count: number
+  twitter_post_ids: string[]
+  twitter_post_count: number
+  twitter_cache_is_fresh: boolean
+  twitter_cache_age_seconds: number | null
+  quant_facts: string[]
+}
+
+export interface AiResearchSourceOut {
+  ok: boolean
+  error: string | null
+}
+
+export interface AiResearchOut {
+  ticker: string
+  score: number | null
+  confidence: number | null
+  lean: AnalysisLean | null
+  summary: string | null
+  key_drivers: string[]
+  risks: string[]
+  price_reference: PriceReferenceOut | null
+  inputs_used: AiResearchInputsOut
+  caveat: string
+  source: AiResearchSourceOut
+  generated_at: string
+  cached: boolean
+  current_price: number | null
+}
+
 export interface GapperOut {
   ticker: string
   price: number | null

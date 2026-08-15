@@ -3,6 +3,7 @@ import { PageHeader } from '@/components/shared/page-header'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { RemoveTickerDialog } from '@/features/discover/remove-ticker-dialog'
 import { PriceChart } from '@/features/ticker-detail/price-chart'
+import { AiResearchTab } from '@/features/ticker-detail/ai-research/ai-research-tab'
 import { AnalysisTab } from '@/features/ticker-detail/analysis-tab'
 import { EarningsTab } from '@/features/ticker-detail/earnings-tab'
 import { NewsTab } from '@/features/ticker-detail/news-tab'
@@ -35,6 +36,7 @@ export function TickerDetailPage() {
       <Tabs defaultValue="analysis">
         <TabsList>
           <TabsTrigger value="analysis">Analysis</TabsTrigger>
+          <TabsTrigger value="ai-research">AI Research</TabsTrigger>
           <TabsTrigger value="earnings">Earnings</TabsTrigger>
           <TabsTrigger value="news">News</TabsTrigger>
           <TabsTrigger value="social">Social</TabsTrigger>
@@ -44,6 +46,9 @@ export function TickerDetailPage() {
         </TabsList>
         <TabsContent value="analysis">
           <AnalysisTab ticker={symbol} />
+        </TabsContent>
+        <TabsContent value="ai-research">
+          <AiResearchTab ticker={symbol} />
         </TabsContent>
         <TabsContent value="earnings">
           <EarningsTab ticker={symbol} />
