@@ -84,14 +84,15 @@ afterEach(cleanup)
 
 test('keeps expired and favorite-only tickers visible and surfaces review state', () => {
   render(<MemoryRouter><WatchlistsPage /></MemoryRouter>)
-  fireEvent.click(screen.getByRole('button', { name: 'Detailed view' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Expand NVDA details' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Expand AAPL details' }))
   expect(screen.getByText(/expired/i)).toBeTruthy()
   expect(screen.getByText('Needs review')).toBeTruthy()
-  expect(screen.getByText('Favorite only')).toBeTruthy()
+  expect(screen.getByText(/saved as a favorite without a price setup/i)).toBeTruthy()
   expect(screen.getByText('New levels conflict with the long side.')).toBeTruthy()
 })
 
-test('switches to a simple price-level table', () => {
+test('renders the price-level table with setup actions', () => {
   render(<MemoryRouter><WatchlistsPage /></MemoryRouter>)
 
   expect(screen.getByRole('columnheader', { name: 'Ticker' })).toBeTruthy()

@@ -1,10 +1,8 @@
 import {
   AlertTriangle,
   ChevronDown,
-  LayoutGrid,
   ListPlus,
   Pencil,
-  Table2,
   Trash2,
 } from 'lucide-react'
 import { Fragment, useEffect, useState } from 'react'
@@ -15,7 +13,6 @@ import { ErrorState } from '@/components/shared/error-state'
 import { PageHeader } from '@/components/shared/page-header'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
   TableBody,
@@ -42,7 +39,6 @@ import type { AnalysisLean, WatchlistItemOut } from '@/types/api'
 export function WatchlistsPage() {
   const lists = useWatchlists()
   const [selectedId, setSelectedId] = useState<number | null>(null)
-  const [viewMode, setViewMode] = useState<'detailed' | 'simple'>('simple')
   const items = useWatchlistItems(selectedId)
   const create = useCreateWatchlist()
   const rename = useRenameWatchlist()
@@ -111,26 +107,6 @@ export function WatchlistsPage() {
         ))}
         {selected && (
           <div className="ml-auto flex items-center gap-1">
-            <div className="mr-2 flex rounded-md border p-0.5" aria-label="Watchlist view">
-              <Button
-                variant={viewMode === 'detailed' ? 'secondary' : 'ghost'}
-                size="icon-sm"
-                aria-label="Detailed view"
-                aria-pressed={viewMode === 'detailed'}
-                onClick={() => setViewMode('detailed')}
-              >
-                <LayoutGrid />
-              </Button>
-              <Button
-                variant={viewMode === 'simple' ? 'secondary' : 'ghost'}
-                size="icon-sm"
-                aria-label="Simple table view"
-                aria-pressed={viewMode === 'simple'}
-                onClick={() => setViewMode('simple')}
-              >
-                <Table2 />
-              </Button>
-            </div>
             <Button variant="ghost" size="icon-sm" aria-label="Rename watchlist" onClick={() => void renameList()}><Pencil /></Button>
             <Button variant="ghost" size="icon-sm" aria-label="Delete watchlist" onClick={() => void deleteList()}><Trash2 /></Button>
           </div>
@@ -143,13 +119,7 @@ export function WatchlistsPage() {
         <EmptyState title="No tickers in this list" description="Use Manage lists from Discover or a ticker page to add favorites." />
       )}
       {items.data && items.data.length > 0 && (
-        viewMode === 'detailed' ? (
-          <div className="grid gap-4">
-            {items.data.map((item) => <WatchlistItemCard key={item.id} item={item} />)}
-          </div>
-        ) : (
-          <SimpleWatchlistTable items={items.data} />
-        )
+        <SimpleWatchlistTable items={items.data} />
       )}
     </div>
   )
@@ -408,97 +378,6 @@ function SimpleLevel({
           {formatSignedPct(distance)} from current
         </div>
       )}
-    </div>
-  )
-}
-
-function WatchlistItemCard({ item }: { item: WatchlistItemOut }) {
-  const setup = item.current_setup
-  const remove = useRemoveWatchlistItem()
-
-  async function removeTicker() {
-    if (
-      setup &&
-      !window.confirm(`Remove ${item.ticker} and all setup history from this list?`)
-    ) return
-    try {
-      await remove.mutateAsync({ watchlistId: item.watchlist_id, ticker: item.ticker })
-      toast.success(`${item.ticker} removed from this list`)
-    } catch {
-      toast.error(`Could not remove ${item.ticker}`)
-    }
-  }
-
-  return (
-    <Card>
-      <CardHeader className="grid-cols-[1fr_auto]">
-        <div>
-          <CardTitle>
-            <Link to={`/stocks/${item.ticker}`} className="hover:underline">{item.ticker}</Link>
-            {item.company_name && <span className="text-muted-foreground ml-2 font-normal">{item.company_name}</span>}
-          </CardTitle>
-          <div className="text-muted-foreground mt-1 text-xs">
-            {formatCurrency(item.current_price)} · quote {formatRelativeTime(item.quote_updated_at)}
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          {setup ? (
-            <>
-              <Badge variant={setup.status === 'expired' ? 'outline' : 'secondary'} className="capitalize">{setup.status}</Badge>
-              <Badge variant="outline" className="capitalize">{setup.side}</Badge>
-              <Badge variant="outline">{setup.source_mode === 'ai_managed' ? 'AI managed' : 'Manual'}</Badge>
-              {setup.needs_review && <Badge variant="destructive"><AlertTriangle /> Needs review</Badge>}
-            </>
-          ) : <Badge variant="outline">Favorite only</Badge>}
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {setup ? (
-          <>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <Level label="Primary entry" value={setup.entry_primary} distance={item.distance_pct?.entry_primary} />
-              <Level label="Secondary entry" value={setup.entry_secondary} distance={item.distance_pct?.entry_secondary} />
-              <Level label="Stop loss" value={setup.stop_loss} distance={item.distance_pct?.stop_loss} />
-              <Level label="Take profit" value={setup.take_profit} distance={item.distance_pct?.take_profit} />
-            </div>
-            <div className="flex flex-wrap items-start justify-between gap-3 border-t pt-3">
-              <div className="max-w-2xl text-sm">
-                {setup.research?.summary && <p>{setup.research.summary}</p>}
-                <p className="text-muted-foreground mt-1 text-xs">
-                  Expires {setup.expires_on}
-                  {setup.research && ` · AI ${setup.research.lean ?? 'neutral'} · score ${setup.research.score ?? '—'} · confidence ${setup.research.confidence ?? '—'}`}
-                </p>
-                {setup.sync_error && <p className="text-destructive mt-1 text-xs">{setup.sync_error}</p>}
-              </div>
-              <div className="flex flex-wrap gap-1">
-                <SetupFormDialog watchlistId={item.watchlist_id} ticker={item.ticker} setup={setup} />
-                <SetupHistoryDialog itemId={item.id} ticker={item.ticker} />
-                <Button variant="ghost" size="icon-sm" aria-label={`Remove ${item.ticker}`} onClick={() => void removeTicker()}><Trash2 /></Button>
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-muted-foreground text-sm">This ticker is saved without a price plan.</p>
-            <div className="flex gap-1">
-              <SetupFormDialog watchlistId={item.watchlist_id} ticker={item.ticker} />
-              <Button variant="ghost" size="icon-sm" aria-label={`Remove ${item.ticker}`} onClick={() => void removeTicker()}><Trash2 /></Button>
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
-
-function Level({ label, value, distance }: { label: string; value: number | null; distance: number | null | undefined }) {
-  return (
-    <div className="bg-muted/40 rounded-lg p-3">
-      <p className="text-muted-foreground text-xs">{label}</p>
-      <p className="mt-1 font-medium tabular-nums">{formatCurrency(value)}</p>
-      <p className={cn('mt-0.5 text-xs tabular-nums', distance === undefined || distance === null ? 'text-muted-foreground' : distance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400')}>
-        {formatSignedPct(distance)} from current
-      </p>
     </div>
   )
 }
