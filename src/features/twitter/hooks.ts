@@ -11,6 +11,7 @@ import {
   removeTrustedAccount,
   searchTicker,
   type TwitterFeedParams,
+  type TwitterMinimumViews,
   type TwitterSort,
 } from '@/api/twitter'
 
@@ -84,7 +85,15 @@ export function useTwitterSearchCache(ticker: string, sort: TwitterSort) {
 export function useSearchTicker() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ ticker, sort }: { ticker: string; sort: TwitterSort }) => searchTicker(ticker, sort),
+    mutationFn: ({
+      ticker,
+      sort,
+      minViews,
+    }: {
+      ticker: string
+      sort: TwitterSort
+      minViews: TwitterMinimumViews
+    }) => searchTicker(ticker, sort, minViews),
     onSuccess: (data, { ticker, sort }) => {
       queryClient.setQueryData(['twitter', 'search', ticker, sort], data)
     },

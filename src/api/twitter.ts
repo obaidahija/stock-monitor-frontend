@@ -13,6 +13,7 @@ import type {
 
 export type TwitterSort = 'signal' | 'newest' | 'virality'
 export type TwitterFeedFilter = 'all' | 'trusted' | 'viral'
+export type TwitterMinimumViews = 1000 | 2000 | 3000 | 5000
 
 export function getTwitterAuth() {
   return apiClient.get<TwitterAuthStateOut>('/v1/twitter/auth')
@@ -49,10 +50,14 @@ export function fetchTrustedAccount(username: string, limit = 20) {
   )
 }
 
-export function searchTicker(ticker: string, sort: TwitterSort = 'signal') {
+export function searchTicker(
+  ticker: string,
+  sort: TwitterSort = 'signal',
+  minViews: TwitterMinimumViews = 2000,
+) {
   return apiClient.post<TwitterSearchResultOut>(
     `/v1/twitter/searches?sort=${sort}`,
-    { ticker },
+    { ticker, min_views: minViews },
   )
 }
 
