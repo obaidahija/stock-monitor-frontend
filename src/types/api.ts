@@ -342,6 +342,7 @@ export interface AiResearchSourceOut {
 }
 
 export interface AiResearchOut {
+  snapshot_id: number | null
   ticker: string
   score: number | null
   confidence: number | null
@@ -356,6 +357,86 @@ export interface AiResearchOut {
   generated_at: string
   cached: boolean
   current_price: number | null
+}
+
+export type WatchlistSetupSide = 'long' | 'short'
+export type WatchlistSetupHorizon = 'short_term' | 'long_term' | 'custom'
+export type WatchlistSetupSource = 'ai_managed' | 'manual'
+export type WatchlistSetupStatus = 'active' | 'expired' | 'superseded'
+
+export interface WatchlistOut {
+  id: number
+  name: string
+  item_count: number
+  contains_ticker: boolean
+  membership_id: number | null
+  has_setup: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface WatchlistMembershipOut {
+  watchlist_id: number
+  watchlist_name: string
+  item_id: number
+  ticker: string
+  has_setup: boolean
+}
+
+export interface AiResearchBriefOut {
+  snapshot_id: number
+  score: number | null
+  confidence: number | null
+  lean: string | null
+  summary: string | null
+  key_drivers: string[]
+  risks: string[]
+  price_reference_note: string | null
+  generated_at: string
+}
+
+export interface LevelDistanceOut {
+  entry_primary: number | null
+  entry_secondary: number | null
+  stop_loss: number | null
+  take_profit: number | null
+}
+
+export interface WatchlistSetupOut {
+  id: number
+  watchlist_item_id: number
+  ticker: string
+  side: WatchlistSetupSide
+  horizon: WatchlistSetupHorizon
+  expires_on: string
+  source_mode: WatchlistSetupSource
+  status: WatchlistSetupStatus
+  is_current: boolean
+  entry_primary: number
+  entry_secondary: number | null
+  stop_loss: number
+  take_profit: number
+  note: string | null
+  research_snapshot_id: number | null
+  levels_snapshot_id: number | null
+  needs_review: boolean
+  sync_error: string | null
+  research: AiResearchBriefOut | null
+  created_at: string
+  updated_at: string
+  superseded_at: string | null
+}
+
+export interface WatchlistItemOut {
+  id: number
+  watchlist_id: number
+  ticker: string
+  company_name: string | null
+  created_at: string
+  current_price: number | null
+  quote_updated_at: string | null
+  distance_pct: LevelDistanceOut | null
+  current_setup: WatchlistSetupOut | null
 }
 
 export interface GapperOut {

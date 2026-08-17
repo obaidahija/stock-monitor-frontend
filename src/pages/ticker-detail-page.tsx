@@ -11,6 +11,7 @@ import { FilingsTab } from '@/features/ticker-detail/filings-tab'
 import { CatalystsTab } from '@/features/ticker-detail/catalysts-tab'
 import { SocialTab } from '@/features/ticker-detail/social-tab'
 import { TwitterTab } from '@/features/ticker-detail/twitter-tab'
+import { ManageListsDialog } from '@/features/watchlists/manage-lists-dialog'
 
 export function TickerDetailPage() {
   const { ticker = '' } = useParams<{ ticker: string }>()
@@ -23,11 +24,14 @@ export function TickerDetailPage() {
         title={symbol}
         description="Analysis, earnings, news, social, filings, and catalysts."
         actions={
-          <RemoveTickerDialog
-            ticker={symbol}
-            trigger="labeled"
-            onRemoved={() => navigate('/discover')}
-          />
+          <>
+            <ManageListsDialog ticker={symbol} labeled />
+            <RemoveTickerDialog
+              ticker={symbol}
+              trigger="labeled"
+              onRemoved={() => navigate('/discover')}
+            />
+          </>
         }
       />
 

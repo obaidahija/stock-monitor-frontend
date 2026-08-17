@@ -5,6 +5,7 @@ import { TickerDetailPage } from '@/pages/ticker-detail-page'
 import { DiscoverPage } from '@/pages/discover-page'
 import { TwitterPage } from '@/pages/twitter-page'
 import { SystemPage } from '@/pages/system-page'
+import { WatchlistsPage } from '@/pages/watchlists-page'
 
 export function AppRoutes() {
   return (
@@ -13,6 +14,7 @@ export function AppRoutes() {
         <Route path="/" element={<DigestPage />} />
         <Route path="/stocks/:ticker" element={<TickerDetailPage />} />
         <Route path="/discover" element={<DiscoverPage />} />
+        <Route path="/watchlists" element={<WatchlistsPage />} />
         <Route path="/twitter" element={<TwitterPage />} />
         <Route path="/system" element={<SystemPage />} />
       </Route>

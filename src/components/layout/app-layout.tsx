@@ -6,6 +6,7 @@ import { TickerSearch } from './ticker-search'
 const NAV_ITEMS = [
   { to: '/', label: 'Digest', end: true },
   { to: '/discover', label: 'Discover' },
+  { to: '/watchlists', label: 'Watchlists' },
   { to: '/twitter', label: 'Twitter' },
   { to: '/system', label: 'System' },
 ]

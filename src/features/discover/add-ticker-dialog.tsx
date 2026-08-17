@@ -14,7 +14,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ApiError } from '@/lib/api-client'
-import { useAddManualTicker } from './hooks'
+import { useAddCustomTicker } from './hooks'
 
 const TICKER_RE = /^[A-Z]{1,5}(\.[A-Z])?$/
 
@@ -23,7 +23,7 @@ export function AddTickerDialog() {
   const [ticker, setTicker] = useState('')
   const [note, setNote] = useState('')
   const [validationError, setValidationError] = useState<string | null>(null)
-  const addManualTicker = useAddManualTicker()
+  const addCustomTicker = useAddCustomTicker()
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -34,11 +34,11 @@ export function AddTickerDialog() {
     }
     setValidationError(null)
 
-    addManualTicker.mutate(
+    addCustomTicker.mutate(
       { ticker: normalized, note: note.trim() || undefined },
       {
         onSuccess: () => {
-          toast.success(`${normalized} pinned`)
+          toast.success(`${normalized} added`)
           setTicker('')
           setNote('')
           setOpen(false)
@@ -65,10 +65,10 @@ export function AddTickerDialog() {
       <DialogContent>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Pin a ticker</DialogTitle>
+            <DialogTitle>Add a custom ticker</DialogTitle>
             <DialogDescription>
-              Adds it to the tracked universe if it isn't already there, and gives it full
-              coverage (news, filings, Reddit sentiment) regardless of its score.
+              Add a symbol that is not already in the tracked universe. It will be included in
+              scheduled scoring, news, filings, and sentiment coverage.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -89,13 +89,13 @@ export function AddTickerDialog() {
                 id="note"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="Why you're pinning this"
+                placeholder="Why you're tracking this"
               />
             </div>
           </div>
           <DialogFooter>
-            <Button type="submit" disabled={addManualTicker.isPending}>
-              {addManualTicker.isPending ? 'Adding…' : 'Add'}
+            <Button type="submit" disabled={addCustomTicker.isPending}>
+              {addCustomTicker.isPending ? 'Adding…' : 'Add'}
             </Button>
           </DialogFooter>
         </form>

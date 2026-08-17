@@ -8,6 +8,7 @@ import { EvidencePanel } from './evidence-panel'
 import { PriceReferenceLadder } from './price-reference-ladder'
 import { ProgressPanel } from './progress-panel'
 import { ScoreGauge } from './score-gauge'
+import { SaveAiSetupDialog } from '@/features/watchlists/save-ai-setup-dialog'
 
 export function AiResearchTab({ ticker }: { ticker: string }) {
   const [started, setStarted] = useState(false)
@@ -33,15 +34,18 @@ export function AiResearchTab({ ticker }: { ticker: string }) {
           LLM-synthesized research read combining quantitative facts, news, and X/Twitter
           discussion — informational only, not a trading signal.
         </p>
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={isLoading}
-          onClick={data ? handleRefresh : handleGenerate}
-        >
-          <Sparkles className={cn(isLoading && 'animate-pulse')} />
-          {isLoading ? 'Generating…' : data ? 'Refresh' : 'Generate AI research'}
-        </Button>
+        <div className="flex items-center gap-2">
+          {data?.source.ok && data.snapshot_id !== null && <SaveAiSetupDialog data={data} />}
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={isLoading}
+            onClick={data ? handleRefresh : handleGenerate}
+          >
+            <Sparkles className={cn(isLoading && 'animate-pulse')} />
+            {isLoading ? 'Generating…' : data ? 'Refresh' : 'Generate AI research'}
+          </Button>
+        </div>
       </div>
 
       <ProgressPanel ticker={ticker} active={isLoading} />

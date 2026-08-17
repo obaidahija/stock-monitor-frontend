@@ -57,7 +57,7 @@ export function DigestPage() {
       {digest && digest.payload.items.length === 0 && (
         <EmptyState
           title="No tracked tickers yet"
-          description="Scores populate daily once universe_score has run, or pin a ticker on Discover."
+          description="Scores populate daily once universe_score has run, or add a custom ticker on Discover."
         />
       )}
 

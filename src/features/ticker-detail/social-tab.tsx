@@ -22,7 +22,7 @@ export function SocialTab({ ticker }: { ticker: string }) {
     return (
       <EmptyState
         title="No Reddit sentiment data yet"
-        description="Populated once/day by the social_ingest job for manually-pinned tickers (Adanos API, budget-limited)."
+        description="Populated once/day by the social_ingest job for user-added custom tickers (Adanos API, budget-limited)."
       />
     )
   }

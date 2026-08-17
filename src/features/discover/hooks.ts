@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  addManualTicker,
+  addCustomTicker,
   archiveTicker,
   getNotableFilings,
   getSectorHeatmap,
@@ -9,7 +9,6 @@ import {
   getTwitterBestStocks,
   getUniverse,
   hardDeleteTicker,
-  removeManualTicker,
   searchUniverse,
   unarchiveTicker,
   refreshTwitterBestStocks,
@@ -76,19 +75,11 @@ export function useUniverseTickerSearch(query: string, debounceMs = 200) {
   })
 }
 
-export function useAddManualTicker() {
+export function useAddCustomTicker() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ ticker, note }: { ticker: string; note?: string }) =>
-      addManualTicker(ticker, note),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['discover', 'universe'] }),
-  })
-}
-
-export function useRemoveManualTicker() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (ticker: string) => removeManualTicker(ticker),
+      addCustomTicker(ticker, note),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['discover', 'universe'] }),
   })
 }
