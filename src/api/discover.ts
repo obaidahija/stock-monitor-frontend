@@ -2,6 +2,7 @@ import { apiClient } from '@/lib/api-client'
 import type {
   EarningsResult,
   FilingOut,
+  SectorHeatmapOut,
   TickerSearchResult,
   TrackedTickerOut,
   TrendingSocialOut,
@@ -51,6 +52,10 @@ export async function getUniverse(params: UniverseParams = {}): Promise<Universe
   )
   const total = Number(response.headers.get('X-Total-Count') ?? data.length)
   return { items: data, total }
+}
+
+export function getSectorHeatmap() {
+  return apiClient.get<SectorHeatmapOut>('/v1/discover/universe/sectors')
 }
 
 export function addManualTicker(ticker: string, note?: string) {

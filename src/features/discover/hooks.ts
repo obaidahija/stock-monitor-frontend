@@ -4,6 +4,7 @@ import {
   addManualTicker,
   archiveTicker,
   getNotableFilings,
+  getSectorHeatmap,
   getTrending,
   getTwitterBestStocks,
   getUniverse,
@@ -45,6 +46,13 @@ export function useUniverse(params: UniverseParams) {
   return useQuery({
     queryKey: ['discover', 'universe', params],
     queryFn: () => getUniverse(params),
+  })
+}
+
+export function useSectorHeatmap() {
+  return useQuery({
+    queryKey: ['discover', 'universe', 'sectors'],
+    queryFn: getSectorHeatmap,
   })
 }
 

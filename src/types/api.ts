@@ -38,6 +38,18 @@ export interface UniverseTickerOut extends TrackedTickerOut {
   quote_updated_at: string | null
 }
 
+export interface SectorSummaryOut {
+  sector: string
+  avg_change_pct: number | null
+  count: number
+}
+
+export interface SectorHeatmapOut {
+  items: SectorSummaryOut[]
+  total_tickers: number
+  unclassified_tickers: number
+}
+
 export interface FilingOut {
   id: number
   ticker: string | null
