@@ -11,8 +11,10 @@ const items: WatchlistItemOut[] = [
     ticker: 'NVDA',
     company_name: 'NVIDIA Corporation',
     created_at: '2026-08-01T12:00:00Z',
-    current_price: 100,
-    quote_updated_at: '2026-08-17T12:00:00Z',
+    current_price: 225.01,
+    session_price: 225.13,
+    quote_updated_at: '2026-08-17T23:59:59Z',
+    market_session: 'overnight',
     distance_pct: {
       entry_primary: 0,
       entry_secondary: -5,
@@ -61,7 +63,9 @@ const items: WatchlistItemOut[] = [
     company_name: 'Apple Inc.',
     created_at: '2026-08-02T12:00:00Z',
     current_price: 200,
-    quote_updated_at: null,
+    session_price: 197.5,
+    quote_updated_at: '2026-08-17T12:00:00Z',
+    market_session: 'post_market',
     distance_pct: null,
     current_setup: null,
   },
@@ -101,6 +105,13 @@ test('renders the price-level table with setup actions', () => {
   expect(screen.getByRole('columnheader', { name: 'Secondary entry' })).toBeTruthy()
   expect(screen.getByRole('columnheader', { name: 'Take profit' })).toBeTruthy()
   expect(screen.getByText('NVIDIA Corporation')).toBeTruthy()
+  expect(screen.getByText('Overnight')).toBeTruthy()
+  expect(screen.getByText('Post')).toBeTruthy()
+  expect(screen.getByText('$225.01')).toBeTruthy()
+  expect(screen.getByText('$225.13')).toBeTruthy()
+  expect(screen.getByText('Closed: Aug 17, 7:59 PM ET')).toBeTruthy()
+  expect(screen.getByText(/\+0\.12 \(\+0\.053%\)/).className).toContain('text-emerald-600')
+  expect(screen.getByText(/-2\.50 \(-1\.25%\)/).className).toContain('text-red-600')
   expect(screen.getByText('$120.00')).toBeTruthy()
   expect(screen.getByText('-5.00% from current')).toBeTruthy()
   expect(screen.getByText('+20.00% from current')).toBeTruthy()

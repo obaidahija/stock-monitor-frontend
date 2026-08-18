@@ -32,7 +32,12 @@ import {
 import { SetupFormDialog } from '@/features/watchlists/setup-form-dialog'
 import { SetupHistoryDialog } from '@/features/watchlists/setup-history-dialog'
 import { ScoreGauge } from '@/features/ticker-detail/ai-research/score-gauge'
-import { formatCurrency, formatRelativeTime, formatSignedPct } from '@/lib/format'
+import {
+  formatCurrency,
+  formatEasternDateTime,
+  formatRelativeTime,
+  formatSignedPct,
+} from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { AnalysisLean, WatchlistItemOut } from '@/types/api'
 
@@ -142,17 +147,29 @@ function SimpleWatchlistTable({ items }: { items: WatchlistItemOut[] }) {
       <Table className="table-fixed">
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[22%] whitespace-normal">Ticker</TableHead>
-            <TableHead className="w-[12%] whitespace-normal text-right">Price</TableHead>
-            <TableHead className="w-[16%] whitespace-normal text-right">Primary entry</TableHead>
-            <TableHead className="w-[16%] whitespace-normal text-right">Secondary entry</TableHead>
-            <TableHead className="w-[16%] whitespace-normal text-right">Take profit</TableHead>
+            <TableHead className="w-[20%] whitespace-normal">Ticker</TableHead>
+            <TableHead className="w-[20%] whitespace-normal text-right">Price</TableHead>
+            <TableHead className="w-[14%] whitespace-normal text-right">Primary entry</TableHead>
+            <TableHead className="w-[14%] whitespace-normal text-right">Secondary entry</TableHead>
+            <TableHead className="w-[14%] whitespace-normal text-right">Take profit</TableHead>
             <TableHead className="w-[18%] whitespace-normal text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {items.map((item) => {
             const isExpanded = expanded.has(item.id)
+            const sessionChange =
+              item.current_price !== null && item.session_price !== null
+                ? item.session_price - item.current_price
+                : null
+            const sessionChangePct =
+              sessionChange !== null && item.current_price !== null && item.current_price > 0
+                ? (sessionChange / item.current_price) * 100
+                : null
+            const showSessionPrice =
+              item.market_session === 'pre_market' ||
+              item.market_session === 'post_market' ||
+              item.market_session === 'overnight'
             return (
               <Fragment key={item.id}>
                 <TableRow>
@@ -167,7 +184,38 @@ function SimpleWatchlistTable({ items }: { items: WatchlistItemOut[] }) {
                     )}
                   </TableCell>
                   <TableCell className="whitespace-normal text-right tabular-nums">
-                    {formatCurrency(item.current_price)}
+                    <span className="block">{formatCurrency(item.current_price)}</span>
+                    {item.market_session && (
+                      <>
+                        <span className="mt-0.5 flex flex-wrap items-center justify-end gap-x-1.5 text-xs leading-snug">
+                          <span className="text-muted-foreground">
+                            {formatMarketSession(item.market_session)}
+                          </span>
+                          {showSessionPrice && item.session_price !== null && (
+                            <span>{formatCurrency(item.session_price)}</span>
+                          )}
+                          {sessionChange !== null && sessionChangePct !== null && (
+                            <span
+                              className={cn(
+                                'font-medium',
+                                sessionChange > 0 && 'text-emerald-600 dark:text-emerald-400',
+                                sessionChange < 0 && 'text-red-600 dark:text-red-400',
+                                sessionChange === 0 && 'text-muted-foreground',
+                              )}
+                            >
+                              {formatSignedPriceChange(sessionChange)} ({formatSignedPct(
+                                sessionChangePct,
+                                Math.abs(sessionChangePct) < 1 ? 3 : 2,
+                              )})
+                            </span>
+                          )}
+                        </span>
+                        <span className="text-muted-foreground mt-0.5 block text-xs leading-snug">
+                          {item.market_session === 'overnight' && 'Closed: '}
+                          {formatEasternDateTime(item.quote_updated_at)}
+                        </span>
+                      </>
+                    )}
                   </TableCell>
                   <TableCell className="whitespace-normal text-right tabular-nums">
                     <SimpleLevel
@@ -225,6 +273,21 @@ function SimpleWatchlistTable({ items }: { items: WatchlistItemOut[] }) {
       </Table>
     </div>
   )
+}
+
+function formatMarketSession(session: NonNullable<WatchlistItemOut['market_session']>) {
+  return {
+    overnight: 'Overnight',
+    pre_market: 'Pre',
+    regular: 'Regular',
+    post_market: 'Post',
+    closed: 'Closed',
+  }[session]
+}
+
+function formatSignedPriceChange(value: number) {
+  const sign = value > 0 ? '+' : value < 0 ? '-' : ''
+  return `${sign}${Math.abs(value).toFixed(2)}`
 }
 
 function ExpandedWatchlistDetails({ item }: { item: WatchlistItemOut }) {

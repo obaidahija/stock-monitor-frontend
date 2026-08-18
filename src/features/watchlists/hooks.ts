@@ -35,7 +35,8 @@ export function useWatchlistItems(id: number | null) {
     queryKey: ['watchlists', 'items', id],
     queryFn: () => getWatchlistItems(id!),
     enabled: id !== null,
-    refetchInterval: 60_000,
+    refetchInterval: 10_000,
+    refetchIntervalInBackground: false,
   })
 }
 
@@ -130,4 +131,3 @@ export function useCloneSetup() {
     onSuccess: () => invalidateWatchlists(queryClient),
   })
 }
-

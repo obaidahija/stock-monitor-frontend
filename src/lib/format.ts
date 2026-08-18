@@ -46,6 +46,18 @@ export function formatDateTime(value: string | null | undefined): string {
   })
 }
 
+export function formatEasternDateTime(value: string | null | undefined): string {
+  if (!value) return '—'
+  const formatted = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(value))
+  return `${formatted} ET`
+}
+
 export function formatRelativeTime(value: string | null | undefined): string {
   if (!value) return '—'
   const then = new Date(value).getTime()
