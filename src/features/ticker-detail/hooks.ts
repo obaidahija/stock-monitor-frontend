@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { AnalysisExtras } from '@/api/stocks'
 import {
@@ -39,6 +40,18 @@ export function useRefreshUniverseScore(ticker: string) {
     mutationFn: () => refreshUniverseScore(ticker),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['universe-score', ticker] }),
   })
+}
+
+export function useAutoRefreshUniverseScore(ticker: string) {
+  const { mutate } = useRefreshUniverseScore(ticker)
+  const lastRequestedTicker = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!ticker || lastRequestedTicker.current === ticker) return
+
+    lastRequestedTicker.current = ticker
+    mutate()
+  }, [mutate, ticker])
 }
 
 export function useSocial(ticker: string) {

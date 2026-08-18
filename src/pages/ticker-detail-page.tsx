@@ -11,12 +11,14 @@ import { FilingsTab } from '@/features/ticker-detail/filings-tab'
 import { CatalystsTab } from '@/features/ticker-detail/catalysts-tab'
 import { SocialTab } from '@/features/ticker-detail/social-tab'
 import { TwitterTab } from '@/features/ticker-detail/twitter-tab'
+import { useAutoRefreshUniverseScore } from '@/features/ticker-detail/hooks'
 import { ManageListsDialog } from '@/features/watchlists/manage-lists-dialog'
 
 export function TickerDetailPage() {
   const { ticker = '' } = useParams<{ ticker: string }>()
   const symbol = ticker.toUpperCase()
   const navigate = useNavigate()
+  useAutoRefreshUniverseScore(symbol)
 
   return (
     <div className="space-y-6">
