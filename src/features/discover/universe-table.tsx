@@ -61,10 +61,11 @@ const DEFAULT_ORDER_OVERRIDE: Partial<Record<NonNullable<UniverseParams['sort']>
     next_earnings_date: 'asc',
   }
 
-const LEAN_META: Record<string, string> = {
-  bullish: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
-  bearish: 'bg-red-500/15 text-red-600 dark:text-red-400',
-  neutral: 'bg-muted text-muted-foreground',
+const SCORE_LEAN_META: Record<string, string> = {
+  bullish:
+    'border-emerald-500/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+  bearish: 'border-red-500/50 bg-red-500/10 text-red-700 dark:text-red-400',
+  neutral: 'border-border bg-muted text-muted-foreground',
 }
 
 const EARNINGS_FILTER_OPTIONS: { label: string; value: EarningsResult | undefined }[] = [
@@ -327,7 +328,7 @@ export function UniverseTable() {
                 <TableHead>Ticker</TableHead>
                 <TableHead>Company</TableHead>
                 <TableHead>Score</TableHead>
-                <TableHead>Lean</TableHead>
+                <TableHead>Sector</TableHead>
                 <TableHead>Price</TableHead>
                 <TableHead>Change</TableHead>
                 <TableHead>Volume</TableHead>
@@ -360,19 +361,27 @@ export function UniverseTable() {
                   <TableCell className="text-muted-foreground max-w-60 truncate">
                     {item.company_name ?? '—'}
                   </TableCell>
-                  <TableCell className="tabular-nums">
-                    {item.score !== null ? item.score.toFixed(0) : '—'}
-                  </TableCell>
                   <TableCell>
-                    {item.lean ? (
+                    {item.score !== null ? (
                       <span
                         className={cn(
-                          'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize',
-                          LEAN_META[item.lean] ?? LEAN_META.neutral,
+                          'inline-flex min-w-9 items-center justify-center rounded-full border px-2 py-0.5 text-xs font-semibold tabular-nums',
+                          SCORE_LEAN_META[item.lean ?? 'neutral'] ?? SCORE_LEAN_META.neutral,
                         )}
+                        aria-label={`${item.score.toFixed(0)} score${item.lean ? `, ${item.lean}` : ''}`}
+                        title={item.lean ? `${item.lean} score` : 'Score'}
                       >
-                        {item.lean}
+                        {item.score.toFixed(0)}
                       </span>
+                    ) : (
+                      '—'
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {item.sector ? (
+                      <Badge variant="secondary" title={item.sector} className="max-w-48 truncate">
+                        {item.sector}
+                      </Badge>
                     ) : (
                       '—'
                     )}
