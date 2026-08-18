@@ -439,6 +439,60 @@ export interface WatchlistItemOut {
   market_session: 'overnight' | 'pre_market' | 'regular' | 'post_market' | 'closed' | null
   distance_pct: LevelDistanceOut | null
   current_setup: WatchlistSetupOut | null
+  event_count: number
+  active_event_count: number
+  has_event_delivery_failure: boolean
+}
+
+export type WatchlistEventComparison = 'lte' | 'gte'
+export type WatchlistEventState = 'active' | 'triggered' | 'disabled'
+export type WatchlistSetupLevel =
+  | 'entry_primary'
+  | 'entry_secondary'
+  | 'stop_loss'
+  | 'take_profit'
+
+export interface WatchlistEventConditionOut {
+  kind: 'custom' | 'setup_level'
+  comparison: WatchlistEventComparison
+  threshold_price: number
+  setup_id: number | null
+  level: WatchlistSetupLevel | null
+}
+
+export interface WatchlistEventOccurrenceOut {
+  id: number
+  observed_price: number
+  market_session: 'pre_market' | 'regular' | 'post_market'
+  quote_at: string
+  triggered_at: string
+  delivery_status: 'pending' | 'retrying' | 'sent' | 'failed'
+  delivery_attempts: number
+  last_error: string | null
+  sent_at: string | null
+}
+
+export interface WatchlistEventOut {
+  id: number
+  watchlist_item_id: number
+  ticker: string
+  event_type: 'price_threshold'
+  state: WatchlistEventState
+  condition: WatchlistEventConditionOut
+  message: string | null
+  activation_version: number
+  triggered_at: string | null
+  disabled_at: string | null
+  disabled_reason: string | null
+  last_occurrence: WatchlistEventOccurrenceOut | null
+  created_at: string
+  updated_at: string
+}
+
+export interface TelegramStatusOut {
+  configured: boolean
+  ready: boolean
+  error: string | null
 }
 
 export interface GapperOut {

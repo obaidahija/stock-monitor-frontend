@@ -55,6 +55,9 @@ const items: WatchlistItemOut[] = [
       updated_at: '2026-08-17T12:00:00Z',
       superseded_at: null,
     },
+    event_count: 1,
+    active_event_count: 1,
+    has_event_delivery_failure: false,
   },
   {
     id: 11,
@@ -68,6 +71,9 @@ const items: WatchlistItemOut[] = [
     market_session: 'post_market',
     distance_pct: null,
     current_setup: null,
+    event_count: 0,
+    active_event_count: 0,
+    has_event_delivery_failure: false,
   },
 ]
 
@@ -82,6 +88,14 @@ vi.mock('@/features/watchlists/hooks', () => ({
   useUpdateWatchlistSetup: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useSetupHistory: () => ({ data: [], isPending: false }),
   useCloneSetup: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useWatchlistEvents: () => ({ data: [], isPending: false }),
+  useTelegramStatus: () => ({ data: { configured: true, ready: true }, isPending: false }),
+  useCreateWatchlistEvent: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateWatchlistEvent: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useRearmWatchlistEvent: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteWatchlistEvent: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useRetryWatchlistEventDelivery: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useSendTelegramTest: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 
 afterEach(cleanup)

@@ -2,21 +2,30 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   addWatchlistItem,
   cloneSetup,
+  createWatchlistEvent,
   createAiSetups,
   createManualSetup,
   createWatchlist,
   deleteWatchlist,
+  deleteWatchlistEvent,
   getSetupHistory,
+  getTelegramStatus,
   getTickerMemberships,
   getWatchlistItems,
+  getWatchlistEvents,
   getWatchlists,
   removeWatchlistItem,
+  rearmWatchlistEvent,
   renameWatchlist,
+  retryWatchlistEventDelivery,
+  sendTelegramTest,
   updateWatchlistSetup,
+  updateWatchlistEvent,
   type AiSetupInput,
   type ManualSetupInput,
   type SetupTimingInput,
   type SetupUpdateInput,
+  type WatchlistEventInput,
 } from '@/api/watchlists'
 
 function invalidateWatchlists(queryClient: ReturnType<typeof useQueryClient>) {
@@ -129,5 +138,71 @@ export function useCloneSetup() {
     mutationFn: ({ id, body }: { id: number; body: SetupTimingInput & { replace_existing?: boolean } }) =>
       cloneSetup(id, body),
     onSuccess: () => invalidateWatchlists(queryClient),
+  })
+}
+
+export function useWatchlistEvents(itemId: number | null, enabled = true) {
+  return useQuery({
+    queryKey: ['watchlists', 'events', itemId],
+    queryFn: () => getWatchlistEvents(itemId!),
+    enabled: enabled && itemId !== null,
+  })
+}
+
+function useEventMutation<TVariables>(
+  mutationFn: (variables: TVariables) => Promise<unknown>,
+) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn,
+    onSuccess: () => invalidateWatchlists(queryClient),
+  })
+}
+
+export function useCreateWatchlistEvent() {
+  return useEventMutation(
+    ({ itemId, body }: { itemId: number; body: WatchlistEventInput }) =>
+      createWatchlistEvent(itemId, body),
+  )
+}
+
+export function useUpdateWatchlistEvent() {
+  return useEventMutation(
+    ({ id, body }: { id: number; body: WatchlistEventInput }) =>
+      updateWatchlistEvent(id, body),
+  )
+}
+
+export function useRearmWatchlistEvent() {
+  return useEventMutation(
+    ({ id, body }: { id: number; body: WatchlistEventInput }) =>
+      rearmWatchlistEvent(id, body),
+  )
+}
+
+export function useDeleteWatchlistEvent() {
+  return useEventMutation((id: number) => deleteWatchlistEvent(id))
+}
+
+export function useRetryWatchlistEventDelivery() {
+  return useEventMutation((id: number) => retryWatchlistEventDelivery(id))
+}
+
+export function useTelegramStatus(enabled = true) {
+  return useQuery({
+    queryKey: ['notifications', 'telegram', 'status'],
+    queryFn: getTelegramStatus,
+    enabled,
+    retry: false,
+  })
+}
+
+export function useSendTelegramTest() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: sendTelegramTest,
+    onSuccess: () => queryClient.invalidateQueries({
+      queryKey: ['notifications', 'telegram', 'status'],
+    }),
   })
 }

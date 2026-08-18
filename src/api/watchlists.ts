@@ -1,12 +1,34 @@
 import { apiClient } from '@/lib/api-client'
 import type {
   WatchlistItemOut,
+  WatchlistEventComparison,
+  WatchlistEventOut,
   WatchlistMembershipOut,
   WatchlistOut,
   WatchlistSetupHorizon,
   WatchlistSetupOut,
   WatchlistSetupSide,
+  WatchlistSetupLevel,
+  TelegramStatusOut,
 } from '@/types/api'
+
+export type PriceEventConditionInput =
+  | {
+      kind: 'custom'
+      comparison: WatchlistEventComparison
+      threshold_price: number
+    }
+  | {
+      kind: 'setup_level'
+      setup_id: number
+      level: WatchlistSetupLevel
+    }
+
+export interface WatchlistEventInput {
+  event_type?: 'price_threshold'
+  condition: PriceEventConditionInput
+  message?: string
+}
 
 export interface SetupTimingInput {
   side: WatchlistSetupSide
@@ -102,4 +124,36 @@ export function getSetupHistory(itemId: number) {
 
 export function cloneSetup(id: number, body: SetupTimingInput & { replace_existing?: boolean }) {
   return apiClient.post<WatchlistSetupOut>(`/v1/watchlists/setups/${id}/clone`, body)
+}
+
+export function getWatchlistEvents(itemId: number) {
+  return apiClient.get<WatchlistEventOut[]>(`/v1/watchlists/items/${itemId}/events`)
+}
+
+export function createWatchlistEvent(itemId: number, body: WatchlistEventInput) {
+  return apiClient.post<WatchlistEventOut>(`/v1/watchlists/items/${itemId}/events`, body)
+}
+
+export function updateWatchlistEvent(id: number, body: WatchlistEventInput) {
+  return apiClient.put<WatchlistEventOut>(`/v1/watchlists/events/${id}`, body)
+}
+
+export function rearmWatchlistEvent(id: number, body: WatchlistEventInput) {
+  return apiClient.post<WatchlistEventOut>(`/v1/watchlists/events/${id}/rearm`, body)
+}
+
+export function deleteWatchlistEvent(id: number) {
+  return apiClient.delete<void>(`/v1/watchlists/events/${id}`)
+}
+
+export function retryWatchlistEventDelivery(id: number) {
+  return apiClient.post<WatchlistEventOut>(`/v1/watchlists/events/${id}/retry-delivery`)
+}
+
+export function getTelegramStatus() {
+  return apiClient.get<TelegramStatusOut>('/v1/notifications/telegram/status')
+}
+
+export function sendTelegramTest() {
+  return apiClient.post<{ sent: boolean }>('/v1/notifications/telegram/test')
 }

@@ -31,6 +31,7 @@ import {
 } from '@/features/watchlists/hooks'
 import { SetupFormDialog } from '@/features/watchlists/setup-form-dialog'
 import { SetupHistoryDialog } from '@/features/watchlists/setup-history-dialog'
+import { WatchlistEventsDialog } from '@/features/watchlists/watchlist-events-dialog'
 import { ScoreGauge } from '@/features/ticker-detail/ai-research/score-gauge'
 import {
   formatCurrency,
@@ -244,6 +245,7 @@ function SimpleWatchlistTable({ items }: { items: WatchlistItemOut[] }) {
                         compact
                       />
                       <SetupHistoryDialog itemId={item.id} ticker={item.ticker} compact />
+                      <WatchlistEventsDialog item={item} />
                       <RemoveWatchlistItemButton item={item} />
                       <Button
                         variant="ghost"
@@ -393,8 +395,8 @@ function RemoveWatchlistItemButton({ item }: { item: WatchlistItemOut }) {
 
   async function removeTicker() {
     if (
-      item.current_setup &&
-      !window.confirm(`Remove ${item.ticker} and all setup history from this list?`)
+      (item.current_setup || item.event_count > 0) &&
+      !window.confirm(`Remove ${item.ticker} and all setup and event history from this list?`)
     ) return
     try {
       await remove.mutateAsync({ watchlistId: item.watchlist_id, ticker: item.ticker })
