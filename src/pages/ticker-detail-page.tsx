@@ -1,4 +1,5 @@
 import { useNavigate, useParams } from 'react-router'
+import { Badge } from '@/components/ui/badge'
 import { PageHeader } from '@/components/shared/page-header'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { RemoveTickerDialog } from '@/features/discover/remove-ticker-dialog'
@@ -11,7 +12,7 @@ import { FilingsTab } from '@/features/ticker-detail/filings-tab'
 import { CatalystsTab } from '@/features/ticker-detail/catalysts-tab'
 import { SocialTab } from '@/features/ticker-detail/social-tab'
 import { TwitterTab } from '@/features/ticker-detail/twitter-tab'
-import { useAutoRefreshUniverseScore } from '@/features/ticker-detail/hooks'
+import { useAutoRefreshUniverseScore, useUniverseScore } from '@/features/ticker-detail/hooks'
 import { ManageListsDialog } from '@/features/watchlists/manage-lists-dialog'
 
 export function TickerDetailPage() {
@@ -19,11 +20,21 @@ export function TickerDetailPage() {
   const symbol = ticker.toUpperCase()
   const navigate = useNavigate()
   useAutoRefreshUniverseScore(symbol)
+  const { data: universeScore } = useUniverseScore(symbol)
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title={symbol}
+        title={
+          <>
+            {symbol}
+            {universeScore?.industry && (
+              <Badge variant="secondary" className="text-xs font-normal">
+                {universeScore.industry}
+              </Badge>
+            )}
+          </>
+        }
         description="Analysis, earnings, news, social, filings, and catalysts."
         actions={
           <>

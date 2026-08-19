@@ -1,5 +1,5 @@
 import { Link, useSearchParams } from 'react-router'
-import { AlertCircle, AtSign, Loader2, X } from 'lucide-react'
+import { AlertCircle, ArrowDown, ArrowUp, ArrowUpDown, AtSign, Loader2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -45,17 +45,8 @@ const PAGE_SIZE = 25
 const GAP_CHIP_THRESHOLD = 3
 const VOLUME_RATIO_CHIP_THRESHOLD = 2
 
-const SORT_OPTIONS: { label: string; value: NonNullable<UniverseParams['sort']> }[] = [
-  { label: 'Score', value: 'score' },
-  { label: 'Ticker', value: 'ticker' },
-  { label: 'Added', value: 'added_at' },
-  { label: 'Next earnings', value: 'next_earnings_date' },
-  { label: 'Change %', value: 'change_pct' },
-  { label: 'Volume ratio', value: 'volume_ratio' },
-]
-
 // First click on "Next earnings" should read soonest-first, unlike the other
-// fields (score/ticker/added_at/change_pct/volume_ratio), which default to
+// fields (score/ticker/change_pct/volume_ratio), which default to
 // desc on first click.
 const DEFAULT_ORDER_OVERRIDE: Partial<Record<NonNullable<UniverseParams['sort']>, 'asc' | 'desc'>> =
   {
@@ -124,6 +115,45 @@ function EarningsCell({ item }: { item: UniverseTickerOut }) {
 const DEFAULT_SORT: NonNullable<UniverseParams['sort']> = 'score'
 const DEFAULT_ORDER: NonNullable<UniverseParams['order']> = 'desc'
 
+function SortableHead({
+  label,
+  field,
+  sort,
+  order,
+  onSort,
+}: {
+  label: string
+  field: NonNullable<UniverseParams['sort']>
+  sort: NonNullable<UniverseParams['sort']>
+  order: NonNullable<UniverseParams['order']>
+  onSort: (field: NonNullable<UniverseParams['sort']>) => void
+}) {
+  const active = sort === field
+  return (
+    <TableHead>
+      <button
+        type="button"
+        onClick={() => onSort(field)}
+        className={cn(
+          'hover:text-foreground inline-flex items-center gap-1 font-medium',
+          active ? 'text-foreground' : 'text-muted-foreground',
+        )}
+      >
+        {label}
+        {active ? (
+          order === 'desc' ? (
+            <ArrowDown className="size-3" />
+          ) : (
+            <ArrowUp className="size-3" />
+          )
+        ) : (
+          <ArrowUpDown className="size-3 opacity-40" />
+        )}
+      </button>
+    </TableHead>
+  )
+}
+
 export function UniverseTable() {
   // Sort/order/filters/page all live in the URL, not component state, so the
   // back button, a bookmark, or a shared link all restore the exact same view.
@@ -141,7 +171,7 @@ export function UniverseTable() {
   const page = Math.max(1, Number(searchParams.get('page')) || 1)
   const offset = (page - 1) * PAGE_SIZE
 
-  const { data, isPending, isError, error, refetch } = useUniverse({
+  const { data, isPending, isFetching, isError, error, refetch } = useUniverse({
     sort,
     order,
     twitterMonitoredOnly,
@@ -227,18 +257,6 @@ export function UniverseTable() {
       )}
 
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-muted-foreground text-xs">Sort</span>
-        {SORT_OPTIONS.map((opt) => (
-          <Button
-            key={opt.value}
-            size="sm"
-            variant={sort === opt.value ? 'secondary' : 'ghost'}
-            onClick={() => toggleSort(opt.value)}
-          >
-            {opt.label}
-            {sort === opt.value && (order === 'desc' ? ' ↓' : ' ↑')}
-          </Button>
-        ))}
         <Button
           size="sm"
           variant={twitterMonitoredOnly ? 'secondary' : 'ghost'}
@@ -323,16 +341,52 @@ export function UniverseTable() {
 
       {data && data.items.length > 0 && (
         <>
-          <Table>
+          <Table className={cn(isFetching && 'opacity-60 transition-opacity')}>
             <TableHeader>
               <TableRow>
-                <TableHead>Ticker</TableHead>
-                <TableHead>Score</TableHead>
-                <TableHead>Sector</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead>Volume</TableHead>
+                <SortableHead
+                  label="Ticker"
+                  field="ticker"
+                  sort={sort}
+                  order={order}
+                  onSort={toggleSort}
+                />
+                <SortableHead
+                  label="Score"
+                  field="score"
+                  sort={sort}
+                  order={order}
+                  onSort={toggleSort}
+                />
+                <SortableHead
+                  label="Price"
+                  field="change_pct"
+                  sort={sort}
+                  order={order}
+                  onSort={toggleSort}
+                />
+                <SortableHead
+                  label="P/E"
+                  field="pe_ratio"
+                  sort={sort}
+                  order={order}
+                  onSort={toggleSort}
+                />
+                <SortableHead
+                  label="Volume"
+                  field="volume_ratio"
+                  sort={sort}
+                  order={order}
+                  onSort={toggleSort}
+                />
                 <TableHead>Catalyst</TableHead>
-                <TableHead>Earnings</TableHead>
+                <SortableHead
+                  label="Earnings"
+                  field="next_earnings_date"
+                  sort={sort}
+                  order={order}
+                  onSort={toggleSort}
+                />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -395,15 +449,29 @@ export function UniverseTable() {
                         </TooltipContent>
                       </Tooltip>
                     </div>
-                    {item.company_name && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <p className="text-muted-foreground max-w-32 truncate text-xs font-normal cursor-help">
-                            {item.company_name}
-                          </p>
-                        </TooltipTrigger>
-                        <TooltipContent>{item.company_name}</TooltipContent>
-                      </Tooltip>
+                    {(item.company_name || item.sector) && (
+                      <div className="flex max-w-56 items-center gap-1">
+                        {item.company_name && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="text-muted-foreground min-w-0 truncate text-xs font-normal cursor-help">
+                                {item.company_name}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>{item.company_name}</TooltipContent>
+                          </Tooltip>
+                        )}
+                        {item.sector && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="bg-muted text-muted-foreground max-w-24 shrink-0 cursor-help truncate rounded px-1 py-px text-[9px] leading-tight font-medium">
+                                {item.sector}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>{item.sector}</TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
                     )}
                   </TableCell>
                   <TableCell>
@@ -428,15 +496,6 @@ export function UniverseTable() {
                     )}
                   </TableCell>
                   <TableCell>
-                    {item.sector ? (
-                      <Badge variant="secondary" title={item.sector} className="max-w-24 truncate">
-                        {item.sector}
-                      </Badge>
-                    ) : (
-                      '—'
-                    )}
-                  </TableCell>
-                  <TableCell>
                     <div className="tabular-nums">{formatCurrency(item.price)}</div>
                     <div
                       className={cn(
@@ -450,6 +509,9 @@ export function UniverseTable() {
                     >
                       {formatSignedPct(item.change_pct)}
                     </div>
+                  </TableCell>
+                  <TableCell className="tabular-nums">
+                    {item.pe_ratio !== null ? `${item.pe_ratio.toFixed(1)}×` : '—'}
                   </TableCell>
                   <TableCell>
                     <div className="tabular-nums">{formatNumber(item.volume)}</div>

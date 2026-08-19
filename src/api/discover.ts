@@ -16,7 +16,7 @@ export function getNotableFilings() {
 }
 
 export interface UniverseParams {
-  sort?: 'score' | 'ticker' | 'added_at' | 'next_earnings_date' | 'change_pct' | 'volume_ratio'
+  sort?: 'score' | 'ticker' | 'next_earnings_date' | 'change_pct' | 'volume_ratio' | 'pe_ratio'
   order?: 'asc' | 'desc'
   limit?: number
   offset?: number

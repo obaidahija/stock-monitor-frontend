@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   addCustomTicker,
   archiveTicker,
@@ -45,6 +45,10 @@ export function useUniverse(params: UniverseParams) {
   return useQuery({
     queryKey: ['discover', 'universe', params],
     queryFn: () => getUniverse(params),
+    // Keep showing the current page/rows while a sort/filter/page change
+    // refetches, instead of unmounting the table for a full-page skeleton
+    // on every click.
+    placeholderData: keepPreviousData,
   })
 }
 

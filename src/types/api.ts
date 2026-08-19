@@ -12,6 +12,7 @@ export interface TrackedTickerOut {
   lean: string | null
   score_updated_at: string | null
   sector: string | null
+  industry: string | null
   is_archived: boolean
   archived_at: string | null
 }
@@ -34,6 +35,7 @@ export interface UniverseTickerOut extends TrackedTickerOut {
   volume: number | null
   avg_volume_20d: number | null
   volume_ratio: number | null
+  pe_ratio: number | null
   catalyst: string | null
   quote_updated_at: string | null
 }
