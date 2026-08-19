@@ -14,6 +14,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { ErrorState } from '@/components/shared/error-state'
 import { EmptyState } from '@/components/shared/empty-state'
 import { Pagination } from '@/components/shared/pagination'
@@ -83,10 +84,10 @@ const EARNINGS_RESULT_META: Record<EarningsResult, string> = {
 
 function EarningsCell({ item }: { item: UniverseTickerOut }) {
   return (
-    <div className="space-y-0.5">
+    <div className="max-w-36 space-y-0.5">
       {item.is_reit ? (
         <span
-          className="bg-muted text-muted-foreground inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+          className="bg-muted text-muted-foreground inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium whitespace-normal"
           title="REITs report GAAP EPS that isn't comparable to analyst FFO-based estimates, so beat/miss isn't shown."
         >
           REIT — not comparable
@@ -106,7 +107,7 @@ function EarningsCell({ item }: { item: UniverseTickerOut }) {
         )
       )}
       {item.next_earnings_date && (
-        <p className="text-muted-foreground text-xs">
+        <p className="text-muted-foreground text-xs whitespace-normal">
           Next {formatDate(item.next_earnings_date)}
           {item.next_earnings_bmo_amc &&
             item.next_earnings_bmo_amc !== 'unknown' &&
@@ -326,137 +327,160 @@ export function UniverseTable() {
             <TableHeader>
               <TableRow>
                 <TableHead>Ticker</TableHead>
-                <TableHead>Company</TableHead>
                 <TableHead>Score</TableHead>
                 <TableHead>Sector</TableHead>
                 <TableHead>Price</TableHead>
-                <TableHead>Change</TableHead>
                 <TableHead>Volume</TableHead>
-                <TableHead>Ratio</TableHead>
                 <TableHead>Catalyst</TableHead>
                 <TableHead>Earnings</TableHead>
-                <TableHead>Scored</TableHead>
-                <TableHead className="bg-background sticky right-0 w-10 border-l" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {data.items.map((item) => (
                 <TableRow key={item.ticker} className="group">
                   <TableCell className="font-medium">
-                    <Link to={`/stocks/${item.ticker}`} className="hover:underline">
-                      {item.ticker}
-                    </Link>
-                    {item.is_manual && (
-                      <Badge variant="outline" className="ml-1.5 align-middle text-[10px]">
-                        Custom
-                      </Badge>
+                    <div className="inline-flex items-center gap-1">
+                      <Link to={`/stocks/${item.ticker}`} className="hover:underline">
+                        {item.ticker}
+                      </Link>
+                      {item.is_manual && (
+                        <Badge variant="outline" className="align-middle text-[10px]">
+                          Custom
+                        </Badge>
+                      )}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            aria-label={`${item.twitter_monitoring_enabled ? 'Stop monitoring' : 'Monitor'} ${item.ticker} on Twitter`}
+                            disabled={enableMonitoring.isPending || disableMonitoring.isPending}
+                            onClick={() => {
+                              const mutation = item.twitter_monitoring_enabled
+                                ? disableMonitoring
+                                : enableMonitoring
+                              mutation.mutate(item.ticker, {
+                                onSuccess: () =>
+                                  toast.success(
+                                    item.twitter_monitoring_enabled
+                                      ? `${item.ticker} Twitter monitoring stopped`
+                                      : `${item.ticker} Twitter monitoring enabled`,
+                                  ),
+                                onError: () =>
+                                  toast.error(`Failed to update Twitter monitoring for ${item.ticker}`),
+                              })
+                            }}
+                            className={cn(
+                              'cursor-pointer',
+                              !item.twitter_monitoring_enabled &&
+                                'opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100',
+                            )}
+                          >
+                            {enableMonitoring.isPending || disableMonitoring.isPending ? (
+                              <Loader2 className="animate-spin" />
+                            ) : (
+                              <AtSign
+                                className={cn(
+                                  item.twitter_monitoring_enabled &&
+                                    'text-sky-600 dark:text-sky-400',
+                                )}
+                              />
+                            )}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {item.twitter_monitoring_enabled
+                            ? 'Stop Twitter monitoring'
+                            : 'Monitor on Twitter'}
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                    {item.company_name && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <p className="text-muted-foreground max-w-32 truncate text-xs font-normal cursor-help">
+                            {item.company_name}
+                          </p>
+                        </TooltipTrigger>
+                        <TooltipContent>{item.company_name}</TooltipContent>
+                      </Tooltip>
                     )}
-                    {item.twitter_monitoring_enabled && (
-                      <AtSign
-                        className="ml-1.5 inline size-3 text-sky-600 dark:text-sky-400"
-                        aria-label="Monitored on Twitter"
-                      />
-                    )}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground max-w-60 truncate">
-                    {item.company_name ?? '—'}
                   </TableCell>
                   <TableCell>
                     {item.score !== null ? (
-                      <span
-                        className={cn(
-                          'inline-flex min-w-9 items-center justify-center rounded-full border px-2 py-0.5 text-xs font-semibold tabular-nums',
-                          SCORE_LEAN_META[item.lean ?? 'neutral'] ?? SCORE_LEAN_META.neutral,
-                        )}
-                        aria-label={`${item.score.toFixed(0)} score${item.lean ? `, ${item.lean}` : ''}`}
-                        title={item.lean ? `${item.lean} score` : 'Score'}
-                      >
-                        {item.score.toFixed(0)}
-                      </span>
+                      <div className="space-y-0.5">
+                        <span
+                          className={cn(
+                            'inline-flex min-w-9 items-center justify-center rounded-full border px-2 py-0.5 text-xs font-semibold tabular-nums',
+                            SCORE_LEAN_META[item.lean ?? 'neutral'] ?? SCORE_LEAN_META.neutral,
+                          )}
+                          aria-label={`${item.score.toFixed(0)} score${item.lean ? `, ${item.lean}` : ''}`}
+                          title={item.lean ? `${item.lean} score` : 'Score'}
+                        >
+                          {item.score.toFixed(0)}
+                        </span>
+                        <p className="text-muted-foreground text-[10px]">
+                          {formatRelativeTime(item.score_updated_at)}
+                        </p>
+                      </div>
                     ) : (
                       '—'
                     )}
                   </TableCell>
                   <TableCell>
                     {item.sector ? (
-                      <Badge variant="secondary" title={item.sector} className="max-w-48 truncate">
+                      <Badge variant="secondary" title={item.sector} className="max-w-24 truncate">
                         {item.sector}
                       </Badge>
                     ) : (
                       '—'
                     )}
                   </TableCell>
-                  <TableCell>{formatCurrency(item.price)}</TableCell>
-                  <TableCell
-                    className={cn(
-                      'tabular-nums',
-                      item.change_pct === null
-                        ? undefined
-                        : item.change_pct >= 0
-                          ? 'text-emerald-600 dark:text-emerald-400'
-                          : 'text-red-600 dark:text-red-400',
-                    )}
-                  >
-                    {formatSignedPct(item.change_pct)}
+                  <TableCell>
+                    <div className="tabular-nums">{formatCurrency(item.price)}</div>
+                    <div
+                      className={cn(
+                        'text-xs tabular-nums',
+                        item.change_pct === null
+                          ? 'text-muted-foreground'
+                          : item.change_pct >= 0
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : 'text-red-600 dark:text-red-400',
+                      )}
+                    >
+                      {formatSignedPct(item.change_pct)}
+                    </div>
                   </TableCell>
-                  <TableCell>{formatNumber(item.volume)}</TableCell>
-                  <TableCell className="tabular-nums">
-                    {item.volume_ratio !== null ? `${item.volume_ratio.toFixed(1)}×` : '—'}
+                  <TableCell>
+                    <div className="tabular-nums">{formatNumber(item.volume)}</div>
+                    <div className="text-muted-foreground text-xs tabular-nums">
+                      {item.volume_ratio !== null ? `${item.volume_ratio.toFixed(1)}×` : '—'}
+                    </div>
                   </TableCell>
-                  <TableCell className="max-w-48 truncate">
+                  <TableCell className="max-w-32">
                     {item.catalyst ? (
-                      item.catalyst
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="block cursor-help truncate">{item.catalyst}</span>
+                        </TooltipTrigger>
+                        <TooltipContent>{item.catalyst}</TooltipContent>
+                      </Tooltip>
                     ) : item.change_pct !== null ? (
-                      <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
-                        <AlertCircle className="size-3.5" />
-                        No catalyst found
+                      <span className="inline-flex min-w-0 items-center gap-1 text-amber-600 dark:text-amber-400">
+                        <AlertCircle className="size-3.5 shrink-0" />
+                        <span className="truncate">No catalyst</span>
                       </span>
                     ) : (
                       '—'
                     )}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="relative">
                     <EarningsCell item={item} />
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {formatRelativeTime(item.score_updated_at)}
-                  </TableCell>
-                  <TableCell className="bg-background sticky right-0 border-l">
-                    <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-                      <ManageListsDialog ticker={item.ticker} />
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label={`${item.twitter_monitoring_enabled ? 'Stop monitoring' : 'Monitor'} ${item.ticker} on Twitter`}
-                        disabled={enableMonitoring.isPending || disableMonitoring.isPending}
-                        onClick={() => {
-                          const mutation = item.twitter_monitoring_enabled
-                            ? disableMonitoring
-                            : enableMonitoring
-                          mutation.mutate(item.ticker, {
-                            onSuccess: () =>
-                              toast.success(
-                                item.twitter_monitoring_enabled
-                                  ? `${item.ticker} Twitter monitoring stopped`
-                                  : `${item.ticker} Twitter monitoring enabled`,
-                              ),
-                            onError: () =>
-                              toast.error(`Failed to update Twitter monitoring for ${item.ticker}`),
-                          })
-                        }}
-                      >
-                        {enableMonitoring.isPending || disableMonitoring.isPending ? (
-                          <Loader2 className="animate-spin" />
-                        ) : (
-                          <AtSign
-                            className={cn(
-                              item.twitter_monitoring_enabled &&
-                                'text-sky-600 dark:text-sky-400',
-                            )}
-                          />
-                        )}
-                      </Button>
-                      <RemoveTickerDialog ticker={item.ticker} />
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                      <div className="bg-background pointer-events-auto flex items-center gap-1 rounded-md border py-1 pr-1 pl-3 shadow-md">
+                        <ManageListsDialog ticker={item.ticker} />
+                        <RemoveTickerDialog ticker={item.ticker} />
+                      </div>
                     </div>
                   </TableCell>
                 </TableRow>

@@ -12,6 +12,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   useAddWatchlistItem,
   useCreateWatchlist,
@@ -80,12 +81,35 @@ export function ManageListsDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size={labeled ? 'sm' : 'icon-sm'} aria-label={`Manage ${ticker} watchlists`}>
-          <BookmarkPlus />
-          {labeled && 'Manage lists'}
-        </Button>
-      </DialogTrigger>
+      {labeled ? (
+        <DialogTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label={`Manage ${ticker} watchlists`}
+            className="cursor-pointer"
+          >
+            <BookmarkPlus />
+            Manage lists
+          </Button>
+        </DialogTrigger>
+      ) : (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DialogTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                aria-label={`Manage ${ticker} watchlists`}
+                className="cursor-pointer"
+              >
+                <BookmarkPlus />
+              </Button>
+            </DialogTrigger>
+          </TooltipTrigger>
+          <TooltipContent>Add to watchlist</TooltipContent>
+        </Tooltip>
+      )}
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add {ticker} to watchlists</DialogTitle>

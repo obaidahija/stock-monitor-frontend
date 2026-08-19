@@ -11,6 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useArchiveTicker, useHardDeleteTicker } from './hooks'
 
 export function RemoveTickerDialog({
@@ -55,18 +56,30 @@ export function RemoveTickerDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger === 'icon' ? (
-          <Button variant="ghost" size="icon-sm" aria-label={`Remove ${ticker}`}>
-            <Archive />
-          </Button>
-        ) : (
-          <Button variant="outline" size="sm">
+      {trigger === 'icon' ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={`Remove ${ticker}`}
+                className="cursor-pointer"
+              >
+                <Archive />
+              </Button>
+            </DialogTrigger>
+          </TooltipTrigger>
+          <TooltipContent>Archive or delete</TooltipContent>
+        </Tooltip>
+      ) : (
+        <DialogTrigger asChild>
+          <Button variant="outline" size="sm" className="cursor-pointer">
             <Archive />
             Remove
           </Button>
-        )}
-      </DialogTrigger>
+        </DialogTrigger>
+      )}
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Remove {ticker}?</DialogTitle>
