@@ -1,4 +1,37 @@
-# React + TypeScript + Vite
+# MarketScout Frontend
+
+React/TypeScript frontend for MarketScout. The Reddit workspace at `/reddit` provides a cached
+feed, explicit ticker searches, trusted subreddit and author sources, and bounded discussion
+threads. Each ticker also has an independent Reddit tab and monitoring control; Twitter and
+Reddit evidence remain separate in AI research.
+
+Live collection is controlled by the backend's `REDDIT_INTELLIGENCE_ENABLED` flag. When disabled,
+the UI continues to show cached Reddit content and explains why refresh actions are unavailable.
+The Reddit auth banner polls every 30 seconds. During automatic recovery it shows that
+authentication is being repaired while cached discussions remain available; after a failed
+attempt it shows the recovery cooldown timestamp. A valid state removes the recovery copy.
+
+Post collection is intentionally faster than sentiment classification. Newly collected posts may
+briefly render without a sentiment badge; feed and ticker-search queries use the backend's
+`sentiment_pending` flag to refresh the existing cache every 30 seconds, then stop polling as soon
+as classification is complete. Cached posts remain rendered throughout that transition. Opening
+or refreshing one discussion loads at most 25 comments for that post, and comments do not receive
+sentiment labels.
+
+## Development checks
+
+```bash
+npm install
+npm test
+npm run lint
+npm run build
+```
+
+The frontend never runs `rdt-cli` directly and never receives or stores Reddit browser
+credentials. Backend setup, recovery, retention, and read-only operational guidance live in the
+sibling backend's `docs/reddit-intelligence-runbook.md`.
+
+## Vite notes
 
 This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
 

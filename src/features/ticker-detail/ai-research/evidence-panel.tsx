@@ -22,6 +22,16 @@ export function EvidencePanel({ inputsUsed }: { inputsUsed: AiResearchInputsOut 
               ? ` (${Math.round(inputsUsed.twitter_cache_age_seconds)}s old)`
               : ''}
           </span>
+          <span className="border-border rounded-full border px-2.5 py-1">
+            {inputsUsed.reddit_post_count} Reddit post
+            {inputsUsed.reddit_post_count === 1 ? '' : 's'}
+          </span>
+          <span className="border-border rounded-full border px-2.5 py-1">
+            Reddit cache {inputsUsed.reddit_cache_is_fresh ? 'fresh' : 'stale'}
+            {inputsUsed.reddit_cache_age_seconds !== null
+              ? ` (${Math.round(inputsUsed.reddit_cache_age_seconds)}s old)`
+              : ''}
+          </span>
         </div>
         {inputsUsed.quant_facts.length > 0 && (
           <details className="group">

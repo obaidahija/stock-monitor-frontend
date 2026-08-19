@@ -6,6 +6,7 @@ export interface TrackedTickerOut {
   company_name: string | null
   is_manual: boolean
   twitter_monitoring_enabled: boolean
+  reddit_monitoring_enabled: boolean
   note: string | null
   added_at: string
   score: number | null
@@ -335,6 +336,10 @@ export interface AiResearchInputsOut {
   twitter_post_count: number
   twitter_cache_is_fresh: boolean
   twitter_cache_age_seconds: number | null
+  reddit_post_ids: string[]
+  reddit_post_count: number
+  reddit_cache_is_fresh: boolean
+  reddit_cache_age_seconds: number | null
   quant_facts: string[]
 }
 
@@ -788,4 +793,188 @@ export interface TwitterMonitoredTickerOut {
   ticker: string
   twitter_monitoring_enabled: boolean
   operation: TwitterOperationOut | null
+}
+
+export type RedditAuthState = 'checking' | 'valid' | 'missing' | 'invalid' | 'unavailable'
+export type RedditOperationStatus = 'queued' | 'running' | 'deferred' | 'succeeded' | 'failed'
+export type RedditFeedFilter = 'all' | 'trusted' | 'viral'
+export type RedditSort = 'signal' | 'newest' | 'virality' | 'score' | 'comments'
+export type RedditListingSort = 'new' | 'hot' | 'top' | 'rising'
+export type RedditTimeFilter = 'hour' | 'day' | 'week' | 'month' | 'year' | 'all'
+export type RedditCommentSort = 'best' | 'top' | 'new' | 'controversial' | 'old' | 'qa'
+
+export interface RedditQueueCounts {
+  queued: number
+  running: number
+  deferred: number
+  failed: number
+}
+
+export interface RedditAuthStateOut {
+  state: RedditAuthState
+  checked_at: string | null
+  username: string | null
+  public_message: string | null
+  cooldown_until: string | null
+  public_reads_available: boolean
+}
+
+export interface RedditHealthOut {
+  enabled: boolean
+  auto_reauth_enabled: boolean
+  worker_running: boolean
+  auth: RedditAuthStateOut
+  queue: RedditQueueCounts
+}
+
+export interface RedditOperationOut {
+  id: string
+  kind: string
+  scope_key: string | null
+  priority: number
+  status: RedditOperationStatus
+  attempt: number
+  max_attempts: number
+  available_at: string
+  created_at: string
+  started_at: string | null
+  finished_at: string | null
+  public_error_code: string | null
+  public_error_message: string | null
+}
+
+export interface RedditTickerMatchOut {
+  ticker: string
+  match_kind: 'cashtag' | 'context_symbol' | 'company_alias'
+  matched_text: string
+  confidence: number
+}
+
+export interface RedditMetricsOut {
+  score: number
+  num_comments: number
+}
+
+export interface RedditSignalPenaltyOut {
+  rule_id: 'stickied' | 'excessive_tickers' | 'bot_author' | 'near_duplicate'
+  points: number
+  explanation: string
+}
+
+export interface RedditSignalScoreOut {
+  version: string
+  relevance_score: number
+  sentiment_strength_score: number
+  engagement_velocity_score: number
+  discussion_quality_score: number
+  source_trust_score: number
+  penalty_score: number
+  final_score: number
+  virality_score: number
+  penalties: RedditSignalPenaltyOut[]
+}
+
+export interface RedditPostOut {
+  id: string
+  fullname: string
+  title: string
+  selftext: string
+  subreddit: string
+  author: string
+  created_at: string
+  permalink: string
+  url: string
+  score: number
+  num_comments: number
+  metrics: RedditMetricsOut
+  is_self: boolean
+  over_18: boolean
+  is_video: boolean
+  stickied: boolean
+  is_trusted: boolean
+  is_viral: boolean
+  content_state: 'visible' | 'deleted' | 'removed' | 'unavailable'
+  ticker_matches: RedditTickerMatchOut[]
+  signal_score: RedditSignalScoreOut | null
+  sentiment_label: string | null
+  sentiment_confidence: number | null
+}
+
+export interface RedditCommentOut {
+  id: string
+  fullname: string
+  post_id: string
+  parent_fullname: string
+  author: string
+  body: string
+  score: number
+  created_at: string
+  depth: number
+  tree_order: number
+  content_state: 'visible' | 'deleted' | 'removed' | 'unavailable'
+  ticker_matches: RedditTickerMatchOut[]
+  sentiment_label: string | null
+  sentiment_confidence: number | null
+}
+
+export interface RedditSearchResultOut {
+  items: RedditPostOut[]
+  sentiment_pending: boolean
+  generated_at: string
+  cache_age_seconds: number | null
+  operation: RedditOperationOut | null
+  stale: boolean
+  stale_reason: string | null
+}
+
+export interface RedditPageOut {
+  items: RedditPostOut[]
+  sentiment_pending: boolean
+  total: number
+  page: number
+  page_size: number
+  generated_at: string
+  stale: boolean
+  reason: string | null
+}
+
+export interface RedditThreadOut {
+  post: RedditPostOut
+  comments: RedditCommentOut[]
+  generated_at: string
+  stale: boolean
+  stale_reason: string | null
+  operation: RedditOperationOut | null
+}
+
+export interface RedditTrustedSubredditOut {
+  name: string
+  enabled: boolean
+  default_sort: RedditListingSort
+  last_successful_fetch_at: string | null
+  operation: RedditOperationOut | null
+}
+
+export interface RedditTrustedAuthorOut {
+  username: string
+  enabled: boolean
+  last_successful_fetch_at: string | null
+  operation: RedditOperationOut | null
+}
+
+export interface RedditFeedRefreshOut {
+  ticker_operations: RedditOperationOut[]
+  subreddit_operations: RedditOperationOut[]
+  author_operations: RedditOperationOut[]
+}
+
+export interface RedditMonitoredTickerOut {
+  ticker: string
+  reddit_monitoring_enabled: boolean
+  operation: RedditOperationOut | null
+}
+
+export interface RedditAuthRecheckOut {
+  auth: RedditAuthStateOut
+  operation: RedditOperationOut | null
 }

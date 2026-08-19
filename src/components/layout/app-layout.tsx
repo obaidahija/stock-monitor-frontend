@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { to: '/discover', label: 'Discover' },
   { to: '/watchlists', label: 'Watchlists' },
   { to: '/twitter', label: 'Twitter' },
+  { to: '/reddit', label: 'Reddit' },
   { to: '/system', label: 'System' },
 ]
 

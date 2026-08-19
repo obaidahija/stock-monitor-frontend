@@ -4,6 +4,7 @@ import { DigestPage } from '@/pages/digest-page'
 import { TickerDetailPage } from '@/pages/ticker-detail-page'
 import { DiscoverPage } from '@/pages/discover-page'
 import { TwitterPage } from '@/pages/twitter-page'
+import { RedditPage } from '@/pages/reddit-page'
 import { SystemPage } from '@/pages/system-page'
 import { WatchlistsPage } from '@/pages/watchlists-page'
 
@@ -16,6 +17,7 @@ export function AppRoutes() {
         <Route path="/discover" element={<DiscoverPage />} />
         <Route path="/watchlists" element={<WatchlistsPage />} />
         <Route path="/twitter" element={<TwitterPage />} />
+        <Route path="/reddit" element={<RedditPage />} />
         <Route path="/system" element={<SystemPage />} />
       </Route>
     </Routes>

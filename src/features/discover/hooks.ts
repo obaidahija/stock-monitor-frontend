@@ -15,6 +15,7 @@ import {
   type UniverseParams,
 } from '@/api/discover'
 import { disableMonitoredTicker, enableMonitoredTicker } from '@/api/twitter'
+import { disableRedditMonitoredTicker, enableRedditMonitoredTicker } from '@/api/reddit'
 
 export function useNotableFilings() {
   return useQuery({ queryKey: ['discover', 'filings'], queryFn: getNotableFilings })
@@ -130,6 +131,28 @@ export function useDisableMonitoredTicker() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['discover', 'universe'] })
       queryClient.invalidateQueries({ queryKey: ['discover', 'twitter-best-stocks'] })
+    },
+  })
+}
+
+export function useEnableRedditMonitoredTicker() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (ticker: string) => enableRedditMonitoredTicker(ticker),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['discover', 'universe'] })
+      queryClient.invalidateQueries({ queryKey: ['reddit'] })
+    },
+  })
+}
+
+export function useDisableRedditMonitoredTicker() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (ticker: string) => disableRedditMonitoredTicker(ticker),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['discover', 'universe'] })
+      queryClient.invalidateQueries({ queryKey: ['reddit'] })
     },
   })
 }

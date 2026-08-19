@@ -12,6 +12,7 @@ import { FilingsTab } from '@/features/ticker-detail/filings-tab'
 import { CatalystsTab } from '@/features/ticker-detail/catalysts-tab'
 import { SocialTab } from '@/features/ticker-detail/social-tab'
 import { TwitterTab } from '@/features/ticker-detail/twitter-tab'
+import { RedditTab } from '@/features/ticker-detail/reddit-tab'
 import { useAutoRefreshUniverseScore, useUniverseScore } from '@/features/ticker-detail/hooks'
 import { ManageListsDialog } from '@/features/watchlists/manage-lists-dialog'
 
@@ -58,6 +59,7 @@ export function TickerDetailPage() {
           <TabsTrigger value="news">News</TabsTrigger>
           <TabsTrigger value="social">Social</TabsTrigger>
           <TabsTrigger value="twitter">Twitter</TabsTrigger>
+          <TabsTrigger value="reddit">Reddit</TabsTrigger>
           <TabsTrigger value="filings">Filings</TabsTrigger>
           <TabsTrigger value="catalysts">Catalysts</TabsTrigger>
         </TabsList>
@@ -78,6 +80,9 @@ export function TickerDetailPage() {
         </TabsContent>
         <TabsContent value="twitter">
           <TwitterTab ticker={symbol} />
+        </TabsContent>
+        <TabsContent value="reddit">
+          <RedditTab ticker={symbol} />
         </TabsContent>
         <TabsContent value="filings">
           <FilingsTab ticker={symbol} />

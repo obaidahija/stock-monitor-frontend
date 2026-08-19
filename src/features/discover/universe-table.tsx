@@ -7,6 +7,7 @@ import {
   ArrowUpDown,
   AtSign,
   Loader2,
+  MessagesSquare,
   Search,
   X,
 } from 'lucide-react'
@@ -39,7 +40,9 @@ import { cn } from '@/lib/utils'
 import { AddTickerDialog } from './add-ticker-dialog'
 import {
   useDisableMonitoredTicker,
+  useDisableRedditMonitoredTicker,
   useEnableMonitoredTicker,
+  useEnableRedditMonitoredTicker,
   useUniverse,
 } from './hooks'
 import { RemoveTickerDialog } from './remove-ticker-dialog'
@@ -172,6 +175,7 @@ export function UniverseTable() {
   const sort = (searchParams.get('sort') as UniverseParams['sort']) || DEFAULT_SORT
   const order = (searchParams.get('order') as UniverseParams['order']) || DEFAULT_ORDER
   const twitterMonitoredOnly = searchParams.get('twitter_monitored_only') === 'true'
+  const redditMonitoredOnly = searchParams.get('reddit_monitored_only') === 'true'
   const earningsResult = (searchParams.get('earnings_result') as EarningsResult | null) ?? undefined
   const minGapPctRaw = searchParams.get('min_gap_pct')
   const minVolumeRatioRaw = searchParams.get('min_volume_ratio')
@@ -186,6 +190,7 @@ export function UniverseTable() {
     sort,
     order,
     twitterMonitoredOnly,
+    redditMonitoredOnly,
     earningsResult,
     minGapPct,
     minVolumeRatio,
@@ -196,7 +201,10 @@ export function UniverseTable() {
   })
   const enableMonitoring = useEnableMonitoredTicker()
   const disableMonitoring = useDisableMonitoredTicker()
+  const enableRedditMonitoring = useEnableRedditMonitoredTicker()
+  const disableRedditMonitoring = useDisableRedditMonitoredTicker()
   const monitoredCount = useUniverse({ twitterMonitoredOnly: true, limit: 1, offset: 0 })
+  const redditMonitoredCount = useUniverse({ redditMonitoredOnly: true, limit: 1, offset: 0 })
 
   /** Merge partial updates into the URL's search params. Any filter/sort
    * change resets to page 1 — a stale page number from a different, larger
@@ -321,6 +329,18 @@ export function UniverseTable() {
         >
           <AtSign />
           {monitoredCount.data?.total ?? 0}/50 monitored
+        </Button>
+        <Button
+          size="sm"
+          variant={redditMonitoredOnly ? 'secondary' : 'ghost'}
+          onClick={() =>
+            updateParams({
+              reddit_monitored_only: redditMonitoredOnly ? undefined : 'true',
+            })
+          }
+        >
+          <MessagesSquare />
+          {redditMonitoredCount.data?.total ?? 0} Reddit monitored
         </Button>
       </div>
 
@@ -507,6 +527,41 @@ export function UniverseTable() {
                             : 'Monitor on Twitter'}
                         </TooltipContent>
                       </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <RedditMonitoringButton
+                            ticker={item.ticker}
+                            enabled={item.reddit_monitoring_enabled}
+                            pending={
+                              enableRedditMonitoring.isPending || disableRedditMonitoring.isPending
+                            }
+                            className={cn(
+                              !item.reddit_monitoring_enabled &&
+                                'opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100',
+                            )}
+                            onToggle={() => {
+                              const mutation = item.reddit_monitoring_enabled
+                                ? disableRedditMonitoring
+                                : enableRedditMonitoring
+                              mutation.mutate(item.ticker, {
+                                onSuccess: () =>
+                                  toast.success(
+                                    item.reddit_monitoring_enabled
+                                      ? `${item.ticker} Reddit monitoring stopped`
+                                      : `${item.ticker} Reddit monitoring enabled`,
+                                  ),
+                                onError: () =>
+                                  toast.error(`Failed to update Reddit monitoring for ${item.ticker}`),
+                              })
+                            }}
+                          />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {item.reddit_monitoring_enabled
+                            ? 'Stop Reddit monitoring'
+                            : 'Monitor on Reddit'}
+                        </TooltipContent>
+                      </Tooltip>
                     </div>
                     {(item.company_name || item.sector) && (
                       <div className="flex max-w-56 items-center gap-1">
@@ -622,5 +677,36 @@ export function UniverseTable() {
         </>
       )}
     </section>
+  )
+}
+
+export function RedditMonitoringButton({
+  ticker,
+  enabled,
+  pending,
+  onToggle,
+  className,
+}: {
+  ticker: string
+  enabled: boolean
+  pending: boolean
+  onToggle: () => void
+  className?: string
+}) {
+  return (
+    <Button
+      variant="ghost"
+      size="icon-xs"
+      aria-label={`${enabled ? 'Stop monitoring' : 'Monitor'} ${ticker} on Reddit`}
+      disabled={pending}
+      onClick={onToggle}
+      className={cn('cursor-pointer', className)}
+    >
+      {pending ? (
+        <Loader2 className="animate-spin" />
+      ) : (
+        <MessagesSquare className={cn(enabled && 'text-orange-600 dark:text-orange-400')} />
+      )}
+    </Button>
   )
 }

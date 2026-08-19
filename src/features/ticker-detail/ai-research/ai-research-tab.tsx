@@ -31,8 +31,8 @@ export function AiResearchTab({ ticker }: { ticker: string }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-muted-foreground text-sm">
-          LLM-synthesized research read combining quantitative facts, news, and X/Twitter
-          discussion — informational only, not a trading signal.
+          LLM-synthesized research read combining quantitative facts, news, X/Twitter, and
+          Reddit discussion — informational only, not a trading signal.
         </p>
         <div className="flex items-center gap-2">
           {data?.source.ok && data.snapshot_id !== null && <SaveAiSetupDialog data={data} />}
