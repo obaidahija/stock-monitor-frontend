@@ -25,6 +25,7 @@ export interface UniverseParams {
   minGapPct?: number
   minVolumeRatio?: number
   sector?: string
+  q?: string
 }
 
 export interface UniversePage {
@@ -45,6 +46,7 @@ export async function getUniverse(params: UniverseParams = {}): Promise<Universe
   if (params.minGapPct !== undefined) qs.set('min_gap_pct', String(params.minGapPct))
   if (params.minVolumeRatio !== undefined) qs.set('min_volume_ratio', String(params.minVolumeRatio))
   if (params.sector) qs.set('sector', params.sector)
+  if (params.q) qs.set('q', params.q)
   const { data, response } = await apiClient.getWithResponse<UniverseTickerOut[]>(
     `/v1/discover/universe?${qs.toString()}`,
   )

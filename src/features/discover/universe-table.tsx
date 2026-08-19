@@ -1,5 +1,15 @@
+import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
-import { AlertCircle, ArrowDown, ArrowUp, ArrowUpDown, AtSign, Loader2, X } from 'lucide-react'
+import {
+  AlertCircle,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  AtSign,
+  Loader2,
+  Search,
+  X,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -168,6 +178,7 @@ export function UniverseTable() {
   const minGapPct = minGapPctRaw !== null ? Number(minGapPctRaw) : undefined
   const minVolumeRatio = minVolumeRatioRaw !== null ? Number(minVolumeRatioRaw) : undefined
   const sector = searchParams.get('sector') ?? undefined
+  const q = searchParams.get('q') ?? ''
   const page = Math.max(1, Number(searchParams.get('page')) || 1)
   const offset = (page - 1) * PAGE_SIZE
 
@@ -179,6 +190,7 @@ export function UniverseTable() {
     minGapPct,
     minVolumeRatio,
     sector,
+    q: q || undefined,
     limit: PAGE_SIZE,
     offset,
   })
@@ -203,6 +215,24 @@ export function UniverseTable() {
       return next
     })
   }
+
+  // Typing updates this local field immediately; the URL (and therefore the
+  // actual request) only follows after a short pause, same debounce pattern
+  // as the header's ticker-search box, so the ~916-ticker universe isn't
+  // re-queried on every keystroke.
+  const [searchInput, setSearchInput] = useState(q)
+
+  useEffect(() => {
+    setSearchInput(q)
+  }, [q])
+
+  useEffect(() => {
+    const trimmed = searchInput.trim()
+    if (trimmed === q) return
+    const handle = setTimeout(() => updateParams({ q: trimmed || undefined }), 300)
+    return () => clearTimeout(handle)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchInput])
 
   function toggleSort(field: NonNullable<UniverseParams['sort']>) {
     if (sort === field) {
@@ -240,6 +270,29 @@ export function UniverseTable() {
       <div className="flex items-center justify-between">
         <h2 className="font-semibold">Tracked universe</h2>
         <AddTickerDialog />
+      </div>
+
+      <div className="relative max-w-xs">
+        <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
+        <Input
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          placeholder="Search ticker or company…"
+          aria-label="Search tracked universe by ticker or company name"
+          className="pl-8 pr-8"
+        />
+        {searchInput && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            aria-label="Clear search"
+            onClick={() => setSearchInput('')}
+            className="absolute top-1/2 right-1 -translate-y-1/2 cursor-pointer"
+          >
+            <X className="size-3.5" />
+          </Button>
+        )}
       </div>
 
       {sector && (
@@ -335,7 +388,13 @@ export function UniverseTable() {
 
       {isPending && <Skeleton className="h-64 rounded-xl" />}
       {isError && <ErrorState error={error} onRetry={() => refetch()} />}
-      {data && data.items.length === 0 && (
+      {data && data.items.length === 0 && q && (
+        <EmptyState
+          title={`No matches for "${q}"`}
+          description="Try a different ticker or company name."
+        />
+      )}
+      {data && data.items.length === 0 && !q && (
         <EmptyState title="No tracked tickers yet" description="Add a custom ticker to begin." />
       )}
 
