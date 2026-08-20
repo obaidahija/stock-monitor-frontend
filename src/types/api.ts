@@ -45,6 +45,10 @@ export interface SectorSummaryOut {
   sector: string
   avg_change_pct: number | null
   count: number
+  advancers: number
+  decliners: number
+  top_ticker: string | null
+  top_ticker_change_pct: number | null
 }
 
 export interface SectorHeatmapOut {
