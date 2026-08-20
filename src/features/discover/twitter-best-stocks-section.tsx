@@ -1,19 +1,12 @@
-import { Link } from 'react-router'
+import { useNavigate } from 'react-router'
 import { RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { ErrorState } from '@/components/shared/error-state'
 import { EmptyState } from '@/components/shared/empty-state'
-import { formatNumber, formatRelativeTime, formatScore } from '@/lib/format'
+import { formatNumber, formatRelativeTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import {
   useDisableMonitoredTicker,
@@ -21,12 +14,16 @@ import {
   useRefreshTwitterBestStocks,
   useTwitterBestStocks,
 } from './hooks'
+import { RankedBarRow, SentimentLegend, sentimentTone } from './ranked-bar-row'
 
 export function TwitterBestStocksSection() {
   const { data, isPending, isError, error, refetch } = useTwitterBestStocks(20)
   const refresh = useRefreshTwitterBestStocks()
   const enable = useEnableMonitoredTicker()
   const disable = useDisableMonitoredTicker()
+  const navigate = useNavigate()
+
+  const maxAuthors = Math.max(1, ...(data?.items.map((item) => item.unique_authors) ?? []))
 
   function requestRefresh() {
     refresh.mutate(undefined, {
@@ -46,19 +43,15 @@ export function TwitterBestStocksSection() {
 
   return (
     <section className="space-y-3">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="font-semibold">Best Stocks on Twitter</h2>
-          <p className="text-muted-foreground text-xs">
-            Unique authors mentioning each ticker across six high-intent searches · daily at 6:00 AM ET
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          {data?.generated_at && (
-            <span className="text-muted-foreground text-xs">
-              Updated {formatRelativeTime(data.generated_at)} · {data.qualified_sample_size.toLocaleString()} posts
-            </span>
-          )}
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <h2 className="font-semibold">Best Stocks on Twitter</h2>
+        <div className="flex flex-wrap items-center gap-3">
+          <SentimentLegend />
+          <span className="text-muted-foreground text-xs">
+            {data?.generated_at
+              ? `Updated ${formatRelativeTime(data.generated_at)} · ${data.qualified_sample_size.toLocaleString()} posts`
+              : 'Unique authors across six high-intent searches'}
+          </span>
           <Button
             variant="outline"
             size="sm"
@@ -86,73 +79,59 @@ export function TwitterBestStocksSection() {
       )}
 
       {data && data.items.length > 0 && (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-12">#</TableHead>
-              <TableHead>Ticker</TableHead>
-              <TableHead>Unique authors</TableHead>
-              <TableHead>Posts</TableHead>
-              <TableHead>Top post views</TableHead>
-              <TableHead>Sentiment</TableHead>
-              <TableHead className="text-right">Monitoring</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.items.map((item) => (
-              <TableRow key={item.ticker}>
-                <TableCell className="text-muted-foreground tabular-nums">{item.rank}</TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap items-center gap-x-1 font-medium">
-                    {item.symbols.map((symbol, index) => (
-                      <span key={symbol.ticker}>
-                        {index > 0 && <span className="text-muted-foreground mr-1">/</span>}
-                        <Link to={`/stocks/${symbol.ticker}`} className="hover:underline">
-                          {symbol.ticker}
-                        </Link>
-                      </span>
-                    ))}
-                  </div>
-                  {item.company_name && (
-                    <p className="text-muted-foreground text-xs">{item.company_name}</p>
-                  )}
-                </TableCell>
-                <TableCell className="tabular-nums">{formatNumber(item.unique_authors)}</TableCell>
-                <TableCell className="tabular-nums">{formatNumber(item.unique_posts)}</TableCell>
-                <TableCell className="tabular-nums">{formatNumber(item.representative_views)}</TableCell>
-                <TableCell
-                  className={cn(
-                    'tabular-nums',
-                    (item.sentiment_score ?? 0) > 0
-                      ? 'text-emerald-600 dark:text-emerald-400'
-                      : (item.sentiment_score ?? 0) < 0
-                        ? 'text-red-600 dark:text-red-400'
-                        : 'text-muted-foreground',
-                  )}
-                >
-                  {formatScore(item.sentiment_score)}
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex flex-wrap justify-end gap-1">
+        <div className="divide-border divide-y">
+          {data.items.map((item) => {
+            const tone = sentimentTone(item.sentiment_score)
+            const pct = (item.unique_authors / maxAuthors) * 100
+            return (
+              <RankedBarRow
+                key={item.ticker}
+                rank={item.rank}
+                onNavigate={() => navigate(`/stocks/${item.ticker}?tab=twitter`)}
+                identity={
+                  item.company_name ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="block truncate font-medium">
+                          {item.symbols.map((s) => s.ticker).join(' / ')}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>{item.company_name}</TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <span className="block truncate font-medium">
+                      {item.symbols.map((s) => s.ticker).join(' / ')}
+                    </span>
+                  )
+                }
+                pct={pct}
+                tone={tone}
+                primaryValue={formatNumber(item.unique_authors)}
+                meta={
+                  <>
+                    {formatNumber(item.unique_posts)} posts ·{' '}
+                    {formatNumber(item.representative_views)} views
+                  </>
+                }
+                trailing={
+                  <div className="flex shrink-0 flex-wrap justify-end gap-1">
                     {item.symbols.map((symbol) => (
                       <Button
                         key={symbol.ticker}
                         variant={symbol.monitoring_enabled ? 'secondary' : 'outline'}
                         size="xs"
                         disabled={enable.isPending || disable.isPending}
-                        onClick={() =>
-                          toggleMonitoring(symbol.ticker, symbol.monitoring_enabled)
-                        }
+                        onClick={() => toggleMonitoring(symbol.ticker, symbol.monitoring_enabled)}
                       >
                         {symbol.ticker} · {symbol.monitoring_enabled ? 'Stop' : 'Monitor'}
                       </Button>
                     ))}
                   </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                }
+              />
+            )
+          })}
+        </div>
       )}
     </section>
   )

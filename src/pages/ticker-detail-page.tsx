@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from 'react-router'
+import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { Badge } from '@/components/ui/badge'
 import { PageHeader } from '@/components/shared/page-header'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -16,12 +16,46 @@ import { RedditTab } from '@/features/ticker-detail/reddit-tab'
 import { useAutoRefreshUniverseScore, useUniverseScore } from '@/features/ticker-detail/hooks'
 import { ManageListsDialog } from '@/features/watchlists/manage-lists-dialog'
 
+const DETAIL_TABS = [
+  'analysis',
+  'ai-research',
+  'earnings',
+  'news',
+  'social',
+  'twitter',
+  'reddit',
+  'filings',
+  'catalysts',
+] as const
+
 export function TickerDetailPage() {
   const { ticker = '' } = useParams<{ ticker: string }>()
   const symbol = ticker.toUpperCase()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   useAutoRefreshUniverseScore(symbol)
   const { data: universeScore } = useUniverseScore(symbol)
+
+  const requestedTab = searchParams.get('tab')
+  const activeTab =
+    requestedTab && (DETAIL_TABS as readonly string[]).includes(requestedTab)
+      ? requestedTab
+      : 'analysis'
+
+  function handleTabChange(tab: string) {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        if (tab === 'analysis') {
+          next.delete('tab')
+        } else {
+          next.set('tab', tab)
+        }
+        return next
+      },
+      { replace: true },
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -51,7 +85,7 @@ export function TickerDetailPage() {
 
       <PriceChart ticker={symbol} />
 
-      <Tabs defaultValue="analysis">
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList>
           <TabsTrigger value="analysis">Analysis</TabsTrigger>
           <TabsTrigger value="ai-research">AI Research</TabsTrigger>

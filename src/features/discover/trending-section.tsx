@@ -1,29 +1,28 @@
-import { Link } from 'react-router'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+import { useNavigate } from 'react-router'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState } from '@/components/shared/error-state'
 import { EmptyState } from '@/components/shared/empty-state'
 import { formatScore } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { useTrending } from './hooks'
+import { RankedBarRow, SentimentLegend, TONE_TEXT_CLASS, sentimentTone } from './ranked-bar-row'
+
+const BUZZ_SCORE_MAX = 100
 
 export function TrendingSection() {
   const { data, isPending, isError, error, refetch } = useTrending(20)
+  const navigate = useNavigate()
 
   return (
     <section className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <h2 className="font-semibold">Trending on Reddit</h2>
-        <p className="text-muted-foreground text-xs">
-          Buzz score (0-100), refreshed once/day — budget-limited API
-        </p>
+        <div className="flex items-center gap-3">
+          <SentimentLegend />
+          <p className="text-muted-foreground text-xs">
+            Buzz score (0-100), refreshed once/day
+          </p>
+        </div>
       </div>
 
       {isPending && <Skeleton className="h-40 rounded-xl" />}
@@ -36,47 +35,34 @@ export function TrendingSection() {
       )}
 
       {data && data.length > 0 && (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Ticker</TableHead>
-              <TableHead>Buzz score</TableHead>
-              <TableHead>Sentiment</TableHead>
-              <TableHead>Mentions</TableHead>
-              <TableHead>Trend</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.map((item) => (
-              <TableRow key={item.ticker}>
-                <TableCell className="font-medium">
-                  <Link to={`/stocks/${item.ticker}`} className="hover:underline">
-                    {item.ticker}
-                  </Link>
-                </TableCell>
-                <TableCell className="tabular-nums">
-                  {item.buzz_score !== null ? item.buzz_score.toFixed(0) : '—'}
-                </TableCell>
-                <TableCell
-                  className={cn(
-                    'tabular-nums',
-                    (item.sentiment_score ?? 0) > 0
-                      ? 'text-emerald-600 dark:text-emerald-400'
-                      : (item.sentiment_score ?? 0) < 0
-                        ? 'text-red-600 dark:text-red-400'
-                        : 'text-muted-foreground',
-                  )}
-                >
-                  {formatScore(item.sentiment_score)}
-                </TableCell>
-                <TableCell>{item.mentions?.toLocaleString() ?? '—'}</TableCell>
-                <TableCell className="text-muted-foreground capitalize">
-                  {item.trend ?? '—'}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <div className="divide-border divide-y">
+          {data.map((item, index) => {
+            const tone = sentimentTone(item.sentiment_score)
+            const pct = item.buzz_score !== null ? (item.buzz_score / BUZZ_SCORE_MAX) * 100 : 0
+            return (
+              <RankedBarRow
+                key={item.ticker}
+                rank={index + 1}
+                onNavigate={() => navigate(`/stocks/${item.ticker}?tab=reddit`)}
+                identity={<span className="font-medium">{item.ticker}</span>}
+                pct={pct}
+                tone={tone}
+                primaryValue={item.buzz_score !== null ? item.buzz_score.toFixed(0) : '—'}
+                meta={
+                  <>
+                    {item.mentions !== null && (
+                      <>{item.mentions.toLocaleString()} mentions · </>
+                    )}
+                    <span className={cn(TONE_TEXT_CLASS[tone])}>
+                      {formatScore(item.sentiment_score)}
+                    </span>
+                    {item.trend && <span className="capitalize"> · {item.trend}</span>}
+                  </>
+                }
+              />
+            )
+          })}
+        </div>
       )}
     </section>
   )
