@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import * as api from '@/api/macro'
 import type { MacroBucketGranularity } from '@/types/api'
 
@@ -38,5 +38,16 @@ export function useMacroNews(params: api.MacroNewsParams) {
     // faster while any visible item is still pending.
     refetchInterval: (query) =>
       query.state.data?.some((item) => item.classification_pending) ? 15_000 : 60_000,
+  })
+}
+
+// Sector-impact resolves each candidate item through a local LLM call
+// (app/services/macro_sector_impact_service.py) -- a 20-40s on-demand read,
+// not something to poll for. A mutation matches the button-triggered
+// pattern already used for other expensive on-demand reads (e.g.
+// useRefreshAiResearch/ForecastCard's onGenerate), not a query.
+export function useMacroSectorImpact() {
+  return useMutation({
+    mutationFn: (hours: number) => api.getMacroSectorImpact(hours),
   })
 }

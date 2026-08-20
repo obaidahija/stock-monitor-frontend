@@ -2,6 +2,7 @@ import { apiClient } from '@/lib/api-client'
 import type {
   MacroBucketGranularity,
   MacroNewsItemOut,
+  MacroSectorImpactOut,
   MacroSignalHistoryBucketOut,
   MacroSignalOut,
 } from '@/types/api'
@@ -26,4 +27,8 @@ export function getMacroNews(params: MacroNewsParams = {}) {
   if (params.category) query.set('category', params.category)
   query.set('hours', String(params.hours ?? 24))
   return apiClient.get<MacroNewsItemOut[]>(`/v1/macro/news?${query.toString()}`)
+}
+
+export function getMacroSectorImpact(hours = 24) {
+  return apiClient.get<MacroSectorImpactOut>(`/v1/macro/sector-impact?hours=${hours}`)
 }

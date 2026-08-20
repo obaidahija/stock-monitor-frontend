@@ -1011,3 +1011,30 @@ export interface MacroSignalHistoryBucketOut {
   total: number
   categories: Record<string, number>
 }
+
+export interface MacroSectorImpactItemOut {
+  id: number
+  title: string
+  url: string
+  category: string
+  via_category: string | null
+  direction: 'positive' | 'negative'
+  stance: string
+  magnitude: string
+  direction_note: string
+}
+
+export interface MacroSectorImpactBucketOut {
+  positive_count: number
+  negative_count: number
+  net: 'positive' | 'negative' | 'mixed' | 'neutral'
+  items: MacroSectorImpactItemOut[]
+}
+
+export interface MacroSectorImpactOut {
+  window_hours: number
+  items_considered: number
+  items_resolved: number
+  sectors: Record<string, MacroSectorImpactBucketOut>
+  generated_at: string
+}
