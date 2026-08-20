@@ -1,16 +1,15 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, Sparkles } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ErrorState } from '@/components/shared/error-state'
-import { formatRelativeTime } from '@/lib/format'
+import { ApiError } from '@/lib/api-client'
+import { formatDate, formatRelativeTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { MacroSectorImpactBucketOut } from '@/types/api'
 import { macroCategoryLabel } from './constants'
-import { useMacroSectorImpact } from './hooks'
-
-const WINDOW_HOURS = 24
+import { useMacroSectorImpact, useMacroSectorImpactDates, useRefreshMacroSectorImpact } from './hooks'
 
 const NET_BADGE_CLASSES: Record<MacroSectorImpactBucketOut['net'], string> = {
   positive: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-transparent',
@@ -129,8 +128,28 @@ function SectorRow({
   )
 }
 
+// `selectedDate: null` means "today" (no ?date= param -- backend resolves
+// the ET calendar date itself). History nav below resolves a concrete date
+// once available (from the loaded snapshot or the dates list) so prev/next
+// can walk the list even before today's row exists.
 export function MacroSectorImpact() {
-  const { mutate, data, isPending, isError, error } = useMacroSectorImpact()
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const { data, isPending, isError, error } = useMacroSectorImpact(selectedDate ?? undefined)
+  const { data: dates = [] } = useMacroSectorImpactDates(30)
+  const refresh = useRefreshMacroSectorImpact()
+
+  // A 404 means "no snapshot computed for this date yet" -- an expected,
+  // non-error state (today before the first refresh, or a past date the
+  // sync job never ran for), not something to show ErrorState/retry for.
+  const isNotFound = isError && error instanceof ApiError && error.status === 404
+  const isRealError = isError && !isNotFound
+
+  const isToday = selectedDate === null
+  const anchorDate = data?.impact_date ?? dates[0]?.impact_date ?? null
+  const anchorIndex = anchorDate ? dates.findIndex((d) => d.impact_date === anchorDate) : -1
+  const olderDate = anchorIndex === -1 ? dates[0]?.impact_date : dates[anchorIndex + 1]?.impact_date
+  const canGoOlder = Boolean(olderDate)
+  const canGoNewer = !isToday && anchorIndex > 0
 
   const sortedSectors = data
     ? Object.entries(data.sectors).sort(
@@ -147,33 +166,71 @@ export function MacroSectorImpact() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-3">
         <CardTitle>Sector impact</CardTitle>
-        <Button size="sm" variant="outline" disabled={isPending} onClick={() => mutate(WINDOW_HOURS)}>
-          <Sparkles className={cn(isPending && 'animate-pulse')} aria-hidden="true" />
-          {isPending ? 'Resolving…' : data ? 'Re-run' : 'Run analysis'}
-        </Button>
+        {isToday && (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={refresh.isPending}
+            onClick={() => refresh.mutate()}
+          >
+            <Sparkles className={cn(refresh.isPending && 'animate-pulse')} aria-hidden="true" />
+            {refresh.isPending ? 'Resolving…' : data ? 'Refresh' : 'Run analysis'}
+          </Button>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
-        {!data && !isPending && !isError && (
+        <div className="flex items-center justify-between gap-3">
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={!canGoOlder}
+            onClick={() => olderDate && setSelectedDate(olderDate)}
+          >
+            <ChevronLeft aria-hidden="true" />
+            Older
+          </Button>
+          <span className="text-muted-foreground text-sm font-medium">
+            {isToday ? `Today${anchorDate ? ` · ${formatDate(anchorDate)}` : ''}` : formatDate(selectedDate)}
+          </span>
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={!canGoNewer}
+            onClick={() =>
+              setSelectedDate(anchorIndex === 1 ? null : (dates[anchorIndex - 1]?.impact_date ?? null))
+            }
+          >
+            Newer
+            <ChevronRight aria-hidden="true" />
+          </Button>
+        </div>
+
+        {isNotFound && !isPending && isToday && (
           <p className="text-muted-foreground text-sm">
             Resolves each candidate item's stance via a local LLM call, then applies static
             transmission rules to estimate which sector ETFs are pressured which way over the
-            last {WINDOW_HOURS}h. Informational, not backtested — on-demand only, can take
-            20-40s.
+            last 24h. Informational, not backtested — refresh can take 20-40s the first time new
+            items show up, near-instant once nothing's changed.
           </p>
         )}
 
-        {isPending && (
+        {isNotFound && !isPending && !isToday && (
+          <p className="text-muted-foreground text-sm">No snapshot was computed for this date.</p>
+        )}
+
+        {(isPending || refresh.isPending) && (
           <div className="border-border flex flex-col items-center gap-2 rounded-lg border border-dashed py-10 text-center">
             <Sparkles className="text-muted-foreground size-5 animate-pulse" aria-hidden="true" />
             <p className="text-muted-foreground text-sm">
-              Resolving stance for each candidate item…
+              {refresh.isPending ? 'Resolving stance for each new candidate item…' : 'Loading…'}
             </p>
           </div>
         )}
 
-        {isError && <ErrorState error={error} onRetry={() => mutate(WINDOW_HOURS)} />}
+        {isRealError && <ErrorState error={error} />}
+        {refresh.isError && <ErrorState error={refresh.error} onRetry={() => refresh.mutate()} />}
 
-        {data && !isPending && (
+        {data && !isPending && !refresh.isPending && (
           <>
             <div className="grid grid-cols-3 gap-3">
               <StatTile label="Considered" value={String(data.items_considered)} />

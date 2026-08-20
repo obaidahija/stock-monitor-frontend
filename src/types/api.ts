@@ -1032,9 +1032,15 @@ export interface MacroSectorImpactBucketOut {
 }
 
 export interface MacroSectorImpactOut {
+  impact_date: string
   window_hours: number
   items_considered: number
   items_resolved: number
   sectors: Record<string, MacroSectorImpactBucketOut>
+  generated_at: string
+}
+
+export interface MacroSectorImpactDateOut {
+  impact_date: string
   generated_at: string
 }

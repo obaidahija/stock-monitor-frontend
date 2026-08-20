@@ -1,5 +1,6 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as api from '@/api/macro'
+import { ApiError } from '@/lib/api-client'
 import type { MacroBucketGranularity } from '@/types/api'
 
 export const macroKeys = {
@@ -7,6 +8,8 @@ export const macroKeys = {
   signalHistory: (bucket: MacroBucketGranularity, periods: number) =>
     ['macro', 'signal-history', bucket, periods] as const,
   news: (params: api.MacroNewsParams) => ['macro', 'news', params] as const,
+  sectorImpact: (date: string | undefined) => ['macro', 'sector-impact', date ?? 'today'] as const,
+  sectorImpactDates: (limit: number) => ['macro', 'sector-impact-dates', limit] as const,
 }
 
 export function useMacroSignal(hours = 24) {
@@ -41,13 +44,41 @@ export function useMacroNews(params: api.MacroNewsParams) {
   })
 }
 
-// Sector-impact resolves each candidate item through a local LLM call
-// (app/services/macro_sector_impact_service.py) -- a 20-40s on-demand read,
-// not something to poll for. A mutation matches the button-triggered
-// pattern already used for other expensive on-demand reads (e.g.
-// useRefreshAiResearch/ForecastCard's onGenerate), not a query.
-export function useMacroSectorImpact() {
+// Sector-impact is now a persisted, date-keyed snapshot (one row per ET
+// calendar date -- app/services/macro_sector_impact_service.py). Reading it
+// is a cheap DB lookup, so this is a query again, not a mutation; a 404
+// just means "not computed yet for this date," not a failure worth retrying.
+export function useMacroSectorImpact(date?: string) {
+  return useQuery({
+    queryKey: macroKeys.sectorImpact(date),
+    queryFn: () => api.getMacroSectorImpact(date),
+    retry: (failureCount, error) => {
+      if (error instanceof ApiError && error.status === 404) return false
+      return failureCount < 2
+    },
+  })
+}
+
+// The actual recompute stays a mutation -- button-triggered, same pattern as
+// useRefreshAiResearch/ForecastCard's onGenerate. Always targets today only;
+// resolves each *new* candidate item through a local LLM call (cached
+// resolutions are reused), so it's ~20-40s the first time new items show up
+// and near-instant once nothing's changed.
+export function useRefreshMacroSectorImpact() {
+  const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (hours: number) => api.getMacroSectorImpact(hours),
+    mutationFn: () => api.refreshMacroSectorImpact(),
+    onSuccess: (data) => {
+      queryClient.setQueryData(macroKeys.sectorImpact(undefined), data)
+      queryClient.setQueryData(macroKeys.sectorImpact(data.impact_date), data)
+      queryClient.invalidateQueries({ queryKey: ['macro', 'sector-impact-dates'] })
+    },
+  })
+}
+
+export function useMacroSectorImpactDates(limit = 30) {
+  return useQuery({
+    queryKey: macroKeys.sectorImpactDates(limit),
+    queryFn: () => api.getMacroSectorImpactDates(limit),
   })
 }
