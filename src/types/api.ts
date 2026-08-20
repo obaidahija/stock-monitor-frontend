@@ -978,3 +978,36 @@ export interface RedditAuthRecheckOut {
   auth: RedditAuthStateOut
   operation: RedditOperationOut | null
 }
+
+export interface MacroNewsItemOut {
+  id: number
+  source: string
+  url: string
+  title: string
+  summary: string | null
+  categories: string[]
+  sentiment_label: string | null
+  sentiment_score: number | null
+  published_at: string
+  classification_pending: boolean
+}
+
+export interface MacroCategorySignal {
+  count: number
+  avg_sentiment_score: number | null
+}
+
+export interface MacroSignalOut {
+  window_hours: number
+  total_items: number
+  categories: Record<string, MacroCategorySignal>
+  generated_at: string
+}
+
+export type MacroBucketGranularity = 'hour' | 'day'
+
+export interface MacroSignalHistoryBucketOut {
+  bucket_start: string
+  total: number
+  categories: Record<string, number>
+}

@@ -56,6 +56,17 @@ const JOB_GROUPS: JobGroup[] = [
     ordered: false,
   },
   {
+    key: 'macro',
+    title: 'Macro news',
+    description:
+      'macro_news_ingest fetches and stores market-wide (non-ticker) news; ' +
+      'macro_news_classify tags pending rows with a category + sentiment separately, ' +
+      'so classification backlog never blocks fetching fresh items. ' +
+      'macro_signal_eval logs a forward-looking hit-rate snapshot once/day.',
+    jobNames: ['macro_news_ingest', 'macro_news_classify', 'macro_signal_eval'],
+    ordered: true,
+  },
+  {
     key: 'twitter-collection',
     title: 'Twitter collection',
     description:

@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { to: '/watchlists', label: 'Watchlists' },
   { to: '/twitter', label: 'Twitter' },
   { to: '/reddit', label: 'Reddit' },
+  { to: '/macro', label: 'Macro' },
   { to: '/system', label: 'System' },
 ]
 
