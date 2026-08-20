@@ -3,8 +3,7 @@ import { UniverseTable } from '@/features/discover/universe-table'
 import { SectorHeatmap } from '@/features/discover/sector-heatmap'
 import { MacroAttentionStrip } from '@/features/discover/macro-attention-strip'
 import { NotableFilingsSection } from '@/features/discover/notable-filings-section'
-import { TrendingSection } from '@/features/discover/trending-section'
-import { TwitterBestStocksSection } from '@/features/discover/twitter-best-stocks-section'
+import { SocialBuzzSection } from '@/features/discover/social-buzz-section'
 
 export function DiscoverPage() {
   return (
@@ -18,10 +17,7 @@ export function DiscoverPage() {
       <SectorHeatmap />
       <UniverseTable />
       <NotableFilingsSection />
-      <div className="grid grid-cols-1 gap-8 xl:grid-cols-2">
-        <TrendingSection />
-        <TwitterBestStocksSection />
-      </div>
+      <SocialBuzzSection />
     </div>
   )
 }
