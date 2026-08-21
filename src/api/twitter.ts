@@ -4,7 +4,6 @@ import type {
   TwitterAuthStateOut,
   TwitterFeedRefreshOut,
   TwitterOperationOut,
-  TwitterMonitoredTickerOut,
   TwitterPageOut,
   TwitterSearchResultOut,
   TwitterTrustedAccountCreateOut,
@@ -84,16 +83,4 @@ export function getTwitterFeed(params: TwitterFeedParams = {}) {
 
 export function refreshTwitterFeed() {
   return apiClient.post<TwitterFeedRefreshOut>('/v1/twitter/feed/refresh')
-}
-
-export function enableMonitoredTicker(ticker: string) {
-  return apiClient.post<TwitterMonitoredTickerOut>(
-    `/v1/twitter/monitored-tickers/${encodeURIComponent(ticker)}`,
-  )
-}
-
-export function disableMonitoredTicker(ticker: string) {
-  return apiClient.delete<void>(
-    `/v1/twitter/monitored-tickers/${encodeURIComponent(ticker)}`,
-  )
 }

@@ -117,8 +117,7 @@ export function TwitterTab({ ticker }: { ticker: string }) {
           <DialogHeader>
             <DialogTitle>Refresh {ticker} tweets</DialogTitle>
             <DialogDescription>
-              Choose the minimum number of views a tweet needs for this refresh. The threshold
-              does not change scheduled monitoring.
+              Choose the minimum number of views a tweet needs for this refresh.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-2 py-2">

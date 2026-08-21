@@ -16,6 +16,6 @@ export function RedditFeedList() {
   const [selected, setSelected] = useState<RedditPostOut | null>(null)
   if (query.isPending) return <Skeleton className="h-64" aria-label="Loading Reddit feed" />
   if (query.isError) return <ErrorState error={query.error} onRetry={() => query.refetch()} />
-  if (!query.data?.items.length) return <EmptyState title="No Reddit discussions yet" description="Add trusted sources, monitor a ticker, or refresh the feed." />
+  if (!query.data?.items.length) return <EmptyState title="No Reddit discussions yet" description="Add trusted sources, search a ticker, or refresh the feed." />
   return <div className="space-y-3"><div className="space-y-2">{query.data.items.map((post) => <RedditPostCard key={post.id} post={post} onSelect={setSelected} />)}</div><Pagination page={page} totalPages={Math.max(1, Math.ceil(query.data.total / query.data.page_size))} onPageChange={(nextPage) => setParams((previous) => { const next = new URLSearchParams(previous); if (nextPage === 1) next.delete('page'); else next.set('page', String(nextPage)); return next })} /><RedditPostDetailDialog post={selected} onOpenChange={(open) => { if (!open) setSelected(null) }} /></div>
 }

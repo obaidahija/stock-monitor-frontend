@@ -14,8 +14,6 @@ import {
   refreshTwitterBestStocks,
   type UniverseParams,
 } from '@/api/discover'
-import { disableMonitoredTicker, enableMonitoredTicker } from '@/api/twitter'
-import { disableRedditMonitoredTicker, enableRedditMonitoredTicker } from '@/api/reddit'
 
 export function useNotableFilings() {
   return useQuery({ queryKey: ['discover', 'filings'], queryFn: getNotableFilings })
@@ -113,49 +111,5 @@ export function useHardDeleteTicker() {
   return useMutation({
     mutationFn: (ticker: string) => hardDeleteTicker(ticker),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['discover', 'universe'] }),
-  })
-}
-
-export function useEnableMonitoredTicker() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (ticker: string) => enableMonitoredTicker(ticker),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['discover', 'universe'] })
-      queryClient.invalidateQueries({ queryKey: ['discover', 'twitter-best-stocks'] })
-    },
-  })
-}
-
-export function useDisableMonitoredTicker() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (ticker: string) => disableMonitoredTicker(ticker),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['discover', 'universe'] })
-      queryClient.invalidateQueries({ queryKey: ['discover', 'twitter-best-stocks'] })
-    },
-  })
-}
-
-export function useEnableRedditMonitoredTicker() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (ticker: string) => enableRedditMonitoredTicker(ticker),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['discover', 'universe'] })
-      queryClient.invalidateQueries({ queryKey: ['reddit'] })
-    },
-  })
-}
-
-export function useDisableRedditMonitoredTicker() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (ticker: string) => disableRedditMonitoredTicker(ticker),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['discover', 'universe'] })
-      queryClient.invalidateQueries({ queryKey: ['reddit'] })
-    },
   })
 }

@@ -6,7 +6,6 @@ import type {
   RedditFeedFilter,
   RedditFeedRefreshOut,
   RedditListingSort,
-  RedditMonitoredTickerOut,
   RedditOperationOut,
   RedditPageOut,
   RedditSearchResultOut,
@@ -59,18 +58,6 @@ export function getRedditFeed(params: RedditFeedParams = {}) {
 
 export function refreshRedditFeed() {
   return apiClient.post<RedditFeedRefreshOut>('/v1/reddit/feed/refresh')
-}
-
-export function enableRedditMonitoredTicker(ticker: string) {
-  return apiClient.post<RedditMonitoredTickerOut>(
-    `/v1/reddit/monitored-tickers/${encodeURIComponent(ticker)}`,
-  )
-}
-
-export function disableRedditMonitoredTicker(ticker: string) {
-  return apiClient.delete<void>(
-    `/v1/reddit/monitored-tickers/${encodeURIComponent(ticker)}`,
-  )
 }
 
 export function getTrustedSubreddits() {

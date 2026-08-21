@@ -5,8 +5,6 @@ export interface TrackedTickerOut {
   ticker: string
   company_name: string | null
   is_manual: boolean
-  twitter_monitoring_enabled: boolean
-  reddit_monitoring_enabled: boolean
   note: string | null
   added_at: string
   score: number | null
@@ -193,11 +191,9 @@ export interface TwitterBestStockOut {
   unique_posts: number
   representative_views: number
   sentiment_score: number | null
-  monitoring_enabled: boolean
   company_name: string | null
   symbols: {
     ticker: string
-    monitoring_enabled: boolean
   }[]
 }
 
@@ -807,13 +803,6 @@ export interface TwitterPageOut {
 
 export interface TwitterFeedRefreshOut {
   trusted_operations: TwitterOperationOut[]
-  monitored_ticker_operations: TwitterOperationOut[]
-}
-
-export interface TwitterMonitoredTickerOut {
-  ticker: string
-  twitter_monitoring_enabled: boolean
-  operation: TwitterOperationOut | null
 }
 
 export type RedditAuthState = 'checking' | 'valid' | 'missing' | 'invalid' | 'unavailable'
@@ -984,15 +973,8 @@ export interface RedditTrustedAuthorOut {
 }
 
 export interface RedditFeedRefreshOut {
-  ticker_operations: RedditOperationOut[]
   subreddit_operations: RedditOperationOut[]
   author_operations: RedditOperationOut[]
-}
-
-export interface RedditMonitoredTickerOut {
-  ticker: string
-  reddit_monitoring_enabled: boolean
-  operation: RedditOperationOut | null
 }
 
 export interface RedditAuthRecheckOut {

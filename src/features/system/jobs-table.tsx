@@ -70,13 +70,12 @@ const JOB_GROUPS: JobGroup[] = [
     key: 'twitter-collection',
     title: 'Twitter collection',
     description:
-      'Trusted accounts and selected monitored tickers refresh every four hours. ' +
+      'Trusted accounts refresh every four hours. ' +
       'Best Stocks scans six phrases with Top and Latest once daily at 6:00 AM ET. ' +
       'Sentiment classification and retention run independently; each job can be triggered manually.',
     jobNames: [
       'twitter_best_stocks_scan',
       'twitter_trusted_sweep',
-      'twitter_monitored_ticker_sweep',
       'twitter_sentiment_classify',
       'twitter_retention',
     ],

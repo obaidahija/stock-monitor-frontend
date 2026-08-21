@@ -11,13 +11,7 @@ import { EmptyState } from '@/components/shared/empty-state'
 import { formatNumber, formatScore } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { TrendingSocialOut, TwitterBestStockOut } from '@/types/api'
-import {
-  useDisableMonitoredTicker,
-  useEnableMonitoredTicker,
-  useRefreshTwitterBestStocks,
-  useTrending,
-  useTwitterBestStocks,
-} from './hooks'
+import { useRefreshTwitterBestStocks, useTrending, useTwitterBestStocks } from './hooks'
 
 const MAX_ROWS = 25
 const ROW_HEIGHT = 52
@@ -125,8 +119,6 @@ export function SocialBuzzSection() {
   const reddit = useTrending(20)
   const twitter = useTwitterBestStocks(20)
   const refresh = useRefreshTwitterBestStocks()
-  const enable = useEnableMonitoredTicker()
-  const disable = useDisableMonitoredTicker()
   const navigate = useNavigate()
   const [platformFilter, setPlatformFilter] = useState<PlatformFilter>('all')
 
@@ -149,14 +141,6 @@ export function SocialBuzzSection() {
       onSuccess: (result) =>
         toast.success(result.reused ? 'The current Twitter scan is still running.' : 'Twitter scan queued.'),
       onError: () => toast.error('Could not start the Twitter scan.'),
-    })
-  }
-
-  function toggleMonitoring(ticker: string, enabled: boolean) {
-    const mutation = enabled ? disable : enable
-    mutation.mutate(ticker, {
-      onSuccess: () => toast.success(`${ticker} ${enabled ? 'removed from' : 'added to'} Twitter monitoring.`),
-      onError: () => toast.error(`Could not update Twitter monitoring for ${ticker}.`),
     })
   }
 
@@ -310,22 +294,6 @@ export function SocialBuzzSection() {
                     </div>
                   </div>
                 </button>
-
-                {showTwitter && (
-                  <div className="hidden shrink-0 flex-wrap justify-end gap-1 sm:flex">
-                    {row.twitter!.symbols.map((symbol) => (
-                      <Button
-                        key={symbol.ticker}
-                        variant={symbol.monitoring_enabled ? 'secondary' : 'outline'}
-                        size="xs"
-                        disabled={enable.isPending || disable.isPending}
-                        onClick={() => toggleMonitoring(symbol.ticker, symbol.monitoring_enabled)}
-                      >
-                        {symbol.ticker} · {symbol.monitoring_enabled ? 'Stop' : 'Monitor'}
-                      </Button>
-                    ))}
-                  </div>
-                )}
               </div>
             )
           })}
