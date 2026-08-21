@@ -7,6 +7,7 @@ import { Pagination } from '@/components/shared/pagination'
 import { useTwitterFeed } from './hooks'
 import { TweetRow } from './tweet-row'
 import { TweetDetailDialog } from './tweet-detail-dialog'
+import { useSelectedTrustedAccounts } from './trusted-accounts-section'
 import type { TwitterFeedFilter, TwitterSort } from '@/api/twitter'
 import type { TwitterPostOut } from '@/types/api'
 
@@ -15,10 +16,12 @@ export function FeedTable({ refetchInterval = false }: { refetchInterval?: numbe
   const filter = (searchParams.get('filter') as TwitterFeedFilter) || 'all'
   const sort = (searchParams.get('sort') as TwitterSort) || 'signal'
   const page = Math.max(1, Number(searchParams.get('page')) || 1)
+  const tickers = searchParams.get('tickers')?.split(',').filter(Boolean) ?? []
+  const { selected: accounts } = useSelectedTrustedAccounts()
   const [selectedPost, setSelectedPost] = useState<TwitterPostOut | null>(null)
 
   const { data, isPending, isError, error, refetch } = useTwitterFeed(
-    { filter, sort, page },
+    { filter, sort, page, tickers, usernames: accounts },
     refetchInterval,
   )
 
@@ -35,7 +38,19 @@ export function FeedTable({ refetchInterval = false }: { refetchInterval?: numbe
     <div className="space-y-3">
       {isPending && <Skeleton className="h-64 rounded-xl" />}
       {isError && <ErrorState error={error} onRetry={() => refetch()} />}
-      {data && data.items.length === 0 && (
+      {data && data.items.length === 0 && accounts.length > 0 && (
+        <EmptyState
+          title="No tweets from the selected account(s)"
+          description="Try clearing the account filter above or wait for the next trusted-fetch cycle."
+        />
+      )}
+      {data && data.items.length === 0 && accounts.length === 0 && tickers.length > 0 && (
+        <EmptyState
+          title="No tweets match the selected tickers"
+          description="Try removing a ticker or wait for the next collection cycle."
+        />
+      )}
+      {data && data.items.length === 0 && accounts.length === 0 && tickers.length === 0 && (
         <EmptyState
           title="No tweets in the feed yet"
           description="Add a trusted account or wait for the next viral scan, then try refreshing."

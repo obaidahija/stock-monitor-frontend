@@ -71,6 +71,8 @@ export interface TwitterFeedParams {
   filter?: TwitterFeedFilter
   sort?: TwitterSort
   page?: number
+  tickers?: string[]
+  usernames?: string[]
 }
 
 export function getTwitterFeed(params: TwitterFeedParams = {}) {
@@ -78,6 +80,8 @@ export function getTwitterFeed(params: TwitterFeedParams = {}) {
   if (params.filter) qs.set('filter', params.filter)
   if (params.sort) qs.set('sort', params.sort)
   if (params.page !== undefined) qs.set('page', String(params.page))
+  if (params.tickers && params.tickers.length > 0) qs.set('tickers', params.tickers.join(','))
+  if (params.usernames && params.usernames.length > 0) qs.set('usernames', params.usernames.join(','))
   return apiClient.get<TwitterPageOut>(`/v1/twitter/feed?${qs.toString()}`)
 }
 

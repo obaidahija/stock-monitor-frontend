@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
-import { Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { useSearchParams } from 'react-router'
+import { EllipsisVertical, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -10,7 +11,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import {
@@ -22,14 +22,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { EmptyState } from '@/components/shared/empty-state'
 import { ErrorState } from '@/components/shared/error-state'
 import { ApiError } from '@/lib/api-client'
-import { formatRelativeTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import {
   useAddTrustedAccount,
@@ -38,14 +42,37 @@ import {
   useTrustedAccounts,
 } from './hooks'
 import { useTwitterOperationPoll } from './use-operation-poll'
-import type { TwitterTrustedAccountStatus } from '@/types/api'
+import type { TwitterTrustedAccountOut, TwitterTrustedAccountStatus } from '@/types/api'
 
 const USERNAME_RE = /^[A-Za-z0-9_]{1,15}$/
 
-const STATUS_META: Record<TwitterTrustedAccountStatus, string> = {
-  pending: 'bg-muted text-muted-foreground',
-  active: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
-  invalid: 'bg-red-500/15 text-red-600 dark:text-red-400',
+const STATUS_DOT: Record<TwitterTrustedAccountStatus, string> = {
+  pending: 'bg-amber-500 animate-pulse',
+  active: 'bg-emerald-500',
+  invalid: 'bg-red-500',
+}
+
+const STATUS_TINT: Record<TwitterTrustedAccountStatus, string> = {
+  pending: 'bg-amber-500/5 ring-amber-500/15',
+  active: 'ring-foreground/10 hover:ring-emerald-500/30',
+  invalid: 'bg-red-500/5 ring-red-500/20',
+}
+
+// "30m", "2h", "3d" -- a table cell can afford "30 minutes ago"; a chip can't.
+function compactAge(iso: string | null): string | null {
+  if (!iso) return null
+  const diffSeconds = Math.round((Date.now() - new Date(iso).getTime()) / 1000)
+  const units: [number, string][] = [
+    [31536000, 'y'],
+    [2592000, 'mo'],
+    [86400, 'd'],
+    [3600, 'h'],
+    [60, 'm'],
+  ]
+  for (const [secondsInUnit, suffix] of units) {
+    if (diffSeconds >= secondsInUnit) return `${Math.floor(diffSeconds / secondsInUnit)}${suffix}`
+  }
+  return 'now'
 }
 
 function AddTrustedAccountDialog() {
@@ -118,76 +145,206 @@ function AddTrustedAccountDialog() {
   )
 }
 
-function RemoveAccountAlert({ username }: { username: string }) {
-  const removeTrustedAccount = useRemoveTrustedAccount()
-
-  return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button variant="ghost" size="icon-sm" aria-label={`Remove @${username}`}>
-          <Trash2 />
-        </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Remove @{username}?</AlertDialogTitle>
-          <AlertDialogDescription>
-            MarketScout will stop collecting tweets from this account. You can re-add it later,
-            but it will need to be re-validated.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            variant="destructive"
-            onClick={() =>
-              removeTrustedAccount.mutate(username, {
-                onSuccess: () => toast.success(`@${username} removed`),
-                onError: () => toast.error(`Failed to remove @${username}`),
-              })
-            }
-          >
-            Remove
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  )
-}
-
-function FetchNowButton({ username }: { username: string }) {
+function AccountMenu({
+  username,
+  open,
+  onOpenChange,
+}: {
+  username: string
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const fetchTrustedAccount = useFetchTrustedAccount()
+  const removeTrustedAccount = useRemoveTrustedAccount()
   const poll = useTwitterOperationPoll(fetchTrustedAccount.data?.id ?? null)
-  const isRunning =
+  const isFetching =
     fetchTrustedAccount.isPending || poll.data?.status === 'running' || poll.data?.status === 'queued'
 
   return (
-    <Button
-      variant="ghost"
-      size="icon-sm"
-      aria-label={`Fetch tweets for @${username} now`}
-      disabled={isRunning}
-      onClick={() =>
-        fetchTrustedAccount.mutate(
-          { username },
-          {
-            onError: () => toast.error(`Failed to trigger a fetch for @${username}`),
-          },
-        )
-      }
-    >
-      <RefreshCw className={cn(isRunning && 'animate-spin')} />
-    </Button>
+    <>
+      <DropdownMenu open={open} onOpenChange={onOpenChange}>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            aria-label={`Actions for @${username}`}
+            className="pointer-events-none opacity-0 transition-opacity group-hover/account:pointer-events-auto group-hover/account:opacity-100 data-[state=open]:pointer-events-auto data-[state=open]:opacity-100"
+          >
+            <EllipsisVertical />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem
+            disabled={isFetching}
+            onSelect={() =>
+              fetchTrustedAccount.mutate(
+                { username },
+                { onError: () => toast.error(`Failed to trigger a fetch for @${username}`) },
+              )
+            }
+          >
+            <RefreshCw className={cn(isFetching && 'animate-spin')} />
+            Refresh now
+          </DropdownMenuItem>
+          <DropdownMenuItem variant="destructive" onSelect={() => setConfirmOpen(true)}>
+            <Trash2 />
+            Remove
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove @{username}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              MarketScout will stop collecting tweets from this account. You can re-add it later,
+              but it will need to be re-validated.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() =>
+                removeTrustedAccount.mutate(username, {
+                  onSuccess: () => toast.success(`@${username} removed`),
+                  onError: () => toast.error(`Failed to remove @${username}`),
+                })
+              }
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
+}
+
+function AccountChip({
+  account,
+  selected,
+  onToggleSelected,
+}: {
+  account: TwitterTrustedAccountOut
+  selected: boolean
+  onToggleSelected: () => void
+}) {
+  const [menuOpen, setMenuOpen] = useState(false)
+  const age = compactAge(account.validated_at)
+  const label =
+    account.status === 'invalid' ? 'error' : account.status === 'pending' ? 'validating' : age
+
+  return (
+    <div
+      onClick={onToggleSelected}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onToggleSelected()
+        }
+      }}
+      aria-pressed={selected}
+      aria-label={`Filter feed by @${account.username}`}
+      className={cn(
+        'group/account inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full bg-card pr-1 pl-2.5 text-sm ring-1 transition-colors select-none',
+        STATUS_TINT[account.status],
+        selected && 'outline-2 outline-primary outline-offset-1',
+      )}
+      title={account.status === 'invalid' ? (account.public_error_message ?? undefined) : undefined}
+    >
+      <span className={cn('size-1.5 shrink-0 rounded-full', STATUS_DOT[account.status])} aria-hidden />
+      <span className="font-medium">@{account.username}</span>
+
+      {/* Same grid cell holds both layers so hovering swaps content without resizing
+          the chip or the wrap layout around it; the menu button stays in the tab
+          order (opacity, not `hidden`) so keyboard focus can still reach it. Reveal is
+          driven only by :hover and the menu's own open state -- deliberately NOT
+          group-focus-within, since Radix returns DOM focus to the trigger when the
+          menu closes (e.g. after an outside click), which would keep :focus-within
+          true on this chip forever and leave the button stuck visible. Fading the
+          label also depends on `menuOpen` state (not just CSS :hover) so it stays
+          hidden behind the "..." button even after the pointer leaves the chip while
+          the (portaled) menu content is still open. */}
+      <span className="ml-0.5 grid items-center">
+        <span
+          className={cn(
+            'col-start-1 row-start-1 pointer-events-none text-xs leading-none whitespace-nowrap transition-opacity group-hover/account:opacity-0',
+            menuOpen ? 'opacity-0' : 'opacity-100',
+            account.status === 'invalid' ? 'text-destructive' : 'text-muted-foreground',
+          )}
+        >
+          {label}
+        </span>
+        {/* stopPropagation so opening/using the menu never also toggles this chip's
+            selection -- the two are unrelated actions sharing the same small area. */}
+        <span
+          className="col-start-1 row-start-1 flex items-center"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <AccountMenu username={account.username} open={menuOpen} onOpenChange={setMenuOpen} />
+        </span>
+      </span>
+    </div>
+  )
+}
+
+// Shared with FeedControls/FeedTable via the URL, not props -- both live under
+// the same TwitterPage route and read/write this same search param.
+const ACCOUNTS_PARAM = 'accounts'
+
+export function useSelectedTrustedAccounts() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const selected = searchParams.get(ACCOUNTS_PARAM)?.split(',').filter(Boolean) ?? []
+
+  function setSelected(next: string[]) {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev)
+      if (next.length > 0) params.set(ACCOUNTS_PARAM, next.join(','))
+      else params.delete(ACCOUNTS_PARAM)
+      params.delete('page')
+      return params
+    })
+  }
+
+  return { selected, setSelected }
 }
 
 export function TrustedAccountsSection() {
   const { data, isPending, isError, error, refetch } = useTrustedAccounts()
+  const { selected, setSelected } = useSelectedTrustedAccounts()
+
+  function toggleAccount(username: string) {
+    const isSelected = selected.some((u) => u.toLowerCase() === username.toLowerCase())
+    setSelected(
+      isSelected
+        ? selected.filter((u) => u.toLowerCase() !== username.toLowerCase())
+        : [...selected, username],
+    )
+  }
 
   return (
     <section className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h2 className="font-semibold">Trusted accounts</h2>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <h2 className="font-semibold">Trusted accounts</h2>
+          {selected.length > 0 && (
+            <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
+              Filtering feed by {selected.length} account{selected.length > 1 ? 's' : ''}
+              <button
+                type="button"
+                onClick={() => setSelected([])}
+                className="text-primary hover:underline"
+              >
+                Clear
+              </button>
+            </span>
+          )}
+        </div>
         <AddTrustedAccountDialog />
       </div>
 
@@ -201,46 +358,16 @@ export function TrustedAccountsSection() {
       )}
 
       {data && data.length > 0 && (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Username</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Validated</TableHead>
-              <TableHead>Error</TableHead>
-              <TableHead className="w-20" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.map((account) => (
-              <TableRow key={account.id}>
-                <TableCell className="font-medium">@{account.username}</TableCell>
-                <TableCell>
-                  <span
-                    className={cn(
-                      'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize',
-                      STATUS_META[account.status],
-                    )}
-                  >
-                    {account.status}
-                  </span>
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {formatRelativeTime(account.validated_at)}
-                </TableCell>
-                <TableCell className="text-muted-foreground max-w-48 truncate text-xs">
-                  {account.public_error_message ?? '—'}
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center justify-end gap-1">
-                    <FetchNowButton username={account.username} />
-                    <RemoveAccountAlert username={account.username} />
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <div className="flex flex-wrap gap-2">
+          {data.map((account) => (
+            <AccountChip
+              key={account.id}
+              account={account}
+              selected={selected.some((u) => u.toLowerCase() === account.username.toLowerCase())}
+              onToggleSelected={() => toggleAccount(account.username)}
+            />
+          ))}
+        </div>
       )}
     </section>
   )

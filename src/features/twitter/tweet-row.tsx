@@ -1,4 +1,5 @@
 import { BadgeCheck, Eye, Heart, MessageCircle, Repeat2 } from 'lucide-react'
+import { Link } from 'react-router'
 import { Card, CardHeader } from '@/components/ui/card'
 import { SentimentBadge } from '@/components/shared/sentiment-badge'
 import { formatNumber, formatRelativeTime } from '@/lib/format'
@@ -28,12 +29,14 @@ export function TweetRow({ post, onSelect }: { post: TwitterPostOut; onSelect: (
 
           <div className="flex flex-wrap items-center gap-1.5">
             {post.ticker_matches.map((match) => (
-              <span
+              <Link
                 key={match.ticker}
-                className="bg-secondary text-secondary-foreground inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                to={`/stocks/${match.ticker}`}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-secondary text-secondary-foreground hover:bg-primary hover:text-primary-foreground inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium underline decoration-transparent underline-offset-2 transition-colors hover:decoration-current"
               >
                 ${match.ticker}
-              </span>
+              </Link>
             ))}
             {post.is_trusted && (
               <span className="inline-flex items-center rounded-full bg-blue-500/15 px-2 py-0.5 text-xs font-medium text-blue-600 dark:text-blue-400">
