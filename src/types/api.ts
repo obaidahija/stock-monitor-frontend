@@ -562,11 +562,27 @@ export interface DigestSentiment {
   cluster_title: string
 }
 
+export interface DigestNearLowPattern {
+  label: string
+  confidence: number
+  bias: string
+  description: string
+  date_start?: string
+  date_end?: string
+  price_start?: number
+  price_end?: number
+}
+
 export interface DigestItem {
   ticker: string
   tier: number
   reasons: string[]
+  stages: string[]
   premarket: DigestPremarket | null
+  premarket_gap_pct: number | null
+  volume_ratio: number | null
+  pct_from_12wk_avg: number | null
+  near_low_pattern: DigestNearLowPattern | null
   top_filing: DigestTopFiling | null
   top_earnings: DigestTopEarnings | null
   news_count_24h: number
