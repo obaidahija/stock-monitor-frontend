@@ -562,7 +562,7 @@ export interface DigestSentiment {
   cluster_title: string
 }
 
-export interface DigestNearLowPattern {
+export interface DigestPatternDetail {
   label: string
   confidence: number
   bias: string
@@ -582,7 +582,7 @@ export interface DigestItem {
   premarket_gap_pct: number | null
   volume_ratio: number | null
   pct_from_12wk_avg: number | null
-  near_low_pattern: DigestNearLowPattern | null
+  recent_pattern: DigestPatternDetail | null
   top_filing: DigestTopFiling | null
   top_earnings: DigestTopEarnings | null
   news_count_24h: number

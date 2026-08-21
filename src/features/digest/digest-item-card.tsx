@@ -8,7 +8,7 @@ import type { DigestItem } from '@/types/api'
 
 export function DigestItemCard({ item }: { item: DigestItem }) {
   const changePct = item.premarket?.change_pct ?? null
-  const pattern = item.near_low_pattern
+  const pattern = item.recent_pattern
 
   return (
     <Card>

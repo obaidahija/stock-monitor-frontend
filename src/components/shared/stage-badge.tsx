@@ -32,9 +32,9 @@ export const STAGE_META: Record<string, { label: string; icon: LucideIcon; class
   near_low: {
     label: 'Near 12wk low',
     icon: TrendingDown,
-    className: 'border border-teal-500/40 text-teal-600 dark:text-teal-400',
+    className: 'border border-cyan-500/40 text-cyan-600 dark:text-cyan-400',
   },
-  near_low_pattern: {
+  bullish_pattern: {
     label: 'Bullish pattern',
     icon: TrendingUp,
     className: 'bg-teal-500/20 text-teal-700 dark:text-teal-300 font-semibold',

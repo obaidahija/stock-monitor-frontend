@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { Newspaper } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { ErrorState } from '@/components/shared/error-state'
@@ -13,10 +14,10 @@ import { formatDateTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { DigestItem } from '@/types/api'
 
-// Tier 8 ("Tracked", nothing notable today) tends to be the largest and
+// Tier 9 ("Tracked", nothing notable today) tends to be the largest and
 // least interesting bucket -- start it collapsed so the page opens on the
 // tiers that actually carry a signal.
-const COLLAPSED_BY_DEFAULT_TIER = 8
+const COLLAPSED_BY_DEFAULT_TIER = 9
 
 // Stable reference so the useMemo hooks below don't see a "changed" items
 // array on every render when there's no digest yet.
@@ -25,7 +26,14 @@ const EMPTY_ITEMS: DigestItem[] = []
 export function DigestPage() {
   const { data: digest, isPending, isError, error, refetch } = useMorningDigest()
   const buildDigest = useBuildDigest()
-  const [selectedStages, setSelectedStages] = useState<Set<string>>(new Set())
+  // Lives in the URL (not component state) so the back button, a bookmark,
+  // or a shared link all restore the same filtered view -- same pattern as
+  // the Discover table's sort/filter params.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const selectedStages = useMemo(
+    () => new Set(searchParams.get('stages')?.split(',').filter(Boolean) ?? []),
+    [searchParams],
+  )
   const [expandCollapsedTier, setExpandCollapsedTier] = useState(false)
 
   const items = digest?.payload.items ?? EMPTY_ITEMS
@@ -56,10 +64,22 @@ export function DigestPage() {
   }, [filteredItems])
 
   function toggleStage(stage: string) {
-    setSelectedStages((prev) => {
-      const next = new Set(prev)
-      if (next.has(stage)) next.delete(stage)
-      else next.add(stage)
+    setSearchParams((prev) => {
+      const current = new Set(prev.get('stages')?.split(',').filter(Boolean) ?? [])
+      if (current.has(stage)) current.delete(stage)
+      else current.add(stage)
+
+      const next = new URLSearchParams(prev)
+      if (current.size === 0) next.delete('stages')
+      else next.set('stages', Array.from(current).join(','))
+      return next
+    })
+  }
+
+  function clearStages() {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete('stages')
       return next
     })
   }
@@ -137,7 +157,7 @@ export function DigestPage() {
                 )
               })}
             {selectedStages.size > 0 && (
-              <Button size="sm" variant="ghost" onClick={() => setSelectedStages(new Set())}>
+              <Button size="sm" variant="ghost" onClick={clearStages}>
                 Clear
               </Button>
             )}
