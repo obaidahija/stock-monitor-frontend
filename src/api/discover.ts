@@ -25,6 +25,7 @@ export interface UniverseParams {
   earningsResult?: EarningsResult
   minGapPct?: number
   minVolumeRatio?: number
+  patternLabel?: string
   sector?: string
   q?: string
 }
@@ -49,6 +50,7 @@ export async function getUniverse(params: UniverseParams = {}): Promise<Universe
   if (params.earningsResult) qs.set('earnings_result', params.earningsResult)
   if (params.minGapPct !== undefined) qs.set('min_gap_pct', String(params.minGapPct))
   if (params.minVolumeRatio !== undefined) qs.set('min_volume_ratio', String(params.minVolumeRatio))
+  if (params.patternLabel) qs.set('pattern_label', params.patternLabel)
   if (params.sector) qs.set('sector', params.sector)
   if (params.q) qs.set('q', params.q)
   const { data, response } = await apiClient.getWithResponse<UniverseTickerOut[]>(

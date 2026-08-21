@@ -2,6 +2,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { Badge } from '@/components/ui/badge'
 import { PageHeader } from '@/components/shared/page-header'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { AddTrackedTickerButton } from '@/features/discover/add-tracked-ticker-button'
 import { RemoveTickerDialog } from '@/features/discover/remove-ticker-dialog'
 import { PriceChart } from '@/features/ticker-detail/price-chart'
 import { AiResearchTab } from '@/features/ticker-detail/ai-research/ai-research-tab'
@@ -34,7 +35,7 @@ export function TickerDetailPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   useAutoRefreshUniverseScore(symbol)
-  const { data: universeScore } = useUniverseScore(symbol)
+  const { data: universeScore, isPending: universeScorePending } = useUniverseScore(symbol)
 
   const requestedTab = searchParams.get('tab')
   const activeTab =
@@ -74,11 +75,16 @@ export function TickerDetailPage() {
         actions={
           <>
             <ManageListsDialog ticker={symbol} labeled />
-            <RemoveTickerDialog
-              ticker={symbol}
-              trigger="labeled"
-              onRemoved={() => navigate('/discover')}
-            />
+            {!universeScorePending &&
+              (universeScore ? (
+                <RemoveTickerDialog
+                  ticker={symbol}
+                  trigger="labeled"
+                  onRemoved={() => navigate('/discover')}
+                />
+              ) : (
+                <AddTrackedTickerButton ticker={symbol} />
+              ))}
           </>
         }
       />

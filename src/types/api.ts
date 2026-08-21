@@ -39,6 +39,7 @@ export interface UniverseTickerOut extends TrackedTickerOut {
   pe_ratio: number | null
   catalyst: string | null
   quote_updated_at: string | null
+  recent_pattern: ChartPatternDetail | null
 }
 
 export interface SectorSummaryOut {
@@ -562,7 +563,7 @@ export interface DigestSentiment {
   cluster_title: string
 }
 
-export interface DigestPatternDetail {
+export interface ChartPatternDetail {
   label: string
   confidence: number
   bias: string
@@ -582,7 +583,7 @@ export interface DigestItem {
   premarket_gap_pct: number | null
   volume_ratio: number | null
   pct_from_12wk_avg: number | null
-  recent_pattern: DigestPatternDetail | null
+  recent_pattern: ChartPatternDetail | null
   top_filing: DigestTopFiling | null
   top_earnings: DigestTopEarnings | null
   news_count_24h: number

@@ -85,7 +85,10 @@ export function useAddCustomTicker() {
   return useMutation({
     mutationFn: ({ ticker, note }: { ticker: string; note?: string }) =>
       addCustomTicker(ticker, note),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['discover', 'universe'] }),
+    onSuccess: (_data, { ticker }) => {
+      queryClient.invalidateQueries({ queryKey: ['discover', 'universe'] })
+      queryClient.invalidateQueries({ queryKey: ['universe-score', ticker] })
+    },
   })
 }
 

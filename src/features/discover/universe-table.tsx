@@ -29,6 +29,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { ErrorState } from '@/components/shared/error-state'
 import { EmptyState } from '@/components/shared/empty-state'
 import { Pagination } from '@/components/shared/pagination'
+import { PATTERN_LABEL_SHORT, PatternBadge } from '@/components/shared/pattern-badge'
 import {
   formatCurrency,
   formatDate,
@@ -85,6 +86,16 @@ const EARNINGS_RESULT_META: Record<EarningsResult, string> = {
   miss: 'bg-red-500/15 text-red-600 dark:text-red-400',
   inline: 'bg-muted text-muted-foreground',
 }
+
+// Same backend labels chart_pattern_detections actually stores, shown with
+// PatternBadge's short display form so the filter buttons and the row
+// badges read consistently.
+const PATTERN_FILTER_OPTIONS: { label: string; value: string | undefined }[] = [
+  { label: 'All', value: undefined },
+  ...Object.entries(PATTERN_LABEL_SHORT)
+    .filter(([label]) => label !== 'StockLine')
+    .map(([value, label]) => ({ label, value })),
+]
 
 function EarningsCell({ item }: { item: UniverseTickerOut }) {
   return (
@@ -181,6 +192,7 @@ export function UniverseTable() {
   const minVolumeRatioRaw = searchParams.get('min_volume_ratio')
   const minGapPct = minGapPctRaw !== null ? Number(minGapPctRaw) : undefined
   const minVolumeRatio = minVolumeRatioRaw !== null ? Number(minVolumeRatioRaw) : undefined
+  const patternLabel = searchParams.get('pattern_label') ?? undefined
   const sector = searchParams.get('sector') ?? undefined
   const q = searchParams.get('q') ?? ''
   const page = Math.max(1, Number(searchParams.get('page')) || 1)
@@ -194,6 +206,7 @@ export function UniverseTable() {
     earningsResult,
     minGapPct,
     minVolumeRatio,
+    patternLabel,
     sector,
     q: q || undefined,
     limit: PAGE_SIZE,
@@ -406,6 +419,20 @@ export function UniverseTable() {
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-muted-foreground text-xs">Pattern</span>
+        {PATTERN_FILTER_OPTIONS.map((opt) => (
+          <Button
+            key={opt.label}
+            size="sm"
+            variant={patternLabel === opt.value ? 'secondary' : 'ghost'}
+            onClick={() => updateParams({ pattern_label: opt.value })}
+          >
+            {opt.label}
+          </Button>
+        ))}
+      </div>
+
       {isPending && <Skeleton className="h-64 rounded-xl" />}
       {isError && <ErrorState error={error} onRetry={() => refetch()} />}
       {data && data.items.length === 0 && q && (
@@ -481,6 +508,7 @@ export function UniverseTable() {
                           Custom
                         </Badge>
                       )}
+                      <PatternBadge pattern={item.recent_pattern} />
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
