@@ -2,6 +2,7 @@ import {
   BarChart3,
   CalendarClock,
   FileText,
+  History,
   Star,
   Sunrise,
   TrendingDown,
@@ -38,6 +39,11 @@ export const STAGE_META: Record<string, { label: string; icon: LucideIcon; class
     label: 'Bullish pattern',
     icon: TrendingUp,
     className: 'bg-teal-500/20 text-teal-700 dark:text-teal-300 font-semibold',
+  },
+  recent_bullish_pattern: {
+    label: 'Recent pattern',
+    icon: History,
+    className: 'bg-amber-500/20 text-amber-700 dark:text-amber-300 font-semibold',
   },
   filing: {
     label: 'Filing',

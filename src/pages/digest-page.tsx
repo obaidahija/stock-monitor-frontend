@@ -14,10 +14,10 @@ import { formatDateTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { DigestItem } from '@/types/api'
 
-// Tier 9 ("Tracked", nothing notable today) tends to be the largest and
+// Tier 10 ("Tracked", nothing notable today) tends to be the largest and
 // least interesting bucket -- start it collapsed so the page opens on the
 // tiers that actually carry a signal.
-const COLLAPSED_BY_DEFAULT_TIER = 9
+const COLLAPSED_BY_DEFAULT_TIER = 10
 
 // Stable reference so the useMemo hooks below don't see a "changed" items
 // array on every render when there's no digest yet.
