@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { PageHeader } from '@/components/shared/page-header'
 import { AuthStatusIndicator } from '@/features/twitter/auth-status-banner'
+import { TopMentionsStrip } from '@/features/twitter/top-mentions-strip'
 import { TrustedAccountsSection } from '@/features/twitter/trusted-accounts-section'
 import { FeedControls } from '@/features/twitter/feed-controls'
 import { FeedTable } from '@/features/twitter/feed-table'
@@ -28,6 +29,8 @@ export function TwitterPage() {
           </>
         }
       />
+
+      <TopMentionsStrip />
 
       <TrustedAccountsSection />
 
