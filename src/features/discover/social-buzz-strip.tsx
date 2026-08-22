@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react'
+import { useRef, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router'
 import { RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
@@ -107,10 +107,20 @@ function PlatformToggle({
  * ranking every chip starts out showing -- and clicking "Reddit" or "Twitter"
  * narrows the strip to tickers seen on that platform, re-ranked by that
  * platform's own score.
+ *
+ * The row's order is frozen while the pointer is over it: the underlying data
+ * auto-refreshes (every 60s, or every 15s while a scan is actively running) and
+ * re-ranks on each fetch, so without this a chip can drift out from under the
+ * cursor between spotting it and clicking it -- a click lands on whatever ticker
+ * has since taken that slot instead of the one that was actually clicked.
+ * Re-ranking resumes the moment the pointer leaves, and an explicit filter
+ * click always takes effect immediately regardless of hover.
  */
 export function SocialBuzzStrip() {
   const navigate = useNavigate()
   const [platformFilter, setPlatformFilter] = useState<PlatformFilter>('all')
+  const [isHovering, setIsHovering] = useState(false)
+  const frozenRef = useRef<{ filter: PlatformFilter; items: MergedSocialBuzzRow[] } | null>(null)
   const reddit = useTrending(LIMIT)
   const twitter = useTwitterBestStocks(LIMIT)
   const refresh = useRefreshTwitterBestStocks()
@@ -138,7 +148,7 @@ export function SocialBuzzStrip() {
 
   const merged = mergeSocialBuzz(reddit.data ?? [], twitter.data?.items ?? [])
   if (merged.length === 0) return null
-  const items = merged
+  const computedItems = merged
     .filter((row) => {
       if (platformFilter === 'reddit') return row.reddit !== null
       if (platformFilter === 'twitter') return row.twitter !== null
@@ -146,6 +156,12 @@ export function SocialBuzzStrip() {
     })
     .sort((a, b) => scoreFor(b, platformFilter) - scoreFor(a, platformFilter))
     .slice(0, MAX_CHIPS)
+
+  const holdFrozen = isHovering && frozenRef.current?.filter === platformFilter
+  const items = holdFrozen ? frozenRef.current!.items : computedItems
+  if (!holdFrozen) {
+    frozenRef.current = { filter: platformFilter, items: computedItems }
+  }
 
   return (
     <div className="space-y-2">
@@ -195,6 +211,8 @@ export function SocialBuzzStrip() {
           className="flex items-center gap-1.5 overflow-x-auto py-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           role="group"
           aria-label="Tickers with notable Reddit or Twitter attention today"
+          onMouseEnter={() => setIsHovering(true)}
+          onMouseLeave={() => setIsHovering(false)}
         >
           {items.map((row, index) => {
             const hasReddit = row.reddit !== null
