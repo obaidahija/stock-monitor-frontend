@@ -101,3 +101,13 @@ export function scoreFor(row: MergedSocialBuzzRow, filter: PlatformFilter): numb
   if (filter === 'twitter') return row.twitter?.score ?? 0
   return row.combinedScore
 }
+
+/** Averages whichever platform sentiments a row actually has -- a ticker seen on
+ * both platforms gets a true blend, one seen on only one just gets that platform's
+ * reading. */
+export function blendedSentiment(row: MergedSocialBuzzRow): number | null {
+  const sentiments = [row.reddit?.sentiment, row.twitter?.sentiment].filter(
+    (s): s is number => s !== null && s !== undefined,
+  )
+  return sentiments.length > 0 ? sentiments.reduce((a, b) => a + b, 0) / sentiments.length : null
+}
