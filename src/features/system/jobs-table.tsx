@@ -27,6 +27,76 @@ type JobGroup = {
   ordered: boolean
 }
 
+const JOB_DESCRIPTIONS: Record<string, string> = {
+  earnings_sync:
+    'Refreshes the earnings calendar (next date, BMO/AMC, consensus estimates) for the ' +
+    'full tracked universe, plus a market-wide 14-day-ahead sweep.',
+  edgar_poll: 'Market-wide scan for new notable 8-K filings since the previous check.',
+  edgar_poll_tracked:
+    'Deep 30-day filing history (8-K, Form 4, 13D/G) refresh for every tracked ticker.',
+  news_ingest:
+    'Pulls RSS + Finnhub news for the full tracked universe and dedupes near-identical ' +
+    'titles into clusters.',
+  sentiment_classify: 'Runs local FinBERT sentiment over newly ingested, unscored news items.',
+  price_sync:
+    'Refreshes regular-session quotes (price, change, volume) for the full tracked ' +
+    'universe in batched calls.',
+  watchlist_price_sync:
+    'Near-live quote polling (pre-market, regular, post-market) for watchlist tickers ' +
+    'every 10 seconds.',
+  watchlist_notification_delivery:
+    'Delivers due watchlist price-event alerts to Telegram and retries transient failures.',
+  reddit_scan:
+    'Scans a fixed subreddit list via PRAW, extracts ticker mentions, and scores them with ' +
+    'local FinBERT — full tracked universe, no monthly cap.',
+  reddit_trusted_subreddit_sweep:
+    'Enqueues the next fetch (newest posts) for every trusted subreddit. Opt-in.',
+  reddit_trusted_author_sweep:
+    'Enqueues the next round-robin fetch for every trusted Reddit author. Opt-in.',
+  reddit_auth_check:
+    'Re-checks rdt-cli auth state as a secondary recovery trigger. Opt-in.',
+  reddit_retention:
+    'Deletes Reddit posts, operations, and snapshots past the retention window. Opt-in.',
+  chart_pattern_scan:
+    'Runs the local YOLOv8 chart-pattern detector across the full tracked universe and ' +
+    'upserts detections into history — tags only, not folded into scoring.',
+  universe_score:
+    'Scores every tracked ticker via the rule-based analysis engine, rescales to 0–100, ' +
+    'and persists score/lean plus avg_volume_20d/market_cap.',
+  digest_build:
+    'Assembles and persists the ranked morning digest from the stage pipeline (score ' +
+    'leaders, gaps, unusual volume, bullish patterns, filings/earnings).',
+  market_context_sync: 'Refreshes VIX level and SPY/QQQ trend for the market-context factor.',
+  sector_context_sync:
+    'Refreshes sector-ETF closes for the sector relative-strength factor.',
+  macro_news_ingest: 'Fetches and stores market-wide (non-ticker) macro news.',
+  macro_news_classify:
+    'Tags pending macro news items with a category and sentiment.',
+  macro_sector_impact_sync:
+    'Derives which sectors a recent macro theme likely affects.',
+  macro_signal_eval: 'Logs a forward-looking hit-rate snapshot for macro signals, once/day.',
+  social_ingest:
+    'Pulls Adanos Reddit sentiment for user-added custom tickers only, plus one ' +
+    'trending scan — bounded by the 250-calls/month free-tier budget.',
+  twitter_best_stocks_scan:
+    'Scans six phrases (Top + Latest) once daily and ranks trending tickers from ' +
+    'trusted-account posts.',
+  twitter_trusted_sweep:
+    'Enqueues the next round-robin fetch (newest 3 posts) for every active trusted ' +
+    'Twitter/X account.',
+  twitter_retention:
+    'Deletes old Twitter metric snapshots, post observations, and completed operations.',
+  news_retention: 'Deletes news items older than 30 days and any clusters left empty.',
+  premarket_retention: 'Deletes price_ticks rows older than 3 days.',
+  ticker_analysis_snapshot_retention:
+    'Deletes cached per-ticker analysis snapshots older than 3 days.',
+  twitter_sentiment_classify:
+    'Runs sentiment classification over newly collected, unscored Twitter posts.',
+  twitter_tweet_type_classify:
+    'Tags newly collected tweets news/recommendation/analysis/other via a local ' +
+    'zero-shot classifier.',
+}
+
 const JOB_GROUPS: JobGroup[] = [
   {
     key: 'ticker-sync',
@@ -70,13 +140,15 @@ const JOB_GROUPS: JobGroup[] = [
     key: 'twitter-collection',
     title: 'Twitter collection',
     description:
-      'Trusted accounts refresh every four hours. ' +
+      'Trusted accounts refresh every hour. ' +
       'Best Stocks scans six phrases with Top and Latest once daily at 6:00 AM ET. ' +
-      'Sentiment classification and retention run independently; each job can be triggered manually.',
+      'Sentiment classification, tweet-type classification, and retention run independently; ' +
+      'each job can be triggered manually.',
     jobNames: [
       'twitter_best_stocks_scan',
       'twitter_trusted_sweep',
       'twitter_sentiment_classify',
+      'twitter_tweet_type_classify',
       'twitter_retention',
     ],
     ordered: false,
@@ -97,14 +169,21 @@ function JobRow({
   return (
     <>
       <TableRow>
-        <TableCell className="font-medium">
-          <span className="inline-flex items-center gap-2">
+        <TableCell className="font-medium whitespace-normal">
+          <span className="flex items-start gap-2">
             {order !== undefined && (
-              <span className="bg-muted text-muted-foreground flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
+              <span className="bg-muted text-muted-foreground mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
                 {order}
               </span>
             )}
-            {job.name}
+            <span className="min-w-0">
+              <span className="block">{job.name}</span>
+              {JOB_DESCRIPTIONS[job.name] && (
+                <span className="text-muted-foreground line-clamp-2 text-xs font-normal">
+                  {JOB_DESCRIPTIONS[job.name]}
+                </span>
+              )}
+            </span>
           </span>
         </TableCell>
         <TableCell>
@@ -205,7 +284,7 @@ export function JobsTable() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Job</TableHead>
+                  <TableHead className="w-2/5">Job</TableHead>
                   <TableHead>Last run</TableHead>
                   <TableHead>Next run</TableHead>
                   <TableHead className="w-24" />
@@ -240,7 +319,7 @@ export function JobsTable() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Job</TableHead>
+                  <TableHead className="w-2/5">Job</TableHead>
                   <TableHead>Last run</TableHead>
                   <TableHead>Next run</TableHead>
                   <TableHead className="w-24" />
