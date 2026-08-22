@@ -38,7 +38,12 @@ export function useRefreshUniverseScore(ticker: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: () => refreshUniverseScore(ticker),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['universe-score', ticker] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['universe-score', ticker] })
+      // The universe score is rescaled from the same analyze_ticker() composite
+      // the factor breakdown below renders — refresh both so they can't drift apart.
+      queryClient.invalidateQueries({ queryKey: ['analysis', ticker] })
+    },
   })
 }
 
