@@ -1,4 +1,20 @@
-import { RefreshCw } from 'lucide-react'
+import {
+  Activity,
+  AlertTriangle,
+  AtSign,
+  BarChart3,
+  Building2,
+  CalendarClock,
+  Globe2,
+  Layers,
+  LineChart,
+  MessageCircle,
+  Newspaper,
+  RefreshCw,
+  Sparkles,
+  Users,
+  type LucideIcon,
+} from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -14,6 +30,112 @@ import { ForecastCard } from './forecast-card'
 import { useAnalysis, useRefreshUniverseScore, useUniverseScore } from './hooks'
 import { SentimentTrendChart } from './sentiment-trend-chart'
 import type { AnalystDetailOut, AnalysisLean, PriceLevelPosition, PriceLevelsOut } from '@/types/api'
+
+const FACTOR_META: Record<string, { label: string; icon: LucideIcon }> = {
+  fundamentals: { label: 'Fundamentals', icon: Building2 },
+  momentum: { label: 'Momentum', icon: Activity },
+  extension_risk: { label: 'Extension risk', icon: AlertTriangle },
+  analyst_sentiment: { label: 'Analyst sentiment', icon: Users },
+  earnings: { label: 'Earnings', icon: CalendarClock },
+  news_sentiment: { label: 'News sentiment', icon: Newspaper },
+  social_sentiment: { label: 'Social sentiment', icon: MessageCircle },
+  twitter_sentiment: { label: 'Twitter/X sentiment', icon: AtSign },
+  sector: { label: 'Sector strength', icon: Layers },
+  macro_sector_impact: { label: 'Macro impact', icon: Globe2 },
+  market_context: { label: 'Market context', icon: BarChart3 },
+  chart_pattern: { label: 'Chart pattern', icon: LineChart },
+  kronos_forecast: { label: 'Kronos forecast', icon: Sparkles },
+}
+
+function humanizeFactorName(name: string): string {
+  return name
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
+// Scores below this magnitude read as noise, not signal — treat them as flat.
+const SCORE_FLAT_THRESHOLD = 0.03
+
+type ScoreTone = 'positive' | 'negative' | 'flat'
+
+function toneFromScore(score: number): ScoreTone {
+  if (score > SCORE_FLAT_THRESHOLD) return 'positive'
+  if (score < -SCORE_FLAT_THRESHOLD) return 'negative'
+  return 'flat'
+}
+
+const TONE_TEXT_CLASSES: Record<ScoreTone, string> = {
+  positive: 'text-emerald-600 dark:text-emerald-400',
+  negative: 'text-red-600 dark:text-red-400',
+  flat: 'text-muted-foreground',
+}
+
+const TONE_BAR_CLASSES: Record<ScoreTone, string> = {
+  positive: 'bg-emerald-500',
+  negative: 'bg-red-500',
+  flat: 'bg-muted-foreground/40',
+}
+
+// Diverging gauge centered on zero: the fill grows left for negative scores,
+// right for positive ones, so sign and magnitude both read at a glance.
+function ScoreGauge({ score, tone }: { score: number; tone: ScoreTone }) {
+  const magnitudePct = Math.min(100, Math.abs(score) * 100)
+  return (
+    <div className="bg-muted relative h-1.5 w-full overflow-hidden rounded-full">
+      <div className="bg-border absolute inset-y-0 left-1/2 w-px" />
+      <div
+        className={cn('absolute inset-y-0 rounded-full transition-all', TONE_BAR_CLASSES[tone])}
+        style={
+          score >= 0
+            ? { left: '50%', width: `${magnitudePct / 2}%` }
+            : { right: '50%', width: `${magnitudePct / 2}%` }
+        }
+      />
+    </div>
+  )
+}
+
+function FactorCard({ component }: { component: { name: string; score: number; explanation: string } }) {
+  const meta = FACTOR_META[component.name]
+  const Icon = meta?.icon ?? Activity
+  const label = meta?.label ?? humanizeFactorName(component.name)
+  const tone = toneFromScore(component.score)
+
+  // extension_risk is a mean-reversion caution, not a routine stat — give it
+  // an alert treatment when it's actually flagging pullback risk, but let it
+  // sit like every other factor when the ticker isn't extended (score 0).
+  const isRiskAlert = component.name === 'extension_risk' && tone === 'negative'
+
+  return (
+    <Card
+      className={cn(
+        isRiskAlert && 'border-amber-500/50 bg-amber-500/10 ring-amber-500/30',
+      )}
+    >
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="flex items-center gap-2 text-sm font-medium">
+          <Icon className={cn('size-4', isRiskAlert ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground')} />
+          {label}
+          {isRiskAlert && (
+            <span className="inline-flex items-center rounded-full bg-amber-500/20 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
+              Pullback risk
+            </span>
+          )}
+        </CardTitle>
+        <span className={cn('text-sm font-semibold tabular-nums', TONE_TEXT_CLASSES[tone])}>
+          {formatScore(component.score)}
+        </span>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <ScoreGauge score={component.score} tone={isRiskAlert ? 'negative' : tone} />
+        <p className={cn('text-sm', isRiskAlert ? 'text-amber-900 dark:text-amber-200' : 'text-muted-foreground')}>
+          {component.explanation}
+        </p>
+      </CardContent>
+    </Card>
+  )
+}
 
 function UniverseScoreBadge({ ticker }: { ticker: string }) {
   const { data, isPending } = useUniverseScore(ticker)
@@ -299,20 +421,17 @@ export function AnalysisTab({ ticker }: { ticker: string }) {
         <UniverseScoreBadge ticker={ticker} />
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        {data.components.map((component) => (
-          <Card key={component.name}>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>{component.name}</CardTitle>
-              <span className="text-sm font-medium tabular-nums">
-                {formatScore(component.score)}
-              </span>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground text-sm">{component.explanation}</p>
-            </CardContent>
-          </Card>
-        ))}
+      <div className="space-y-2">
+        <h3 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+          Score factors · sorted by impact
+        </h3>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {[...data.components]
+            .sort((a, b) => Math.abs(b.score) - Math.abs(a.score))
+            .map((component) => (
+              <FactorCard key={component.name} component={component} />
+            ))}
+        </div>
       </div>
 
       {data.price_levels && <PriceLevelsCard priceLevels={data.price_levels} />}
