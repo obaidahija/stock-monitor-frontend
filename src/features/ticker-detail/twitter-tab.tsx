@@ -14,9 +14,9 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState } from '@/components/shared/error-state'
 import { EmptyState } from '@/components/shared/empty-state'
-import { formatRelativeTime } from '@/lib/format'
+import { Pagination } from '@/components/shared/pagination'
 import { cn } from '@/lib/utils'
-import { useSearchTicker, useTwitterSearchCache } from '@/features/twitter/hooks'
+import { useSearchTicker, useTwitterFeed } from '@/features/twitter/hooks'
 import { useTwitterOperationPoll } from '@/features/twitter/use-operation-poll'
 import { TweetRow } from '@/features/twitter/tweet-row'
 import { TweetDetailDialog } from '@/features/twitter/tweet-detail-dialog'
@@ -31,23 +31,41 @@ const SORT_OPTIONS: { label: string; value: TwitterSort }[] = [
 
 const MINIMUM_VIEW_OPTIONS: TwitterMinimumViews[] = [1000, 2000, 3000, 5000]
 
+/**
+ * Reads the *general* feed filtered to this ticker (`tickers=` OR-match), not the
+ * narrower manual-search-only cache -- that cache only ever holds results from an
+ * explicit "search X for this ticker" run, so a ticker with real trusted-account
+ * coverage but no one having searched it yet used to show up empty here even
+ * though the same tweets were already visible on the main Twitter feed page.
+ * "Refresh" still runs a live X search for extra coverage; anything it finds gets
+ * persisted as regular posts, so it shows up here too once the feed re-fetches.
+ */
 export function TwitterTab({ ticker }: { ticker: string }) {
   const [sort, setSort] = useState<TwitterSort>('signal')
+  const [page, setPage] = useState(1)
   const [selectedPost, setSelectedPost] = useState<TwitterPostOut | null>(null)
   const [refreshDialogOpen, setRefreshDialogOpen] = useState(false)
   const [minimumViews, setMinimumViews] = useState<TwitterMinimumViews>(2000)
   const queryClient = useQueryClient()
 
-  // Cache-only on load/sort-change — never triggers a live search by itself.
-  const { data, isPending, isError, error } = useTwitterSearchCache(ticker, sort)
+  const { data, isPending, isError, error, refetch } = useTwitterFeed({
+    tickers: [ticker],
+    sort,
+    page,
+  })
   const search = useSearchTicker()
 
   const pollingOperationId = search.data?.operation?.id ?? null
   const poll = useTwitterOperationPoll(pollingOperationId, () => {
-    queryClient.invalidateQueries({ queryKey: ['twitter', 'search', ticker, sort] })
+    queryClient.invalidateQueries({ queryKey: ['twitter', 'feed'] })
   })
   const isRefreshing =
     search.isPending || poll.data?.status === 'running' || poll.data?.status === 'queued'
+
+  function changeSort(next: TwitterSort) {
+    setSort(next)
+    setPage(1)
+  }
 
   function openRefreshDialog() {
     setMinimumViews(2000)
@@ -68,46 +86,48 @@ export function TwitterTab({ ticker }: { ticker: string }) {
               key={opt.value}
               size="sm"
               variant={sort === opt.value ? 'secondary' : 'ghost'}
-              onClick={() => setSort(opt.value)}
+              onClick={() => changeSort(opt.value)}
             >
               {opt.label}
             </Button>
           ))}
         </div>
-        <div className="flex items-center gap-2">
-          {data?.cache_fetched_at && !isRefreshing && (
-            <p className="text-muted-foreground text-xs">
-              Updated {formatRelativeTime(data.cache_fetched_at)}
-            </p>
-          )}
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={isRefreshing}
-            onClick={openRefreshDialog}
-          >
-            <RefreshCw className={cn(isRefreshing && 'animate-spin')} />
-            Refresh
-          </Button>
-        </div>
+        <Button size="sm" variant="outline" disabled={isRefreshing} onClick={openRefreshDialog}>
+          <RefreshCw className={cn(isRefreshing && 'animate-spin')} />
+          Refresh
+        </Button>
       </div>
 
       {isPending && <Skeleton className="h-64 rounded-xl" />}
-      {isError && <ErrorState error={error} />}
+      {isError && <ErrorState error={error} onRetry={() => refetch()} />}
 
       {data && data.items.length === 0 && (
         <EmptyState
-          title={`No tweets loaded for ${ticker} yet`}
-          description="Click refresh to search X directly for this ticker."
+          title={`No tweets found for ${ticker} yet`}
+          description="No trusted-account activity yet — click refresh to search X directly for this ticker."
         />
       )}
 
       {data && data.items.length > 0 && (
-        <div className="space-y-2">
-          {data.items.map((post) => (
-            <TweetRow key={post.id} post={post} onSelect={setSelectedPost} />
-          ))}
-        </div>
+        <>
+          <div className="space-y-2">
+            {data.items.map((post) => (
+              <TweetRow key={post.id} post={post} onSelect={setSelectedPost} />
+            ))}
+          </div>
+
+          <div className="flex items-center justify-between">
+            <p className="text-muted-foreground text-xs">
+              Showing {(page - 1) * data.page_size + 1}–{(page - 1) * data.page_size + data.items.length}{' '}
+              of {data.total}
+            </p>
+            <Pagination
+              page={page}
+              totalPages={Math.max(1, Math.ceil(data.total / data.page_size))}
+              onPageChange={setPage}
+            />
+          </div>
+        </>
       )}
 
       <TweetDetailDialog post={selectedPost} onOpenChange={(open) => !open && setSelectedPost(null)} />
