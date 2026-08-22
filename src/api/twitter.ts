@@ -13,6 +13,7 @@ import type {
 export type TwitterSort = 'signal' | 'newest' | 'virality'
 export type TwitterFeedFilter = 'all' | 'trusted' | 'viral'
 export type TwitterMinimumViews = 1000 | 2000 | 3000 | 5000
+export type TweetType = 'news' | 'recommendation' | 'analysis' | 'other'
 
 export function getTwitterAuth() {
   return apiClient.get<TwitterAuthStateOut>('/v1/twitter/auth')
@@ -73,6 +74,7 @@ export interface TwitterFeedParams {
   page?: number
   tickers?: string[]
   usernames?: string[]
+  tweetTypes?: TweetType[]
 }
 
 export function getTwitterFeed(params: TwitterFeedParams = {}) {
@@ -82,6 +84,8 @@ export function getTwitterFeed(params: TwitterFeedParams = {}) {
   if (params.page !== undefined) qs.set('page', String(params.page))
   if (params.tickers && params.tickers.length > 0) qs.set('tickers', params.tickers.join(','))
   if (params.usernames && params.usernames.length > 0) qs.set('usernames', params.usernames.join(','))
+  if (params.tweetTypes && params.tweetTypes.length > 0)
+    qs.set('tweet_types', params.tweetTypes.join(','))
   return apiClient.get<TwitterPageOut>(`/v1/twitter/feed?${qs.toString()}`)
 }
 

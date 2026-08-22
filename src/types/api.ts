@@ -780,6 +780,8 @@ export interface TwitterPostOut {
   signal_score: TwitterSignalScoreOut | null
   sentiment_label: string | null
   sentiment_score: number | null
+  tweet_type: string | null
+  tweet_type_score: number | null
 }
 
 export interface TwitterSearchResultOut {

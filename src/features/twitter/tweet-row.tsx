@@ -2,6 +2,7 @@ import { BadgeCheck, Eye, Heart, MessageCircle, Repeat2 } from 'lucide-react'
 import { Link } from 'react-router'
 import { Card, CardHeader } from '@/components/ui/card'
 import { SentimentBadge } from '@/components/shared/sentiment-badge'
+import { TweetTypeBadge } from '@/components/shared/tweet-type-badge'
 import { formatNumber, formatRelativeTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { SignalScoreBadge } from './signal-score-badge'
@@ -49,6 +50,7 @@ export function TweetRow({ post, onSelect }: { post: TwitterPostOut; onSelect: (
               </span>
             )}
             {post.sentiment_label && <SentimentBadge label={post.sentiment_label} />}
+            <TweetTypeBadge type={post.tweet_type} />
           </div>
 
           <div className="text-muted-foreground flex flex-wrap items-center gap-3 text-xs">
