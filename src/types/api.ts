@@ -706,6 +706,7 @@ export interface TwitterTrustedAccountOut {
   validated_at: string | null
   public_error_code: string | null
   public_error_message: string | null
+  sweep_post_limit: number
   operation: TwitterOperationOut | null
 }
 

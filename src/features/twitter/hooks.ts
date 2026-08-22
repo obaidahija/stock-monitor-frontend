@@ -10,6 +10,7 @@ import {
   refreshTwitterFeed,
   removeTrustedAccount,
   searchTicker,
+  updateTrustedAccountSweepLimit,
   type TwitterFeedParams,
   type TwitterMinimumViews,
   type TwitterSort,
@@ -56,6 +57,15 @@ export function useFetchTrustedAccount() {
   return useMutation({
     mutationFn: ({ username, limit }: { username: string; limit?: number }) =>
       fetchTrustedAccount(username, limit),
+  })
+}
+
+export function useUpdateTrustedAccountSweepLimit() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ username, sweepPostLimit }: { username: string; sweepPostLimit: number }) =>
+      updateTrustedAccountSweepLimit(username, sweepPostLimit),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['twitter', 'trusted-accounts'] }),
   })
 }
 

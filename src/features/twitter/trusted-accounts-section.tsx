@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router'
-import { EllipsisVertical, Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { EllipsisVertical, Gauge, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -40,6 +40,7 @@ import {
   useFetchTrustedAccount,
   useRemoveTrustedAccount,
   useTrustedAccounts,
+  useUpdateTrustedAccountSweepLimit,
 } from './hooks'
 import { useTwitterOperationPoll } from './use-operation-poll'
 import type { TwitterTrustedAccountOut, TwitterTrustedAccountStatus } from '@/types/api'
@@ -145,16 +146,92 @@ function AddTrustedAccountDialog() {
   )
 }
 
-function AccountMenu({
+function SweepLimitDialog({
   username,
+  currentLimit,
   open,
   onOpenChange,
 }: {
   username: string
+  currentLimit: number
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  const [value, setValue] = useState(String(currentLimit))
+  const updateSweepLimit = useUpdateTrustedAccountSweepLimit()
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    const parsed = Number(value)
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 20) {
+      toast.error('Enter a whole number between 1 and 20')
+      return
+    }
+    updateSweepLimit.mutate(
+      { username, sweepPostLimit: parsed },
+      {
+        onSuccess: () => {
+          toast.success(`@${username} now pulls ${parsed} post${parsed === 1 ? '' : 's'} per sweep`)
+          onOpenChange(false)
+        },
+        onError: () => toast.error(`Failed to update the sweep limit for @${username}`),
+      },
+    )
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (next) setValue(String(currentLimit))
+        onOpenChange(next)
+      }}
+    >
+      <DialogContent>
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>Sweep limit for @{username}</DialogTitle>
+            <DialogDescription>
+              How many of this account's newest posts to pull each time the hourly trusted sweep
+              reaches it (1-20).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-1.5 py-4">
+            <Label htmlFor="sweep-limit">Posts per sweep</Label>
+            <Input
+              id="sweep-limit"
+              type="number"
+              min={1}
+              max={20}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button type="submit" disabled={updateSweepLimit.isPending}>
+              {updateSweepLimit.isPending ? 'Saving…' : 'Save'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function AccountMenu({
+  username,
+  sweepPostLimit,
+  open,
+  onOpenChange,
+}: {
+  username: string
+  sweepPostLimit: number
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [sweepDialogOpen, setSweepDialogOpen] = useState(false)
   const fetchTrustedAccount = useFetchTrustedAccount()
   const removeTrustedAccount = useRemoveTrustedAccount()
   const poll = useTwitterOperationPoll(fetchTrustedAccount.data?.id ?? null)
@@ -187,12 +264,23 @@ function AccountMenu({
             <RefreshCw className={cn(isFetching && 'animate-spin')} />
             Refresh now
           </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setSweepDialogOpen(true)}>
+            <Gauge />
+            Sweep limit: {sweepPostLimit}
+          </DropdownMenuItem>
           <DropdownMenuItem variant="destructive" onSelect={() => setConfirmOpen(true)}>
             <Trash2 />
             Remove
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <SweepLimitDialog
+        username={username}
+        currentLimit={sweepPostLimit}
+        open={sweepDialogOpen}
+        onOpenChange={setSweepDialogOpen}
+      />
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
@@ -286,7 +374,12 @@ function AccountChip({
           className="col-start-1 row-start-1 flex items-center"
           onClick={(e) => e.stopPropagation()}
         >
-          <AccountMenu username={account.username} open={menuOpen} onOpenChange={setMenuOpen} />
+          <AccountMenu
+            username={account.username}
+            sweepPostLimit={account.sweep_post_limit}
+            open={menuOpen}
+            onOpenChange={setMenuOpen}
+          />
         </span>
       </span>
     </div>

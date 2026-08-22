@@ -43,6 +43,13 @@ export function removeTrustedAccount(username: string) {
   return apiClient.delete<void>(`/v1/twitter/trusted-accounts/${encodeURIComponent(username)}`)
 }
 
+export function updateTrustedAccountSweepLimit(username: string, sweepPostLimit: number) {
+  return apiClient.patch<TwitterTrustedAccountOut>(
+    `/v1/twitter/trusted-accounts/${encodeURIComponent(username)}`,
+    { sweep_post_limit: sweepPostLimit },
+  )
+}
+
 export function fetchTrustedAccount(username: string, limit = 20) {
   return apiClient.post<TwitterOperationOut>(
     `/v1/twitter/trusted-accounts/${encodeURIComponent(username)}/fetch`,
