@@ -20,11 +20,11 @@ test('builds encoded Reddit feed filters', async () => {
   await getRedditFeed({
     filter: 'trusted',
     sort: 'comments',
-    subreddit: 'wallstreetbets',
+    subreddits: ['wallstreetbets'],
     page: 2,
   })
   expect(get).toHaveBeenCalledWith(
-    '/v1/reddit/feed?filter=trusted&sort=comments&subreddit=wallstreetbets&page=2',
+    '/v1/reddit/feed?filter=trusted&sort=comments&page=2&subreddits=wallstreetbets',
   )
 })
 

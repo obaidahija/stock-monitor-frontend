@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { useSearchParams } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
@@ -98,7 +99,15 @@ function AddTrustedSubredditDialog() {
   )
 }
 
-function SubredditChip({ source }: { source: RedditTrustedSubredditOut }) {
+function SubredditChip({
+  source,
+  selected,
+  onToggleSelected,
+}: {
+  source: RedditTrustedSubredditOut
+  selected: boolean
+  onToggleSelected: () => void
+}) {
   const mutations = useSubredditMutations()
   const queryClient = useQueryClient()
   const poll = useRedditOperationPoll(mutations.fetch.data?.id ?? null, () =>
@@ -115,6 +124,8 @@ function SubredditChip({ source }: { source: RedditTrustedSubredditOut }) {
       ageLabel={compactAge(source.last_successful_fetch_at) ?? 'never fetched'}
       errorMessage={source.operation?.public_error_message}
       isFetching={isFetching}
+      selected={selected}
+      onToggleSelected={onToggleSelected}
       onRefresh={() =>
         mutations.fetch.mutate(
           { name: source.name, sort: source.default_sort },
@@ -132,13 +143,59 @@ function SubredditChip({ source }: { source: RedditTrustedSubredditOut }) {
   )
 }
 
+// Shared with FeedControls/RedditFeedList via the URL, not props -- both live
+// under the same RedditPage route and read/write this same search param.
+// Mirrors Twitter's `accounts` param / useSelectedTrustedAccounts exactly.
+const SUBREDDITS_PARAM = 'subreddits'
+
+export function useSelectedTrustedSubreddits() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const selected = searchParams.get(SUBREDDITS_PARAM)?.split(',').filter(Boolean) ?? []
+
+  function setSelected(next: string[]) {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev)
+      if (next.length > 0) params.set(SUBREDDITS_PARAM, next.join(','))
+      else params.delete(SUBREDDITS_PARAM)
+      params.delete('page')
+      return params
+    })
+  }
+
+  return { selected, setSelected }
+}
+
 export function TrustedSubredditsSection() {
   const query = useTrustedSubreddits()
+  const { selected, setSelected } = useSelectedTrustedSubreddits()
+
+  function toggleSubreddit(name: string) {
+    const isSelected = selected.some((s) => s.toLowerCase() === name.toLowerCase())
+    setSelected(
+      isSelected
+        ? selected.filter((s) => s.toLowerCase() !== name.toLowerCase())
+        : [...selected, name],
+    )
+  }
 
   return (
     <section className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-semibold">Trusted subreddits</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="font-semibold">Trusted subreddits</h2>
+          {selected.length > 0 && (
+            <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
+              Filtering feed by {selected.length} subreddit{selected.length > 1 ? 's' : ''}
+              <button
+                type="button"
+                onClick={() => setSelected([])}
+                className="text-primary hover:underline"
+              >
+                Clear
+              </button>
+            </span>
+          )}
+        </div>
         <AddTrustedSubredditDialog />
       </div>
 
@@ -154,7 +211,12 @@ export function TrustedSubredditsSection() {
       {query.data && query.data.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {query.data.map((source) => (
-            <SubredditChip key={source.name} source={source} />
+            <SubredditChip
+              key={source.name}
+              source={source}
+              selected={selected.some((s) => s.toLowerCase() === source.name.toLowerCase())}
+              onToggleSelected={() => toggleSubreddit(source.name)}
+            />
           ))}
         </div>
       )}

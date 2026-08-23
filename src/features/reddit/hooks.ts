@@ -64,10 +64,10 @@ export function useAuthorMutations() {
 export function useRedditFeed(params: {
   filter: RedditFeedFilter
   sort: RedditSort
-  subreddit?: string
   page: number
   postTypes?: api.RedditPostType[]
   tickers?: string[]
+  subreddits?: string[]
 }) {
   return useQuery({
     queryKey: redditKeys.feed(params),

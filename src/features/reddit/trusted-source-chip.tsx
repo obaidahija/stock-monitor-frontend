@@ -127,9 +127,10 @@ function SourceMenu({
  * and authors have no per-source "posts to pull" setting (that's a single global
  * REDDIT_SUBREDDIT_POST_LIMIT/REDDIT_TRUSTED_REFRESH_LIMIT env var, not a per-row
  * column like Twitter's sweep_post_limit), so there's no sweep-limit menu item or
- * dialog here, and no click-to-select-filter -- the Reddit feed only supports a
- * single `subreddit` filter value, not the multi-select `usernames`/`tickers`
- * Twitter's feed takes, so there's nothing for a chip click to toggle yet.
+ * dialog here. `onToggleSelected`/`selected` are optional -- pass them (as
+ * TrustedSubredditsSection does, mirroring Twitter's `usernames` feed filter) to
+ * make the chip click-to-filter; omit them (as trusted authors still do, since
+ * the feed has no author filter yet) and the chip stays a plain status pill.
  */
 export function SourceChip({
   label,
@@ -140,6 +141,8 @@ export function SourceChip({
   onRefresh,
   onRemove,
   removeDescription,
+  selected,
+  onToggleSelected,
 }: {
   label: string
   status: SourceStatus
@@ -149,14 +152,33 @@ export function SourceChip({
   onRefresh: () => void
   onRemove: () => void
   removeDescription: string
+  selected?: boolean
+  onToggleSelected?: () => void
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
 
   return (
     <div
+      onClick={onToggleSelected}
+      role={onToggleSelected ? 'button' : undefined}
+      tabIndex={onToggleSelected ? 0 : undefined}
+      onKeyDown={
+        onToggleSelected
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onToggleSelected()
+              }
+            }
+          : undefined
+      }
+      aria-pressed={onToggleSelected ? selected : undefined}
+      aria-label={onToggleSelected ? `Filter feed by ${label}` : undefined}
       className={cn(
         'group/source inline-flex h-8 items-center gap-1.5 rounded-full bg-card pr-1 pl-2.5 text-sm ring-1 transition-colors select-none',
         STATUS_TINT[status],
+        onToggleSelected && 'cursor-pointer',
+        selected && 'outline-2 outline-primary outline-offset-1',
       )}
       title={status === 'error' ? (errorMessage ?? undefined) : undefined}
     >
@@ -173,7 +195,9 @@ export function SourceChip({
         >
           {ageLabel}
         </span>
-        <span className="col-start-1 row-start-1 flex items-center">
+        {/* stopPropagation so opening/using the menu never also toggles selection --
+            mirrors Twitter's AccountChip, which has the identical concern. */}
+        <span className="col-start-1 row-start-1 flex items-center" onClick={(e) => e.stopPropagation()}>
           <SourceMenu
             label={label}
             isFetching={isFetching}

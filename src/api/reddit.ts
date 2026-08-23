@@ -23,10 +23,10 @@ export type RedditPostType = 'news' | 'recommendation' | 'analysis' | 'other' | 
 export interface RedditFeedParams {
   filter?: RedditFeedFilter
   sort?: RedditSort
-  subreddit?: string
   page?: number
   postTypes?: RedditPostType[]
   tickers?: string[]
+  subreddits?: string[]
 }
 
 export function getRedditAuth() {
@@ -57,11 +57,12 @@ export function getRedditFeed(params: RedditFeedParams = {}) {
   const query = new URLSearchParams()
   if (params.filter) query.set('filter', params.filter)
   if (params.sort) query.set('sort', params.sort)
-  if (params.subreddit) query.set('subreddit', params.subreddit)
   if (params.page !== undefined) query.set('page', String(params.page))
   if (params.postTypes && params.postTypes.length > 0)
     query.set('post_types', params.postTypes.join(','))
   if (params.tickers && params.tickers.length > 0) query.set('tickers', params.tickers.join(','))
+  if (params.subreddits && params.subreddits.length > 0)
+    query.set('subreddits', params.subreddits.join(','))
   return apiClient.get<RedditPageOut>(`/v1/reddit/feed?${query.toString()}`)
 }
 
