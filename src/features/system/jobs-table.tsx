@@ -46,9 +46,6 @@ const JOB_DESCRIPTIONS: Record<string, string> = {
     'every 10 seconds.',
   watchlist_notification_delivery:
     'Delivers due watchlist price-event alerts to Telegram and retries transient failures.',
-  reddit_scan:
-    'Scans a fixed subreddit list via PRAW, extracts ticker mentions, and scores them with ' +
-    'local FinBERT — full tracked universe, no monthly cap.',
   reddit_trusted_subreddit_sweep:
     'Enqueues the next fetch (newest posts) for every trusted subreddit. Opt-in.',
   reddit_trusted_author_sweep:
@@ -111,7 +108,6 @@ const JOB_GROUPS: JobGroup[] = [
       'earnings_sync',
       'news_ingest',
       'sentiment_classify',
-      'reddit_scan',
       'universe_score',
     ],
     ordered: true,
@@ -150,6 +146,26 @@ const JOB_GROUPS: JobGroup[] = [
       'twitter_sentiment_classify',
       'twitter_tweet_type_classify',
       'twitter_retention',
+    ],
+    ordered: false,
+  },
+  {
+    key: 'reddit-collection',
+    title: 'Reddit collection',
+    description:
+      'The rdt-cli integration behind Trusted subreddits/authors and ticker search on the ' +
+      'Reddit page. Trusted subreddits refresh every 30 minutes, trusted authors every 2 ' +
+      'hours. Auth check is a secondary recovery trigger (live operations also self-recover ' +
+      'without waiting for it); retention prunes old posts/operations/snapshots. All four are ' +
+      'opt-in — skipped entirely while REDDIT_INTELLIGENCE_ENABLED=false — and each can be ' +
+      'triggered manually. There is no scheduled full-universe Reddit scan; social_ingest ' +
+      "(Adanos) is the only scheduled Reddit sentiment source, and it's scoped to " +
+      'user-added custom tickers only.',
+    jobNames: [
+      'reddit_trusted_subreddit_sweep',
+      'reddit_trusted_author_sweep',
+      'reddit_auth_check',
+      'reddit_retention',
     ],
     ordered: false,
   },

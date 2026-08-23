@@ -1,47 +1,163 @@
 import { useState, type FormEvent } from 'react'
-import { Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
+import { Plus } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/shared/empty-state'
 import { ErrorState } from '@/components/shared/error-state'
-import { useSubredditMutations, useTrustedSubreddits } from './hooks'
+import { ApiError } from '@/lib/api-client'
+import { redditKeys, useSubredditMutations, useTrustedSubreddits } from './hooks'
+import { compactAge, deriveSourceStatus, SourceChip } from './trusted-source-chip'
+import { useRedditOperationPoll } from './use-operation-poll'
+import type { RedditTrustedSubredditOut } from '@/types/api'
 
 const NAME_RE = /^[A-Za-z0-9_]{2,21}$/
 
+function AddTrustedSubredditDialog() {
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState('')
+  const [validationError, setValidationError] = useState<string | null>(null)
+  const mutations = useSubredditMutations()
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    const normalized = name.trim().toLowerCase()
+    if (!NAME_RE.test(normalized)) {
+      setValidationError('Use a plain subreddit name (2-21 characters).')
+      return
+    }
+    setValidationError(null)
+
+    mutations.add.mutate(
+      { name: normalized, sort: 'new' },
+      {
+        onSuccess: () => {
+          toast.success(`r/${normalized} added`)
+          setName('')
+          setOpen(false)
+        },
+        onError: (err) => {
+          toast.error(
+            err instanceof ApiError && typeof err.detail === 'string'
+              ? err.detail
+              : `Failed to add r/${normalized}`,
+          )
+        },
+      },
+    )
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm">
+          <Plus />
+          Add trusted subreddit
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>Add a trusted subreddit</DialogTitle>
+            <DialogDescription>
+              MarketScout will poll this subreddit's newest posts every 30 minutes and score them
+              with full source-trust weight.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-1.5 py-4">
+            <Label htmlFor="subreddit-name">Subreddit name</Label>
+            <Input
+              id="subreddit-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="wallstreetbets"
+              autoFocus
+            />
+            {validationError && <p className="text-destructive text-xs">{validationError}</p>}
+          </div>
+          <DialogFooter>
+            <Button type="submit" disabled={mutations.add.isPending}>
+              {mutations.add.isPending ? 'Adding…' : 'Add'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function SubredditChip({ source }: { source: RedditTrustedSubredditOut }) {
+  const mutations = useSubredditMutations()
+  const queryClient = useQueryClient()
+  const poll = useRedditOperationPoll(mutations.fetch.data?.id ?? null, () =>
+    queryClient.invalidateQueries({ queryKey: redditKeys.subreddits }),
+  )
+  const isFetching =
+    mutations.fetch.isPending || poll.data?.status === 'running' || poll.data?.status === 'queued'
+  const status = deriveSourceStatus(source.operation)
+
+  return (
+    <SourceChip
+      label={`r/${source.name}`}
+      status={status}
+      ageLabel={compactAge(source.last_successful_fetch_at) ?? 'never fetched'}
+      errorMessage={source.operation?.public_error_message}
+      isFetching={isFetching}
+      onRefresh={() =>
+        mutations.fetch.mutate(
+          { name: source.name, sort: source.default_sort },
+          { onError: () => toast.error(`Failed to trigger a fetch for r/${source.name}`) },
+        )
+      }
+      onRemove={() =>
+        mutations.remove.mutate(source.name, {
+          onSuccess: () => toast.success(`r/${source.name} removed`),
+          onError: () => toast.error(`Failed to remove r/${source.name}`),
+        })
+      }
+      removeDescription="MarketScout will stop collecting posts from this subreddit. You can re-add it later."
+    />
+  )
+}
+
 export function TrustedSubredditsSection() {
   const query = useTrustedSubreddits()
-  const mutations = useSubredditMutations()
-  const [name, setName] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  function submit(event: FormEvent) {
-    event.preventDefault()
-    const normalized = name.trim().toLowerCase()
-    if (!NAME_RE.test(normalized)) return setError('Use a plain subreddit name (2–21 characters).')
-    setError(null)
-    mutations.add.mutate({ name: normalized, sort: 'new' }, { onSuccess: () => setName('') })
-  }
+
   return (
     <section className="space-y-3">
-      <h2 className="font-semibold">Trusted subreddits</h2>
-      <form className="flex gap-2" onSubmit={submit}>
-        <Input aria-label="Subreddit name" value={name} onChange={(event) => setName(event.target.value)} placeholder="wallstreetbets" />
-        <Button size="sm" type="submit"><Plus /> Add</Button>
-      </form>
-      {error && <p className="text-destructive text-xs">{error}</p>}
-      {query.isError && <ErrorState error={query.error} onRetry={() => query.refetch()} />}
-      {query.data?.length === 0 && <EmptyState title="No trusted subreddits" description="Add communities whose posts should receive source-trust weight." />}
-      <div className="space-y-2">
-        {query.data?.map((source) => (
-          <Card key={source.name}><CardContent className="flex items-center justify-between gap-3 py-3">
-            <div><p className="text-sm font-medium">r/{source.name}</p><p className="text-muted-foreground text-xs">Default: {source.default_sort} · {source.operation?.status ?? 'idle'}</p></div>
-            <div className="flex gap-1">
-              <Button size="icon-sm" variant="ghost" aria-label={`Fetch r/${source.name}`} onClick={() => mutations.fetch.mutate({ name: source.name, sort: source.default_sort })}><RefreshCw /></Button>
-              <Button size="icon-sm" variant="ghost" aria-label={`Remove r/${source.name}`} onClick={() => mutations.remove.mutate(source.name)}><Trash2 /></Button>
-            </div>
-          </CardContent></Card>
-        ))}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-semibold">Trusted subreddits</h2>
+        <AddTrustedSubredditDialog />
       </div>
+
+      {query.isPending && <Skeleton className="h-8 w-full rounded-full" />}
+      {query.isError && <ErrorState error={query.error} onRetry={() => query.refetch()} />}
+      {query.data && query.data.length === 0 && (
+        <EmptyState
+          title="No trusted subreddits"
+          description="Add communities whose posts should receive source-trust weight."
+        />
+      )}
+
+      {query.data && query.data.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {query.data.map((source) => (
+            <SubredditChip key={source.name} source={source} />
+          ))}
+        </div>
+      )}
     </section>
   )
 }

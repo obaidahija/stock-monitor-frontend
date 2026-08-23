@@ -72,7 +72,7 @@ export function TickerTagFilter({
 
   return (
     <div ref={containerRef} className="relative">
-      <div className="border-input flex min-h-9 flex-wrap items-center gap-1.5 rounded-md border bg-transparent px-2 py-1 focus-within:ring-1 focus-within:ring-ring">
+      <div className="border-input dark:bg-input/30 flex min-h-9 flex-wrap items-center gap-1.5 rounded-lg border bg-transparent px-2 py-1 focus-within:ring-1 focus-within:ring-ring">
         {selected.map((ticker) => (
           <span
             key={ticker}
@@ -100,7 +100,7 @@ export function TickerTagFilter({
           placeholder={selected.length === 0 ? placeholder : undefined}
           aria-label={placeholder}
           autoComplete="off"
-          className="h-7 min-w-24 flex-1 border-none px-1 shadow-none focus-visible:ring-0"
+          className="h-7 min-w-24 flex-1 border-none bg-transparent px-1 shadow-none focus-visible:ring-0 dark:bg-transparent"
         />
       </div>
 

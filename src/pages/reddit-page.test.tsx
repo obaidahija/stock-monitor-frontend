@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { cleanup, screen } from '@testing-library/react'
 import { beforeEach, expect, test, vi } from 'vitest'
 import { renderWithProviders } from '@/test/render'
 import { RedditPage } from './reddit-page'
@@ -16,6 +16,7 @@ vi.mock('@/api/reddit', async (loadOriginal) => ({
 }))
 
 beforeEach(() => {
+  cleanup()
   api.getRedditAuth.mockResolvedValue({
     state: 'valid',
     checked_at: null,
@@ -39,14 +40,15 @@ beforeEach(() => {
 
 test('renders Reddit parity controls and Reddit-native source sections', async () => {
   renderWithProviders(<RedditPage />, ['/reddit'])
-  expect(await screen.findByRole('heading', { name: 'Reddit' })).toBeInTheDocument()
+  expect(await screen.findByRole('heading', { name: /^Reddit/ })).toBeInTheDocument()
+  expect(await screen.findByText('Connected')).toBeInTheDocument()
   expect(screen.getByRole('heading', { name: 'Trusted subreddits' })).toBeInTheDocument()
   expect(screen.getByRole('heading', { name: 'Trusted authors' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Refresh feed' })).toBeInTheDocument()
   expect(screen.getByLabelText('Search Reddit by ticker')).toBeInTheDocument()
 })
 
-test('disabled state keeps the page visible and explains live work', async () => {
+test('disabled state keeps the page visible and shows a Disabled status', async () => {
   api.getRedditAuth.mockResolvedValue({
     state: 'unavailable',
     checked_at: null,
@@ -56,5 +58,6 @@ test('disabled state keeps the page visible and explains live work', async () =>
     public_reads_available: false,
   })
   renderWithProviders(<RedditPage />, ['/reddit'])
-  expect(await screen.findByText(/live collection is disabled/i)).toBeInTheDocument()
+  expect(await screen.findByText('Disabled')).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: /^Reddit/ })).toBeInTheDocument()
 })
