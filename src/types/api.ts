@@ -227,6 +227,46 @@ export interface TwitterBestStocksRefreshOut {
   reused: boolean
 }
 
+export interface RedditTopMentionOut {
+  rank: number
+  ticker: string
+  mention_count: number
+  unique_authors: number
+  recommendation_count: number
+  news_count: number
+  analysis_count: number
+  other_count: number
+  general_count: number
+  untyped_count: number
+  sentiment_score: number | null
+  sentiment_positive_count: number
+  sentiment_negative_count: number
+  sentiment_neutral_count: number
+  max_signal_score: number | null
+  company_name: string | null
+  symbols: {
+    ticker: string
+  }[]
+}
+
+export interface RedditTopMentionsOut {
+  items: RedditTopMentionOut[]
+  generated_at: string | null
+  window_started_at: string | null
+  window_ended_at: string | null
+  qualified_sample_size: number
+  refresh_active: boolean
+  active_run_id: string | null
+  stale: boolean
+  stale_reason: string | null
+}
+
+export interface RedditTopMentionsRefreshOut {
+  run_id: string
+  status: string
+  reused: boolean
+}
+
 export type AnalysisLean = 'bullish' | 'neutral' | 'bearish'
 
 export type PriceLevelPosition =

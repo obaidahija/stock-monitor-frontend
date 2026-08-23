@@ -12,6 +12,8 @@ import type {
   RedditSort,
   RedditThreadOut,
   RedditTimeFilter,
+  RedditTopMentionsOut,
+  RedditTopMentionsRefreshOut,
   RedditTrustedAuthorOut,
   RedditTrustedSubredditOut,
 } from '@/types/api'
@@ -63,6 +65,14 @@ export function getRedditFeed(params: RedditFeedParams = {}) {
 
 export function refreshRedditFeed() {
   return apiClient.post<RedditFeedRefreshOut>('/v1/reddit/feed/refresh')
+}
+
+export function getRedditTopMentions(limit = 20) {
+  return apiClient.get<RedditTopMentionsOut>(`/v1/reddit/top-mentions?limit=${limit}`)
+}
+
+export function refreshRedditTopMentions() {
+  return apiClient.post<RedditTopMentionsRefreshOut>('/v1/reddit/top-mentions/refresh')
 }
 
 export function getTrustedSubreddits() {

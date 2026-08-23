@@ -2,6 +2,7 @@ import { PageHeader } from '@/components/shared/page-header'
 import { RedditAuthStatusIndicator } from '@/features/reddit/auth-status-banner'
 import { RedditFeedControls } from '@/features/reddit/feed-controls'
 import { RedditFeedList } from '@/features/reddit/feed-list'
+import { RedditTopMentionsStrip } from '@/features/reddit/reddit-top-mentions-strip'
 import { TickerSearchResults } from '@/features/reddit/ticker-search-results'
 import { TrustedAuthorsSection } from '@/features/reddit/trusted-authors-section'
 import { TrustedSubredditsSection } from '@/features/reddit/trusted-subreddits-section'
@@ -17,6 +18,7 @@ export function RedditPage() {
           </>
         }
       />
+      <RedditTopMentionsStrip />
       <div className="grid gap-6 lg:grid-cols-2">
         <TrustedSubredditsSection />
         <TrustedAuthorsSection />

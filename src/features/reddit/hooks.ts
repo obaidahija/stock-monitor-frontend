@@ -15,6 +15,7 @@ export const redditKeys = {
   subreddits: ['reddit', 'sources', 'subreddits'] as const,
   authors: ['reddit', 'sources', 'authors'] as const,
   thread: (postId: string) => ['reddit', 'thread', postId] as const,
+  topMentions: (limit: number) => ['reddit', 'top-mentions', limit] as const,
 }
 
 export const useRedditAuth = () =>
@@ -80,6 +81,22 @@ export function useRefreshRedditFeed() {
   return useMutation({
     mutationFn: api.refreshRedditFeed,
     onSuccess: () => client.invalidateQueries({ queryKey: ['reddit', 'feed'] }),
+  })
+}
+
+export function useRedditTopMentions(limit: number) {
+  return useQuery({
+    queryKey: redditKeys.topMentions(limit),
+    queryFn: () => api.getRedditTopMentions(limit),
+    refetchInterval: (query) => (query.state.data?.refresh_active ? 15_000 : 60_000),
+  })
+}
+
+export function useRefreshRedditTopMentions() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: api.refreshRedditTopMentions,
+    onSuccess: () => client.invalidateQueries({ queryKey: ['reddit', 'top-mentions'] }),
   })
 }
 
