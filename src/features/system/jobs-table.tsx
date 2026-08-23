@@ -55,8 +55,12 @@ const JOB_DESCRIPTIONS: Record<string, string> = {
   reddit_retention:
     'Deletes Reddit posts, operations, and snapshots past the retention window. Opt-in.',
   reddit_post_type_classify:
-    'Tags newly collected Reddit posts news/recommendation/analysis/other via the same ' +
-    'shared zero-shot classifier as twitter_tweet_type_classify. Opt-in.',
+    'Tags newly collected Reddit posts news/recommendation/analysis/other/general via the ' +
+    'same shared zero-shot classifier as twitter_tweet_type_classify. Opt-in.',
+  reddit_sentiment_classify:
+    'Classifies Reddit posts positive/negative/neutral with the same FinBERT instance as ' +
+    'sentiment_classify/twitter_sentiment_classify — a safety-net catch-up alongside the ' +
+    'queue-triggered pass that already runs after each fetch. Opt-in.',
   chart_pattern_scan:
     'Runs the local YOLOv8 chart-pattern detector across the full tracked universe and ' +
     'upserts detections into history — tags only, not folded into scoring.',
@@ -93,7 +97,7 @@ const JOB_DESCRIPTIONS: Record<string, string> = {
   twitter_sentiment_classify:
     'Runs sentiment classification over newly collected, unscored Twitter posts.',
   twitter_tweet_type_classify:
-    'Tags newly collected tweets news/recommendation/analysis/other via a local ' +
+    'Tags newly collected tweets news/recommendation/analysis/other/general via a local ' +
     'zero-shot classifier.',
 }
 
@@ -156,21 +160,16 @@ const JOB_GROUPS: JobGroup[] = [
     key: 'reddit-collection',
     title: 'Reddit collection',
     description:
-      'The rdt-cli integration behind Trusted subreddits/authors and ticker search on the ' +
-      'Reddit page. Trusted subreddits refresh every 30 minutes, trusted authors every 2 ' +
-      'hours. Auth check is a secondary recovery trigger (live operations also self-recover ' +
-      'without waiting for it); retention prunes old posts/operations/snapshots; post-type ' +
-      'classify tags posts news/recommendation/analysis/other hourly, same shared model as ' +
-      'Twitter. All five are opt-in — skipped entirely while ' +
-      'REDDIT_INTELLIGENCE_ENABLED=false — and each can be triggered manually. There is no ' +
-      'scheduled full-universe Reddit scan; social_ingest (Adanos) is the only scheduled ' +
-      'Reddit sentiment source, and it\'s scoped to user-added custom tickers only.',
+      'Trusted subreddits refresh every 30 minutes, trusted authors every 2 hours. ' +
+      'Post-type and sentiment classification, auth check, and retention run independently; ' +
+      'all six are opt-in and each can be triggered manually.',
     jobNames: [
       'reddit_trusted_subreddit_sweep',
       'reddit_trusted_author_sweep',
       'reddit_auth_check',
       'reddit_retention',
       'reddit_post_type_classify',
+      'reddit_sentiment_classify',
     ],
     ordered: false,
   },

@@ -20,13 +20,21 @@ import { useSearchTicker, useTwitterFeed } from '@/features/twitter/hooks'
 import { useTwitterOperationPoll } from '@/features/twitter/use-operation-poll'
 import { TweetRow } from '@/features/twitter/tweet-row'
 import { TweetDetailDialog } from '@/features/twitter/tweet-detail-dialog'
-import type { TwitterMinimumViews, TwitterSort } from '@/api/twitter'
+import type { TweetType, TwitterMinimumViews, TwitterSort } from '@/api/twitter'
 import type { TwitterPostOut } from '@/types/api'
 
 const SORT_OPTIONS: { label: string; value: TwitterSort }[] = [
   { label: 'Signal', value: 'signal' },
   { label: 'Newest', value: 'newest' },
   { label: 'Virality', value: 'virality' },
+]
+
+const TWEET_TYPE_OPTIONS: { label: string; value: TweetType }[] = [
+  { label: 'News', value: 'news' },
+  { label: 'Recommendation', value: 'recommendation' },
+  { label: 'Analysis', value: 'analysis' },
+  { label: 'General', value: 'general' },
+  { label: 'Other', value: 'other' },
 ]
 
 const MINIMUM_VIEW_OPTIONS: TwitterMinimumViews[] = [1000, 2000, 3000, 5000]
@@ -43,6 +51,7 @@ const MINIMUM_VIEW_OPTIONS: TwitterMinimumViews[] = [1000, 2000, 3000, 5000]
 export function TwitterTab({ ticker }: { ticker: string }) {
   const [sort, setSort] = useState<TwitterSort>('signal')
   const [page, setPage] = useState(1)
+  const [tweetTypes, setTweetTypes] = useState<TweetType[]>([])
   const [selectedPost, setSelectedPost] = useState<TwitterPostOut | null>(null)
   const [refreshDialogOpen, setRefreshDialogOpen] = useState(false)
   const [minimumViews, setMinimumViews] = useState<TwitterMinimumViews>(2000)
@@ -52,6 +61,7 @@ export function TwitterTab({ ticker }: { ticker: string }) {
     tickers: [ticker],
     sort,
     page,
+    tweetTypes,
   })
   const search = useSearchTicker()
 
@@ -64,6 +74,13 @@ export function TwitterTab({ ticker }: { ticker: string }) {
 
   function changeSort(next: TwitterSort) {
     setSort(next)
+    setPage(1)
+  }
+
+  function toggleTweetType(value: TweetType) {
+    setTweetTypes((current) =>
+      current.includes(value) ? current.filter((t) => t !== value) : [...current, value]
+    )
     setPage(1)
   }
 
@@ -98,10 +115,33 @@ export function TwitterTab({ ticker }: { ticker: string }) {
         </Button>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-muted-foreground text-xs">Type</span>
+        <div className="flex flex-wrap gap-1">
+          {TWEET_TYPE_OPTIONS.map((opt) => (
+            <Button
+              key={opt.value}
+              size="sm"
+              variant={tweetTypes.includes(opt.value) ? 'secondary' : 'ghost'}
+              onClick={() => toggleTweetType(opt.value)}
+            >
+              {opt.label}
+            </Button>
+          ))}
+        </div>
+      </div>
+
       {isPending && <Skeleton className="h-64 rounded-xl" />}
       {isError && <ErrorState error={error} onRetry={() => refetch()} />}
 
-      {data && data.items.length === 0 && (
+      {data && data.items.length === 0 && tweetTypes.length > 0 && (
+        <EmptyState
+          title={`No ${ticker} tweets match the selected type(s)`}
+          description="Try clearing the type filter above or wait for classification to catch up."
+        />
+      )}
+
+      {data && data.items.length === 0 && tweetTypes.length === 0 && (
         <EmptyState
           title={`No tweets found for ${ticker} yet`}
           description="No trusted-account activity yet — click refresh to search X directly for this ticker."

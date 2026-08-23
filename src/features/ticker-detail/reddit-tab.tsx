@@ -11,6 +11,7 @@ import { useRedditSearch, useSearchRedditTicker } from '@/features/reddit/hooks'
 import { useRedditOperationPoll } from '@/features/reddit/use-operation-poll'
 import { formatRelativeTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import type { RedditPostType } from '@/api/reddit'
 import type { RedditPostOut, RedditSort } from '@/types/api'
 
 const SORT_OPTIONS: { label: string; value: RedditSort }[] = [
@@ -21,12 +22,36 @@ const SORT_OPTIONS: { label: string; value: RedditSort }[] = [
   { label: 'Comments', value: 'comments' },
 ]
 
+const POST_TYPE_OPTIONS: { label: string; value: RedditPostType }[] = [
+  { label: 'News', value: 'news' },
+  { label: 'Recommendation', value: 'recommendation' },
+  { label: 'Analysis', value: 'analysis' },
+  { label: 'General', value: 'general' },
+  { label: 'Other', value: 'other' },
+]
+
 export function RedditTab({ ticker }: { ticker: string }) {
   const [sort, setSort] = useState<RedditSort>('signal')
+  const [postTypes, setPostTypes] = useState<RedditPostType[]>([])
   const [selectedPost, setSelectedPost] = useState<RedditPostOut | null>(null)
   const queryClient = useQueryClient()
   const searchCache = useRedditSearch(ticker, sort)
   const search = useSearchRedditTicker()
+  const items = searchCache.data?.items ?? []
+  // Cache-only search results are already fully loaded (capped at ~20), so
+  // filtering client-side avoids needing post_types support on the
+  // per-ticker search endpoint for what's a small, already-fetched list.
+  const filteredItems =
+    postTypes.length > 0
+      ? items.filter((post) => post.post_type && postTypes.includes(post.post_type as RedditPostType))
+      : items
+
+  function togglePostType(value: RedditPostType) {
+    setPostTypes((current) =>
+      current.includes(value) ? current.filter((t) => t !== value) : [...current, value]
+    )
+  }
+
   const operationId = search.data?.operation?.id ?? null
   const poll = useRedditOperationPoll(operationId, () => {
     queryClient.invalidateQueries({ queryKey: ['reddit', 'search', ticker, sort] })
@@ -67,17 +92,39 @@ export function RedditTab({ ticker }: { ticker: string }) {
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-muted-foreground text-xs">Type</span>
+        <div className="flex flex-wrap gap-1">
+          {POST_TYPE_OPTIONS.map((opt) => (
+            <Button
+              key={opt.value}
+              size="sm"
+              variant={postTypes.includes(opt.value) ? 'secondary' : 'ghost'}
+              onClick={() => togglePostType(opt.value)}
+            >
+              {opt.label}
+            </Button>
+          ))}
+        </div>
+      </div>
+
       {searchCache.isPending && <Skeleton className="h-64 rounded-xl" />}
       {searchCache.isError && <ErrorState error={searchCache.error} />}
-      {searchCache.data?.items.length === 0 && (
+      {items.length === 0 && (
         <EmptyState
           title={`No Reddit discussions loaded for ${ticker}`}
           description="Refresh Reddit to collect current ticker discussions."
         />
       )}
-      {!!searchCache.data?.items.length && (
+      {items.length > 0 && filteredItems.length === 0 && (
+        <EmptyState
+          title={`No ${ticker} Reddit posts match the selected type(s)`}
+          description="Try clearing the type filter above or wait for classification to catch up."
+        />
+      )}
+      {filteredItems.length > 0 && (
         <div className="space-y-2">
-          {searchCache.data.items.map((post) => (
+          {filteredItems.map((post) => (
             <RedditPostCard key={post.id} post={post} onSelect={setSelectedPost} />
           ))}
         </div>
