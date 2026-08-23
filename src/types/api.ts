@@ -1148,12 +1148,18 @@ export interface TrendingSectorSparklinePointOut {
   trend_pct: number
 }
 
+export interface TrendingSectorTopTickerOut {
+  ticker: string
+  company_name: string | null
+  price: number | null
+  change_pct: number | null
+}
+
 export interface TrendingSectorOut {
   sector: string
   ticker_count: number
   combined_score: number
-  top_ticker: string | null
-  top_ticker_change_pct: number | null
+  top_tickers: TrendingSectorTopTickerOut[]
   avg_change_pct: number | null
   etf_symbol: string | null
   etf_trend_pct: number | null

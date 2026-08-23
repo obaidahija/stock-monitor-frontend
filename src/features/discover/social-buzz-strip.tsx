@@ -1,18 +1,23 @@
-import { useRef, useState, type CSSProperties } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { PlatformToggle } from '@/components/shared/platform-toggle'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { formatNumber, formatScore } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { useRefreshTwitterBestStocks, useTrending, useTwitterBestStocks } from './hooks'
 import {
+  accentStyleFor,
   blendedSentiment,
+  BOTH_GRADIENT,
+  coverageLabel,
   mergeSocialBuzz,
   scoreFor,
   toneOf,
+  weightClassFor,
   type MergedSocialBuzzRow,
   type PlatformFilter,
   REDDIT_DOT,
@@ -20,35 +25,8 @@ import {
   TWITTER_DOT,
 } from './social-buzz'
 
-const BOTH_GRADIENT = 'linear-gradient(to bottom, #eb6834, #2a78d6)'
-
 const LIMIT = 20
 const MAX_CHIPS = 18
-
-// Rank reads through background tint alone -- no bar length needed once the
-// row-per-ticker list becomes a single scrollable strip.
-function weightClassFor(index: number, total: number): string {
-  const pct = total <= 1 ? 0 : index / (total - 1)
-  if (pct < 0.12) return 'bg-primary/15 ring-primary/30'
-  if (pct < 0.35) return 'bg-primary/10 ring-primary/20'
-  if (pct < 0.65) return 'bg-primary/5 ring-primary/10'
-  return 'bg-card ring-foreground/10'
-}
-
-// The left edge is the platform legend: solid Reddit orange or Twitter blue for a
-// ticker seen on one platform, a two-tone split for a ticker trending on *both* --
-// so double coverage reads at a glance, as its own color, without a badge or label.
-function accentStyleFor(hasReddit: boolean, hasTwitter: boolean): CSSProperties {
-  if (hasReddit && hasTwitter) {
-    return { background: BOTH_GRADIENT }
-  }
-  return { background: hasReddit ? '#eb6834' : '#2a78d6' }
-}
-
-function coverageLabel(hasReddit: boolean, hasTwitter: boolean): string {
-  if (hasReddit && hasTwitter) return 'Reddit + Twitter'
-  return hasReddit ? 'Reddit only' : 'Twitter only'
-}
 
 // Lands on whichever platform's tab actually has the stronger signal for this
 // ticker, so a Reddit-only mention doesn't drop someone onto an empty Twitter tab.
@@ -56,38 +34,6 @@ function targetTabFor(row: MergedSocialBuzzRow): 'twitter' | 'reddit' {
   if (!row.reddit) return 'twitter'
   if (!row.twitter) return 'reddit'
   return row.twitter.score >= row.reddit.score ? 'twitter' : 'reddit'
-}
-
-// The legend doubles as the filter control -- clicking a platform's own dot+label
-// both explains the color and narrows the strip to it, one element instead of a
-// static legend plus a separate row of filter buttons.
-function PlatformToggle({
-  active,
-  onClick,
-  dotClassName,
-  dotStyle,
-  label,
-}: {
-  active: boolean
-  onClick: () => void
-  dotClassName?: string
-  dotStyle?: CSSProperties
-  label: string
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={cn(
-        'flex items-center gap-1 rounded-full px-1.5 py-0.5 transition-colors',
-        active ? 'bg-muted text-foreground font-medium' : 'text-muted-foreground hover:text-foreground',
-      )}
-    >
-      <span className={cn('size-2 rounded-full', dotClassName)} style={dotStyle} aria-hidden />
-      {label}
-    </button>
-  )
 }
 
 /**

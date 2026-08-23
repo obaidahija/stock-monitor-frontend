@@ -5,9 +5,10 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } f
 import { EmptyState } from '@/components/shared/empty-state'
 import { ErrorState } from '@/components/shared/error-state'
 import { Skeleton } from '@/components/ui/skeleton'
-import { formatDateTime, formatSignedPct } from '@/lib/format'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { formatCurrency, formatDateTime, formatSignedPct } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import type { TrendingSectorOut } from '@/types/api'
+import type { TrendingSectorOut, TrendingSectorTopTickerOut } from '@/types/api'
 import { useTrendingSectors } from './hooks'
 
 const chartConfig: ChartConfig = {
@@ -40,6 +41,40 @@ function SectorSparkline({ sector }: { sector: TrendingSectorOut }) {
         />
       </LineChart>
     </ChartContainer>
+  )
+}
+
+// Tooltip content always inverts relative to the page (bg-foreground /
+// text-background -- see components/ui/tooltip.tsx), so it needs its own
+// fixed-shade accent rather than the usual text-emerald-600 dark:text-
+// emerald-400 pairing, which assumes a light-mode-vs-dark-mode background
+// rather than a light-tooltip-vs-dark-tooltip one.
+function TooltipChangeText({ value }: { value: number | null }) {
+  if (value === null) return null
+  return (
+    <span className={value >= 0 ? 'text-emerald-500' : 'text-red-500'}>
+      {formatSignedPct(value)}
+    </span>
+  )
+}
+
+function TopTickerChip({ ticker }: { ticker: TrendingSectorTopTickerOut }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="bg-muted text-foreground inline-flex cursor-default items-center rounded-full px-2 py-0.5 text-xs font-medium">
+          {ticker.ticker}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>
+        <div className="space-y-0.5">
+          <p className="font-medium">{ticker.company_name ?? ticker.ticker}</p>
+          <p>
+            {formatCurrency(ticker.price)} <TooltipChangeText value={ticker.change_pct} />
+          </p>
+        </div>
+      </TooltipContent>
+    </Tooltip>
   )
 }
 
@@ -85,20 +120,11 @@ function SectorCard({
         )}
       </div>
       <SectorSparkline sector={sector} />
-      {sector.top_ticker && (
-        <div className="text-xs">
-          Top: <span className="font-medium">{sector.top_ticker}</span>{' '}
-          {sector.top_ticker_change_pct !== null && (
-            <span
-              className={
-                sector.top_ticker_change_pct >= 0
-                  ? 'text-emerald-600 dark:text-emerald-400'
-                  : 'text-red-600 dark:text-red-400'
-              }
-            >
-              {formatSignedPct(sector.top_ticker_change_pct)}
-            </span>
-          )}
+      {sector.top_tickers.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {sector.top_tickers.map((ticker) => (
+            <TopTickerChip key={ticker.ticker} ticker={ticker} />
+          ))}
         </div>
       )}
     </button>
