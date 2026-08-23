@@ -14,7 +14,8 @@ import {
 } from '@/lib/earnings-colors'
 import { cn } from '@/lib/utils'
 import { EpsTrendChart } from './eps-trend-chart'
-import { useEarnings, useRefreshEarnings } from './hooks'
+import { EarningsReactionChart } from './earnings-reaction-chart'
+import { useEarnings, useEarningsReaction, useRefreshEarnings } from './hooks'
 import type { EarningsEventOut, EarningsResult } from '@/types/api'
 
 function toneClass(pct: number | null): string {
@@ -250,6 +251,7 @@ function HistoryQuarterCard({ event }: { event: EarningsEventOut }) {
 
 export function EarningsTab({ ticker }: { ticker: string }) {
   const { data, isPending, isError, error, refetch } = useEarnings(ticker)
+  const reaction = useEarningsReaction(ticker)
   const refreshEarnings = useRefreshEarnings(ticker)
 
   function runRefresh() {
@@ -308,6 +310,8 @@ export function EarningsTab({ ticker }: { ticker: string }) {
       )}
 
       <EpsTrendChart events={data.yfinance_snapshot} />
+      {reaction.isPending && <Skeleton className="h-80 rounded-xl" />}
+      {reaction.data && <EarningsReactionChart data={reaction.data} />}
     </div>
   )
 }

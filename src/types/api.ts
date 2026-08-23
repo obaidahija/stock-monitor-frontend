@@ -95,6 +95,43 @@ export interface EarningsSummary {
   yfinance_snapshot: YfEarningsEventOut[]
 }
 
+export interface EarningsReactionSourceOut {
+  ok: boolean
+  error: string | null
+}
+
+export interface EarningsReactionPointOut {
+  offset: number
+  avg_pct: number
+  min_pct: number
+  max_pct: number
+  n: number
+}
+
+export interface EarningsReactionEventPointOut {
+  offset: number
+  pct: number
+}
+
+export interface EarningsReactionEventOut {
+  event_date: string
+  bmo_amc: string
+  eps_estimate: number | null
+  eps_actual: number | null
+  points: EarningsReactionEventPointOut[]
+}
+
+export interface EarningsReactionOut {
+  ticker: string
+  before_days: number
+  after_days: number
+  points: EarningsReactionPointOut[]
+  events: EarningsReactionEventOut[]
+  events_used: number
+  days_until_next_earnings: number | null
+  source: EarningsReactionSourceOut
+}
+
 export interface EarningsRefreshResult {
   ticker: string
   new: number

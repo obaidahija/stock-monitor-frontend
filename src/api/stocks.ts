@@ -4,6 +4,7 @@ import type {
   AnalysisOut,
   CatalystOut,
   ChartPatternOut,
+  EarningsReactionOut,
   EarningsRefreshResult,
   EarningsSummary,
   FilingOut,
@@ -35,6 +36,19 @@ export function getFilings(ticker: string, opts?: { form?: string; days?: number
 
 export function getEarnings(ticker: string) {
   return apiClient.get<EarningsSummary>(`/v1/stocks/${encodeURIComponent(ticker)}/earnings`)
+}
+
+export function getEarningsReaction(
+  ticker: string,
+  opts?: { beforeDays?: number; afterDays?: number },
+) {
+  const params = new URLSearchParams()
+  if (opts?.beforeDays) params.set('before_days', String(opts.beforeDays))
+  if (opts?.afterDays) params.set('after_days', String(opts.afterDays))
+  const qs = params.toString()
+  return apiClient.get<EarningsReactionOut>(
+    `/v1/stocks/${encodeURIComponent(ticker)}/earnings-reaction${qs ? `?${qs}` : ''}`,
+  )
 }
 
 export function refreshEarnings(ticker: string) {

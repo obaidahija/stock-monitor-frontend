@@ -7,6 +7,7 @@ import {
   getAnalysis,
   getCatalysts,
   getEarnings,
+  getEarningsReaction,
   getFilings,
   getNews,
   getSentimentHistory,
@@ -73,11 +74,21 @@ export function useEarnings(ticker: string) {
   return useQuery({ queryKey: ['earnings', ticker], queryFn: () => getEarnings(ticker) })
 }
 
+export function useEarningsReaction(ticker: string) {
+  return useQuery({
+    queryKey: ['earnings-reaction', ticker],
+    queryFn: () => getEarningsReaction(ticker),
+  })
+}
+
 export function useRefreshEarnings(ticker: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: () => refreshEarnings(ticker),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['earnings', ticker] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['earnings', ticker] })
+      queryClient.invalidateQueries({ queryKey: ['earnings-reaction', ticker] })
+    },
   })
 }
 
