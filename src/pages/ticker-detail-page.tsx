@@ -11,7 +11,6 @@ import { EarningsTab } from '@/features/ticker-detail/earnings-tab'
 import { NewsTab } from '@/features/ticker-detail/news-tab'
 import { FilingsTab } from '@/features/ticker-detail/filings-tab'
 import { CatalystsTab } from '@/features/ticker-detail/catalysts-tab'
-import { SocialTab } from '@/features/ticker-detail/social-tab'
 import { TwitterTab } from '@/features/ticker-detail/twitter-tab'
 import { RedditTab } from '@/features/ticker-detail/reddit-tab'
 import { useAutoRefreshUniverseScore, useUniverseScore } from '@/features/ticker-detail/hooks'
@@ -22,7 +21,6 @@ const DETAIL_TABS = [
   'ai-research',
   'earnings',
   'news',
-  'social',
   'twitter',
   'reddit',
   'filings',
@@ -71,7 +69,7 @@ export function TickerDetailPage() {
             )}
           </>
         }
-        description="Analysis, earnings, news, social, filings, and catalysts."
+        description="Analysis, earnings, news, Twitter, Reddit, filings, and catalysts."
         actions={
           <>
             <ManageListsDialog ticker={symbol} labeled />
@@ -97,7 +95,6 @@ export function TickerDetailPage() {
           <TabsTrigger value="ai-research">AI Research</TabsTrigger>
           <TabsTrigger value="earnings">Earnings</TabsTrigger>
           <TabsTrigger value="news">News</TabsTrigger>
-          <TabsTrigger value="social">Social</TabsTrigger>
           <TabsTrigger value="twitter">Twitter</TabsTrigger>
           <TabsTrigger value="reddit">Reddit</TabsTrigger>
           <TabsTrigger value="filings">Filings</TabsTrigger>
@@ -114,9 +111,6 @@ export function TickerDetailPage() {
         </TabsContent>
         <TabsContent value="news">
           <NewsTab ticker={symbol} />
-        </TabsContent>
-        <TabsContent value="social">
-          <SocialTab ticker={symbol} />
         </TabsContent>
         <TabsContent value="twitter">
           <TwitterTab ticker={symbol} />

@@ -14,9 +14,8 @@ const MAX_CHIPS = 20
 
 /**
  * Reddit's own mention leaderboard, rendered through the same
- * TickerMentionStrip as Twitter's Top Mentions -- unlike Discover's Social
- * Buzz (Adanos' third-party buzz score), this ranks tickers straight from
- * the Reddit posts this app actually collects via rdt-cli's trusted
+ * TickerMentionStrip as Twitter's Top Mentions -- ranks tickers straight
+ * from the Reddit posts this app actually collects via rdt-cli's trusted
  * subreddit/author sweeps. Each chip packs the headline numbers in (mention
  * count, sentiment), with a recommendation-count badge when the crowd isn't
  * just discussing a ticker but actively pitching it, and the full

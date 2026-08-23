@@ -10,7 +10,6 @@ import {
   getFilings,
   getNews,
   getSentimentHistory,
-  getSocial,
   getUniverseScore,
   refreshAiResearch,
   refreshEarnings,
@@ -57,10 +56,6 @@ export function useAutoRefreshUniverseScore(ticker: string) {
     lastRequestedTicker.current = ticker
     mutate()
   }, [mutate, ticker])
-}
-
-export function useSocial(ticker: string) {
-  return useQuery({ queryKey: ['social', ticker], queryFn: () => getSocial(ticker) })
 }
 
 export function useSentimentHistory(

@@ -1,13 +1,13 @@
 import type { CSSProperties } from 'react'
-import type { TrendingSocialOut, TwitterBestStockOut } from '@/types/api'
 
 // Reddit's own brand orange and Twitter/X's classic blue — an adjacent pair
 // from the shared data-viz categorical palette, validated CVD-safe together
 // (worst adjacent deltaE 9.1 light / 8.4 dark). Doubles as a mnemonic: the
 // color already says which platform without reading the legend. Shared by
-// every view that blends the two platforms' attention signal (Discover's
-// Social Buzz list, Twitter's Top Mentions strip, Trending's Hot strip) so
-// the color always means the same thing.
+// every view that blends both platforms' attention signal into one ranking
+// (Discover's Social Buzz strip, Trending's Hot strip and leaderboard) --
+// each platform's own page (Twitter, Reddit) shows only its own signal and
+// doesn't need these.
 export const REDDIT_BAR = 'bg-[#eb6834] dark:bg-[#d95926]'
 export const REDDIT_DOT = 'bg-[#eb6834] dark:bg-[#d95926]'
 export const TWITTER_BAR = 'bg-[#2a78d6] dark:bg-[#3987e5]'
@@ -52,90 +52,3 @@ export function toneOf(score: number | null): 'positive' | 'negative' | 'neutral
 }
 
 export type PlatformFilter = 'all' | 'reddit' | 'twitter'
-
-export interface MergedSocialBuzzRow {
-  ticker: string
-  companyName: string | null
-  reddit: { score: number; mentions: number | null; sentiment: number | null } | null
-  twitter: {
-    score: number
-    authors: number
-    posts: number
-    views: number
-    sentiment: number | null
-    symbols: TwitterBestStockOut['symbols']
-  } | null
-  combinedScore: number
-}
-
-/** Blends the two independently-fetched leaderboards into one ranking: each
- * ticker's Reddit buzz score (already 0-100) and Twitter author count
- * (normalized 0-100 against this list's max) are summed into one combined
- * attention score, so a ticker trending on both platforms naturally
- * outranks one trending on only one. */
-export function mergeSocialBuzz(
-  redditItems: TrendingSocialOut[],
-  twitterItems: TwitterBestStockOut[],
-): MergedSocialBuzzRow[] {
-  const maxAuthors = Math.max(1, ...twitterItems.map((item) => item.unique_authors))
-  const rows = new Map<string, MergedSocialBuzzRow>()
-
-  for (const item of redditItems) {
-    if (item.buzz_score === null) continue
-    rows.set(item.ticker, {
-      ticker: item.ticker,
-      companyName: null,
-      reddit: { score: item.buzz_score, mentions: item.mentions, sentiment: item.sentiment_score },
-      twitter: null,
-      combinedScore: item.buzz_score,
-    })
-  }
-
-  for (const item of twitterItems) {
-    const score = (item.unique_authors / maxAuthors) * 100
-    const twitter = {
-      score,
-      authors: item.unique_authors,
-      posts: item.unique_posts,
-      views: item.representative_views,
-      sentiment: item.sentiment_score,
-      symbols: item.symbols,
-    }
-    const existing = rows.get(item.ticker)
-    if (existing) {
-      existing.twitter = twitter
-      existing.companyName = item.company_name
-      existing.combinedScore += score
-    } else {
-      rows.set(item.ticker, {
-        ticker: item.ticker,
-        companyName: item.company_name,
-        reddit: null,
-        twitter,
-        combinedScore: score,
-      })
-    }
-  }
-
-  return [...rows.values()].sort((a, b) => b.combinedScore - a.combinedScore)
-}
-
-// Each row's headline score/rank depends on which platform is selected —
-// combined attention for "all", but the platform's own (unnormalized-feel)
-// score when narrowed to just one source, so "Reddit only" reads as a
-// genuine Reddit ranking rather than a combined score with an empty half.
-export function scoreFor(row: MergedSocialBuzzRow, filter: PlatformFilter): number {
-  if (filter === 'reddit') return row.reddit?.score ?? 0
-  if (filter === 'twitter') return row.twitter?.score ?? 0
-  return row.combinedScore
-}
-
-/** Averages whichever platform sentiments a row actually has -- a ticker seen on
- * both platforms gets a true blend, one seen on only one just gets that platform's
- * reading. */
-export function blendedSentiment(row: MergedSocialBuzzRow): number | null {
-  const sentiments = [row.reddit?.sentiment, row.twitter?.sentiment].filter(
-    (s): s is number => s !== null && s !== undefined,
-  )
-  return sentiments.length > 0 ? sentiments.reduce((a, b) => a + b, 0) / sentiments.length : null
-}

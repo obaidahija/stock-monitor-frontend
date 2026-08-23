@@ -5,7 +5,6 @@ import type {
   SectorHeatmapOut,
   TickerSearchResult,
   TrackedTickerOut,
-  TrendingSocialOut,
   TwitterBestStocksOut,
   TwitterBestStocksRefreshOut,
   UniverseTickerOut,
@@ -74,10 +73,6 @@ export function unarchiveTicker(ticker: string) {
 
 export function hardDeleteTicker(ticker: string) {
   return apiClient.delete<void>(`/v1/discover/universe/${encodeURIComponent(ticker)}/hard`)
-}
-
-export function getTrending(limit = 20) {
-  return apiClient.get<TrendingSocialOut[]>(`/v1/discover/trending?limit=${limit}`)
 }
 
 export function getTwitterBestStocks(limit = 20) {

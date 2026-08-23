@@ -5,7 +5,6 @@ import {
   archiveTicker,
   getNotableFilings,
   getSectorHeatmap,
-  getTrending,
   getTwitterBestStocks,
   getUniverse,
   hardDeleteTicker,
@@ -17,10 +16,6 @@ import {
 
 export function useNotableFilings() {
   return useQuery({ queryKey: ['discover', 'filings'], queryFn: getNotableFilings })
-}
-
-export function useTrending(limit: number) {
-  return useQuery({ queryKey: ['discover', 'trending', limit], queryFn: () => getTrending(limit) })
 }
 
 export function useTwitterBestStocks(limit: number) {

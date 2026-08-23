@@ -171,27 +171,6 @@ export interface ComponentScoreOut {
   explanation: string
 }
 
-export interface SocialStatOut {
-  ticker: string
-  source: string
-  snapshot_at: string
-  buzz_score: number | null
-  mentions: number | null
-  sentiment_score: number | null
-  bullish_pct: number | null
-  bearish_pct: number | null
-  trend: string | null
-}
-
-export interface TrendingSocialOut {
-  ticker: string
-  source: string
-  buzz_score: number | null
-  mentions: number | null
-  sentiment_score: number | null
-  trend: string | null
-}
-
 export interface TwitterBestStockOut {
   rank: number
   ticker: string

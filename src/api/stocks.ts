@@ -14,7 +14,6 @@ import type {
   NewsRefreshResult,
   SentimentBucketGranularity,
   SentimentHistoryOut,
-  SocialStatOut,
   TrackedTickerOut,
   UniverseScoreRefreshResult,
 } from '@/types/api'
@@ -92,10 +91,6 @@ export function getAnalysis(ticker: string, extras: AnalysisExtras = {}) {
   return apiClient.get<AnalysisOut>(
     `/v1/stocks/${encodeURIComponent(ticker)}/analysis${qs ? `?${qs}` : ''}`,
   )
-}
-
-export function getSocial(ticker: string) {
-  return apiClient.get<SocialStatOut | null>(`/v1/stocks/${encodeURIComponent(ticker)}/social`)
 }
 
 export function getChartPattern(ticker: string) {

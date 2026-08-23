@@ -79,9 +79,6 @@ const JOB_DESCRIPTIONS: Record<string, string> = {
   macro_sector_impact_sync:
     'Derives which sectors a recent macro theme likely affects.',
   macro_signal_eval: 'Logs a forward-looking hit-rate snapshot for macro signals, once/day.',
-  social_ingest:
-    'Pulls Adanos Reddit sentiment for user-added custom tickers only, plus one ' +
-    'trending scan — bounded by the 250-calls/month free-tier budget.',
   twitter_best_stocks_scan:
     'Scans six phrases (Top + Latest) once daily and ranks trending tickers from ' +
     'trusted-account posts.',
