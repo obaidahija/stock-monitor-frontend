@@ -26,6 +26,7 @@ export interface RedditFeedParams {
   subreddit?: string
   page?: number
   postTypes?: RedditPostType[]
+  tickers?: string[]
 }
 
 export function getRedditAuth() {
@@ -60,6 +61,7 @@ export function getRedditFeed(params: RedditFeedParams = {}) {
   if (params.page !== undefined) query.set('page', String(params.page))
   if (params.postTypes && params.postTypes.length > 0)
     query.set('post_types', params.postTypes.join(','))
+  if (params.tickers && params.tickers.length > 0) query.set('tickers', params.tickers.join(','))
   return apiClient.get<RedditPageOut>(`/v1/reddit/feed?${query.toString()}`)
 }
 

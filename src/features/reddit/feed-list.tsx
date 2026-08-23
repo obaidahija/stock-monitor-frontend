@@ -14,12 +14,14 @@ export function RedditFeedList() {
   const [params, setParams] = useSearchParams()
   const page = Math.max(1, Number(params.get('page')) || 1)
   const postTypes = (params.get('post_types')?.split(',').filter(Boolean) ?? []) as RedditPostType[]
+  const tickers = params.get('tickers')?.split(',').filter(Boolean) ?? []
   const query = useRedditFeed({
     filter: (params.get('filter') as RedditFeedFilter) || 'all',
     sort: (params.get('sort') as RedditSort) || 'signal',
     subreddit: params.get('subreddit') || undefined,
     page,
     postTypes,
+    tickers,
   })
   const [selected, setSelected] = useState<RedditPostOut | null>(null)
   if (query.isPending) return <Skeleton className="h-64" aria-label="Loading Reddit feed" />
