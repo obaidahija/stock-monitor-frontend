@@ -81,10 +81,18 @@ export interface EarningsEventOut {
   revenue_actual: number | null
 }
 
+export interface YfEarningsEventOut {
+  event_date: string
+  bmo_amc: string
+  eps_estimate: number | null
+  eps_actual: number | null
+}
+
 export interface EarningsSummary {
   ticker: string
   next: EarningsEventOut | null
   history: EarningsEventOut[]
+  yfinance_snapshot: YfEarningsEventOut[]
 }
 
 export interface EarningsRefreshResult {

@@ -101,6 +101,40 @@ export function EarningsTab({ ticker }: { ticker: string }) {
       ) : (
         <EmptyState title="No earnings history available" />
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>yfinance snapshot (reference only)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {data.yfinance_snapshot.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>BMO/AMC</TableHead>
+                  <TableHead>EPS est.</TableHead>
+                  <TableHead>EPS actual</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.yfinance_snapshot.map((event) => (
+                  <TableRow key={`${event.event_date}-${event.bmo_amc}`}>
+                    <TableCell>{formatDate(event.event_date)}</TableCell>
+                    <TableCell className="text-muted-foreground uppercase">
+                      {event.bmo_amc}
+                    </TableCell>
+                    <TableCell>{event.eps_estimate ?? '—'}</TableCell>
+                    <TableCell>{event.eps_actual ?? '—'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <p className="text-muted-foreground text-sm">No yfinance earnings data available</p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
