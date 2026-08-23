@@ -1188,6 +1188,7 @@ export interface TrendingSourceStatusOut {
 
 export interface TrendingSummaryOut {
   generated_at: string
+  general_lookback_days: number
   today: TrendingTickerOut[]
   general: TrendingTickerOut[]
   new_entrants: TrendingTickerOut[]
