@@ -966,6 +966,7 @@ export interface RedditTrustedSubredditOut {
   name: string
   enabled: boolean
   default_sort: RedditListingSort
+  post_limit: number | null
   last_successful_fetch_at: string | null
   operation: RedditOperationOut | null
 }
