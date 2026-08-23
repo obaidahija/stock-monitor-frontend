@@ -4,14 +4,23 @@ import { Button } from '@/components/ui/button'
 import { TickerTagFilter } from '@/components/shared/ticker-tag-filter'
 import { cn } from '@/lib/utils'
 import { useRefreshRedditFeed, useSearchRedditTicker } from './hooks'
+import type { RedditPostType } from '@/api/reddit'
 import type { RedditFeedFilter, RedditSort } from '@/types/api'
 
 const FILTERS: RedditFeedFilter[] = ['all', 'trusted', 'viral']
 const SORTS: RedditSort[] = ['signal', 'newest', 'virality', 'score', 'comments']
+const POST_TYPE_OPTIONS: { label: string; value: RedditPostType }[] = [
+  { label: 'News', value: 'news' },
+  { label: 'Recommendation', value: 'recommendation' },
+  { label: 'Analysis', value: 'analysis' },
+  { label: 'General', value: 'general' },
+  { label: 'Other', value: 'other' },
+]
 
 export function RedditFeedControls() {
   const [params, setParams] = useSearchParams()
   const tickers = params.get('tickers')?.split(',').filter(Boolean) ?? []
+  const postTypes = (params.get('post_types')?.split(',').filter(Boolean) ?? []) as RedditPostType[]
   const refresh = useRefreshRedditFeed()
   const search = useSearchRedditTicker()
   const filter = (params.get('filter') as RedditFeedFilter) || 'all'
@@ -24,6 +33,19 @@ export function RedditFeedControls() {
       else next.set(key, value)
       next.delete('page')
       return next
+    })
+  }
+
+  function togglePostType(value: RedditPostType) {
+    const next = postTypes.includes(value)
+      ? postTypes.filter((t) => t !== value)
+      : [...postTypes, value]
+    setParams((previous) => {
+      const params = new URLSearchParams(previous)
+      if (next.length > 0) params.set('post_types', next.join(','))
+      else params.delete('post_types')
+      params.delete('page')
+      return params
     })
   }
 
@@ -44,43 +66,61 @@ export function RedditFeedControls() {
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex flex-wrap gap-1">
-          {FILTERS.map((item) => (
-            <Button
-              key={item}
-              size="sm"
-              variant={filter === item ? 'secondary' : 'ghost'}
-              onClick={() => update('filter', item, 'all')}
-            >
-              {item[0].toUpperCase() + item.slice(1)}
-            </Button>
-          ))}
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap gap-1">
+            {FILTERS.map((item) => (
+              <Button
+                key={item}
+                size="sm"
+                variant={filter === item ? 'secondary' : 'ghost'}
+                onClick={() => update('filter', item, 'all')}
+              >
+                {item[0].toUpperCase() + item.slice(1)}
+              </Button>
+            ))}
+          </div>
+          <span className="text-muted-foreground text-xs">Sort</span>
+          <div className="flex flex-wrap gap-1">
+            {SORTS.map((item) => (
+              <Button
+                key={item}
+                size="sm"
+                variant={sort === item ? 'secondary' : 'ghost'}
+                onClick={() => update('sort', item, 'signal')}
+              >
+                {item[0].toUpperCase() + item.slice(1)}
+              </Button>
+            ))}
+          </div>
+          <TickerTagFilter
+            selected={tickers}
+            onChange={updateTickers}
+            placeholder="Search Reddit by ticker"
+          />
         </div>
-        <span className="text-muted-foreground text-xs">Sort</span>
-        <div className="flex flex-wrap gap-1">
-          {SORTS.map((item) => (
-            <Button
-              key={item}
-              size="sm"
-              variant={sort === item ? 'secondary' : 'ghost'}
-              onClick={() => update('sort', item, 'signal')}
-            >
-              {item[0].toUpperCase() + item.slice(1)}
-            </Button>
-          ))}
-        </div>
-        <TickerTagFilter
-          selected={tickers}
-          onChange={updateTickers}
-          placeholder="Search Reddit by ticker"
-        />
+
+        <Button size="sm" variant="outline" disabled={refresh.isPending} onClick={() => refresh.mutate()}>
+          <RefreshCw className={cn(refresh.isPending && 'animate-spin')} /> Refresh feed
+        </Button>
       </div>
 
-      <Button size="sm" variant="outline" disabled={refresh.isPending} onClick={() => refresh.mutate()}>
-        <RefreshCw className={cn(refresh.isPending && 'animate-spin')} /> Refresh feed
-      </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-muted-foreground text-xs">Type</span>
+        <div className="flex flex-wrap gap-1">
+          {POST_TYPE_OPTIONS.map((opt) => (
+            <Button
+              key={opt.value}
+              size="sm"
+              variant={postTypes.includes(opt.value) ? 'secondary' : 'ghost'}
+              onClick={() => togglePostType(opt.value)}
+            >
+              {opt.label}
+            </Button>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }

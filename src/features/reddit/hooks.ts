@@ -65,6 +65,7 @@ export function useRedditFeed(params: {
   sort: RedditSort
   subreddit?: string
   page: number
+  postTypes?: api.RedditPostType[]
 }) {
   return useQuery({
     queryKey: redditKeys.feed(params),

@@ -5,6 +5,7 @@ const TWEET_TYPE_META: Record<string, string> = {
   recommendation: 'bg-violet-500/15 text-violet-600 dark:text-violet-400',
   analysis: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
   other: 'bg-muted text-muted-foreground',
+  general: 'bg-slate-500/15 text-slate-600 dark:text-slate-400',
 }
 
 export function TweetTypeBadge({ type }: { type: string | null }) {

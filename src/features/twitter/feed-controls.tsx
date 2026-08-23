@@ -24,6 +24,7 @@ const TWEET_TYPE_OPTIONS: { label: string; value: TweetType }[] = [
   { label: 'News', value: 'news' },
   { label: 'Recommendation', value: 'recommendation' },
   { label: 'Analysis', value: 'analysis' },
+  { label: 'General', value: 'general' },
   { label: 'Other', value: 'other' },
 ]
 

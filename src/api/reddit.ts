@@ -16,11 +16,14 @@ import type {
   RedditTrustedSubredditOut,
 } from '@/types/api'
 
+export type RedditPostType = 'news' | 'recommendation' | 'analysis' | 'other' | 'general'
+
 export interface RedditFeedParams {
   filter?: RedditFeedFilter
   sort?: RedditSort
   subreddit?: string
   page?: number
+  postTypes?: RedditPostType[]
 }
 
 export function getRedditAuth() {
@@ -53,6 +56,8 @@ export function getRedditFeed(params: RedditFeedParams = {}) {
   if (params.sort) query.set('sort', params.sort)
   if (params.subreddit) query.set('subreddit', params.subreddit)
   if (params.page !== undefined) query.set('page', String(params.page))
+  if (params.postTypes && params.postTypes.length > 0)
+    query.set('post_types', params.postTypes.join(','))
   return apiClient.get<RedditPageOut>(`/v1/reddit/feed?${query.toString()}`)
 }
 

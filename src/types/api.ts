@@ -911,6 +911,8 @@ export interface RedditPostOut {
   signal_score: RedditSignalScoreOut | null
   sentiment_label: string | null
   sentiment_confidence: number | null
+  post_type: string | null
+  post_type_score: number | null
 }
 
 export interface RedditCommentOut {

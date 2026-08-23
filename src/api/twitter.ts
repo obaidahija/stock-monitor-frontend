@@ -13,7 +13,7 @@ import type {
 export type TwitterSort = 'signal' | 'newest' | 'virality'
 export type TwitterFeedFilter = 'all' | 'trusted' | 'viral'
 export type TwitterMinimumViews = 1000 | 2000 | 3000 | 5000
-export type TweetType = 'news' | 'recommendation' | 'analysis' | 'other'
+export type TweetType = 'news' | 'recommendation' | 'analysis' | 'other' | 'general'
 
 export function getTwitterAuth() {
   return apiClient.get<TwitterAuthStateOut>('/v1/twitter/auth')

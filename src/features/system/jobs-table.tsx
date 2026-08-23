@@ -54,6 +54,9 @@ const JOB_DESCRIPTIONS: Record<string, string> = {
     'Re-checks rdt-cli auth state as a secondary recovery trigger. Opt-in.',
   reddit_retention:
     'Deletes Reddit posts, operations, and snapshots past the retention window. Opt-in.',
+  reddit_post_type_classify:
+    'Tags newly collected Reddit posts news/recommendation/analysis/other via the same ' +
+    'shared zero-shot classifier as twitter_tweet_type_classify. Opt-in.',
   chart_pattern_scan:
     'Runs the local YOLOv8 chart-pattern detector across the full tracked universe and ' +
     'upserts detections into history — tags only, not folded into scoring.',
@@ -156,16 +159,18 @@ const JOB_GROUPS: JobGroup[] = [
       'The rdt-cli integration behind Trusted subreddits/authors and ticker search on the ' +
       'Reddit page. Trusted subreddits refresh every 30 minutes, trusted authors every 2 ' +
       'hours. Auth check is a secondary recovery trigger (live operations also self-recover ' +
-      'without waiting for it); retention prunes old posts/operations/snapshots. All four are ' +
-      'opt-in — skipped entirely while REDDIT_INTELLIGENCE_ENABLED=false — and each can be ' +
-      'triggered manually. There is no scheduled full-universe Reddit scan; social_ingest ' +
-      "(Adanos) is the only scheduled Reddit sentiment source, and it's scoped to " +
-      'user-added custom tickers only.',
+      'without waiting for it); retention prunes old posts/operations/snapshots; post-type ' +
+      'classify tags posts news/recommendation/analysis/other hourly, same shared model as ' +
+      'Twitter. All five are opt-in — skipped entirely while ' +
+      'REDDIT_INTELLIGENCE_ENABLED=false — and each can be triggered manually. There is no ' +
+      'scheduled full-universe Reddit scan; social_ingest (Adanos) is the only scheduled ' +
+      'Reddit sentiment source, and it\'s scoped to user-added custom tickers only.',
     jobNames: [
       'reddit_trusted_subreddit_sweep',
       'reddit_trusted_author_sweep',
       'reddit_auth_check',
       'reddit_retention',
+      'reddit_post_type_classify',
     ],
     ordered: false,
   },
