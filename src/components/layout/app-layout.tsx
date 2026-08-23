@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router'
-import { LineChart } from 'lucide-react'
+import { Flame, LineChart } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { TickerSearch } from './ticker-search'
 
@@ -10,7 +10,7 @@ const NAV_ITEMS = [
   { to: '/twitter', label: 'Twitter' },
   { to: '/reddit', label: 'Reddit' },
   { to: '/macro', label: 'Macro' },
-  { to: '/trending', label: 'Trending' },
+  { to: '/trending', label: 'Trending', accent: true },
   { to: '/system', label: 'System' },
 ]
 
@@ -31,13 +31,18 @@ export function AppLayout() {
                 end={item.end}
                 className={({ isActive }) =>
                   cn(
-                    'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
-                    isActive
-                      ? 'bg-secondary text-secondary-foreground'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                    'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                    item.accent
+                      ? isActive
+                        ? 'bg-orange-500/15 text-orange-500'
+                        : 'text-orange-500/80 hover:bg-orange-500/10 hover:text-orange-500'
+                      : isActive
+                        ? 'bg-secondary text-secondary-foreground'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                   )
                 }
               >
+                {item.accent && <Flame className="size-3.5" />}
                 {item.label}
               </NavLink>
             ))}
