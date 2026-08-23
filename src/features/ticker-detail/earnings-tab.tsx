@@ -294,7 +294,7 @@ export function EarningsTab({ ticker }: { ticker: string }) {
         />
       )}
 
-      {data.history.length > 0 ? (
+      {data.history.length > 0 && (
         <div className="space-y-2">
           <h3 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
             Recent quarters
@@ -305,8 +305,6 @@ export function EarningsTab({ ticker }: { ticker: string }) {
             ))}
           </div>
         </div>
-      ) : (
-        <EmptyState title="No earnings history available" />
       )}
 
       <EpsTrendChart events={data.yfinance_snapshot} />
