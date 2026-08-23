@@ -6,6 +6,7 @@ import { DiscoverPage } from '@/pages/discover-page'
 import { TwitterPage } from '@/pages/twitter-page'
 import { RedditPage } from '@/pages/reddit-page'
 import { MacroPage } from '@/pages/macro-page'
+import { TrendingPage } from '@/pages/trending-page'
 import { SystemPage } from '@/pages/system-page'
 import { WatchlistsPage } from '@/pages/watchlists-page'
 
@@ -20,6 +21,7 @@ export function AppRoutes() {
         <Route path="/twitter" element={<TwitterPage />} />
         <Route path="/reddit" element={<RedditPage />} />
         <Route path="/macro" element={<MacroPage />} />
+        <Route path="/trending" element={<TrendingPage />} />
         <Route path="/system" element={<SystemPage />} />
       </Route>
     </Routes>

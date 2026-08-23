@@ -81,6 +81,11 @@
     --sidebar-accent-foreground: oklch(0.205 0 0);
     --sidebar-border: oklch(0.922 0 0);
     --sidebar-ring: oklch(0.708 0 0);
+    /* Same Reddit/Twitter pair as social-buzz.ts's REDDIT_BAR/TWITTER_BAR,
+       as raw CSS vars for SVG chart strokes (Tailwind dark: variants don't
+       apply to inline SVG attributes). */
+    --trending-reddit: #eb6834;
+    --trending-twitter: #2a78d6;
 }
 
 .dark {
@@ -115,6 +120,8 @@
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.556 0 0);
+    --trending-reddit: #d95926;
+    --trending-twitter: #3987e5;
 }
 
 @layer base {

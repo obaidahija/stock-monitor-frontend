@@ -1101,3 +1101,92 @@ export interface MacroSectorImpactDateOut {
   impact_date: string
   generated_at: string
 }
+
+export interface TrendingSymbolOut {
+  ticker: string
+}
+
+export interface TrendingTwitterOut {
+  rank: number
+  unique_authors: number
+  unique_posts: number
+  representative_views: number
+  sentiment_score: number | null
+}
+
+export interface TrendingRedditOut {
+  rank: number
+  mention_count: number
+  unique_authors: number
+  sentiment_score: number | null
+  max_signal_score: number | null
+}
+
+export interface TrendingSparklinePointOut {
+  date: string
+  twitter_unique_authors: number | null
+  reddit_mention_count: number | null
+}
+
+export interface TrendingTickerOut {
+  ticker: string
+  company_name: string | null
+  symbols: TrendingSymbolOut[]
+  sector: string | null
+  price: number | null
+  change_pct: number | null
+  twitter: TrendingTwitterOut | null
+  reddit: TrendingRedditOut | null
+  combined_score: number
+  appeared_days: number
+  is_new_entrant: boolean
+  sparkline: TrendingSparklinePointOut[]
+}
+
+export interface TrendingSectorSparklinePointOut {
+  captured_at: string
+  trend_pct: number
+}
+
+export interface TrendingSectorOut {
+  sector: string
+  ticker_count: number
+  combined_score: number
+  top_ticker: string | null
+  top_ticker_change_pct: number | null
+  avg_change_pct: number | null
+  etf_symbol: string | null
+  etf_trend_pct: number | null
+  etf_sparkline: TrendingSectorSparklinePointOut[]
+}
+
+export interface TrendingSentimentOverviewOut {
+  bullish_count: number
+  bearish_count: number
+  neutral_count: number
+}
+
+export interface TrendingPlatformOverlapOut {
+  twitter_only: number
+  reddit_only: number
+  both: number
+}
+
+export interface TrendingSourceStatusOut {
+  name: string
+  ok: boolean
+  fetched_at: string | null
+  stale: boolean
+  stale_reason: string | null
+}
+
+export interface TrendingSummaryOut {
+  generated_at: string
+  today: TrendingTickerOut[]
+  general: TrendingTickerOut[]
+  new_entrants: TrendingTickerOut[]
+  sectors: TrendingSectorOut[]
+  sentiment_overview: TrendingSentimentOverviewOut
+  platform_overlap: TrendingPlatformOverlapOut
+  sources: TrendingSourceStatusOut[]
+}

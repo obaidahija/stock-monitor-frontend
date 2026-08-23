@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { to: '/twitter', label: 'Twitter' },
   { to: '/reddit', label: 'Reddit' },
   { to: '/macro', label: 'Macro' },
+  { to: '/trending', label: 'Trending' },
   { to: '/system', label: 'System' },
 ]
 
