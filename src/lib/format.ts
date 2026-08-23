@@ -21,6 +21,16 @@ export function formatNumber(value: number | null | undefined): string {
   return new Intl.NumberFormat('en-US').format(value)
 }
 
+export function formatCompactCurrency(value: number | null | undefined): string {
+  if (value === null || value === undefined) return '—'
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    notation: 'compact',
+    maximumFractionDigits: 2,
+  }).format(value)
+}
+
 export function formatScore(value: number | null | undefined, digits = 2): string {
   if (value === null || value === undefined) return '—'
   const sign = value > 0 ? '+' : ''

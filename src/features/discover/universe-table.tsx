@@ -26,6 +26,7 @@ import {
   formatRelativeTime,
   formatSignedPct,
 } from '@/lib/format'
+import { EARNINGS_RESULT_BADGE_CLASSES } from '@/lib/earnings-colors'
 import { cn } from '@/lib/utils'
 import { AddTickerDialog } from './add-ticker-dialog'
 import { useUniverse } from './hooks'
@@ -64,12 +65,6 @@ const EARNINGS_FILTER_OPTIONS: { label: string; value: EarningsResult | undefine
   { label: 'In-line', value: 'inline' },
 ]
 
-const EARNINGS_RESULT_META: Record<EarningsResult, string> = {
-  beat: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
-  miss: 'bg-red-500/15 text-red-600 dark:text-red-400',
-  inline: 'bg-muted text-muted-foreground',
-}
-
 // Same backend labels chart_pattern_detections actually stores, shown with
 // PatternBadge's short display form so the filter buttons and the row
 // badges read consistently.
@@ -95,7 +90,7 @@ function EarningsCell({ item }: { item: UniverseTickerOut }) {
           <span
             className={cn(
               'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize',
-              EARNINGS_RESULT_META[item.last_earnings_result],
+              EARNINGS_RESULT_BADGE_CLASSES[item.last_earnings_result],
             )}
           >
             {item.last_earnings_result}
