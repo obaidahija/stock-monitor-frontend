@@ -191,7 +191,8 @@ export function EarningsReactionChart({ data }: { data: EarningsReactionOut }) {
       <CardContent className="space-y-3">
         <p className="text-muted-foreground text-xs">
           Each quarter starts at 0% on the left edge; every later offset is measured from that
-          quarter&apos;s starting close. Offset 0 is the earnings reaction day.
+          quarter&apos;s starting close. Offset 0 is the earnings reaction day. Recent reports use
+          the trading sessions available so far, so the sample size can decrease at later offsets.
         </p>
         <svg
           viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
