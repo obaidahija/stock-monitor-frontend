@@ -41,6 +41,9 @@ const JOB_DESCRIPTIONS: Record<string, string> = {
   price_sync:
     'Refreshes regular-session quotes (price, change, volume) for the full tracked ' +
     'universe in batched calls.',
+  premarket_price_sync:
+    'Captures one full-universe premarket quote snapshot at 09:00 ET, 30 minutes ' +
+    'before the opening bell.',
   watchlist_price_sync:
     'Near-live quote polling (pre-market, regular, post-market) for watchlist tickers ' +
     'every 10 seconds.',
@@ -117,12 +120,21 @@ const JOB_GROUPS: JobGroup[] = [
     ordered: true,
   },
   {
+    key: 'premarket-digest',
+    title: 'Premarket digest',
+    description:
+      'Refresh full-universe premarket quotes first, then rebuild the digest from that ' +
+      'snapshot. These run automatically at 09:00 and 09:05 ET on trading days.',
+    jobNames: ['premarket_price_sync', 'digest_build'],
+    ordered: true,
+  },
+  {
     key: 'market-wide',
     title: 'Market-wide',
     description:
       'Not ticker-specific — a single call regardless of how many tickers are tracked, ' +
       'so it never needs re-running for one new ticker. Run order doesn’t matter.',
-    jobNames: ['edgar_poll', 'market_context_sync', 'digest_build'],
+    jobNames: ['edgar_poll', 'market_context_sync'],
     ordered: false,
   },
   {

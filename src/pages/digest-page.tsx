@@ -119,7 +119,7 @@ export function DigestPage() {
         <EmptyState
           icon={Newspaper}
           title="No digest built yet for today"
-          description="The digest_build job runs automatically at 07:45 ET on weekdays, or trigger it now."
+          description="The digest builds at 07:45 ET and refreshes with full-universe premarket prices at 09:05 ET on trading days, or trigger it now."
           action={
             <Button size="sm" onClick={() => buildDigest.mutate()} disabled={buildDigest.isPending}>
               {buildDigest.isPending ? 'Building…' : 'Build now'}
