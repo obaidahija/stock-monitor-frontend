@@ -186,12 +186,20 @@ export interface NewsItemExtractOut {
   error: string | null
 }
 
+export interface NewsSummaryRefreshResult {
+  skipped?: boolean
+  attempted: number
+  generated: number
+  failed: number
+}
+
 export interface NewsRefreshResult {
   ticker: string
   new: number
   duplicates: number
   filtered_irrelevant: number
   errors: { source: string; error: string }[]
+  ai_summaries: NewsSummaryRefreshResult
   score: UniverseScoreRefreshResult | null
 }
 

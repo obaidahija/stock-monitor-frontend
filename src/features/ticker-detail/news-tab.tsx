@@ -29,6 +29,9 @@ export function NewsTab({ ticker }: { ticker: string }) {
       onSuccess: (result) => {
         const parts = [`${result.new} new`]
         if (result.duplicates) parts.push(`${result.duplicates} duplicates`)
+        if (!result.ai_summaries.skipped && result.ai_summaries.generated) {
+          parts.push(`${result.ai_summaries.generated} AI summaries`)
+        }
         if (result.errors.length) parts.push(`${result.errors.length} source errors`)
         toast[result.errors.length ? 'error' : 'success'](
           `Refreshed news for ${result.ticker}: ${parts.join(', ')}`,
