@@ -12,7 +12,6 @@ import {
   MessagesSquare,
   Newspaper,
   RefreshCw,
-  Sparkles,
   Users,
   type LucideIcon,
 } from 'lucide-react'
@@ -27,7 +26,6 @@ import { formatCurrency, formatDate, formatDateTime, formatRelativeTime, formatS
 import { LEAN_COLOR_CLASSES } from '@/lib/lean-colors'
 import { cn } from '@/lib/utils'
 import { ChartPatternCard } from './chart-pattern-card'
-import { ForecastCard } from './forecast-card'
 import { useAnalysis, useRefreshUniverseScore, useUniverseScore } from './hooks'
 import { SentimentTrendChart } from './sentiment-trend-chart'
 import type { AnalystDetailOut, AnalysisLean, PriceLevelPosition, PriceLevelsOut } from '@/types/api'
@@ -46,7 +44,6 @@ const FACTOR_META: Record<string, { label: string; icon: LucideIcon }> = {
   macro_sector_impact: { label: 'Macro impact', icon: Globe2 },
   market_context: { label: 'Market context', icon: BarChart3 },
   chart_pattern: { label: 'Chart pattern', icon: LineChart },
-  kronos_forecast: { label: 'Kronos forecast', icon: Sparkles },
 }
 
 function humanizeFactorName(name: string): string {
@@ -374,12 +371,12 @@ function AnalystDetailCard({ detail }: { detail: AnalystDetailOut }) {
 }
 
 export function AnalysisTab({ ticker }: { ticker: string }) {
-  const [extras, setExtras] = useState({ chartPattern: false, forecast: false })
+  const [extras, setExtras] = useState({ chartPattern: false })
   const base = useAnalysis(ticker)
   const extrasQuery = useAnalysis(
     ticker,
-    { includeChartPattern: extras.chartPattern, includeForecast: extras.forecast },
-    extras.chartPattern || extras.forecast,
+    { includeChartPattern: extras.chartPattern },
+    extras.chartPattern,
   )
 
   if (base.isPending) return <Skeleton className="h-72 rounded-xl" />
@@ -388,21 +385,12 @@ export function AnalysisTab({ ticker }: { ticker: string }) {
 
   const data = extrasQuery.data ?? base.data
   const chartPatternLoading = extras.chartPattern && extrasQuery.isFetching
-  const forecastLoading = extras.forecast && extrasQuery.isFetching
 
   function handleDetectChartPattern() {
     if (extras.chartPattern) {
       extrasQuery.refetch()
     } else {
       setExtras((e) => ({ ...e, chartPattern: true }))
-    }
-  }
-
-  function handleGenerateForecast() {
-    if (extras.forecast) {
-      extrasQuery.refetch()
-    } else {
-      setExtras((e) => ({ ...e, forecast: true }))
     }
   }
 
@@ -445,14 +433,6 @@ export function AnalysisTab({ ticker }: { ticker: string }) {
         isError={extras.chartPattern && extrasQuery.isError}
         onDetect={handleDetectChartPattern}
       />
-      <ForecastCard
-        ticker={ticker}
-        forecast={data.forecast}
-        isLoading={forecastLoading}
-        isError={extras.forecast && extrasQuery.isError}
-        onGenerate={handleGenerateForecast}
-      />
-
       <SentimentTrendChart ticker={ticker} />
 
       {data.caveats.length > 0 && (
