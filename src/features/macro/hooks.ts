@@ -60,7 +60,7 @@ export function useMacroSectorImpact(date?: string) {
 }
 
 // The actual recompute stays a mutation -- button-triggered, same pattern as
-// useRefreshAiResearch/ForecastCard's onGenerate. Always targets today only;
+// useRefreshAiResearch. Always targets today only;
 // resolves each *new* candidate item through a local LLM call (cached
 // resolutions are reused), so it's ~20-40s the first time new items show up
 // and near-instant once nothing's changed.
