@@ -43,11 +43,14 @@ export interface UniverseTickerOut extends TrackedTickerOut {
 export interface QuoteOut {
   ticker: string
   price: number | null
+  change_amount: number | null
   change_pct: number | null
+  regular_market_time: string | null
   session_price: number | null
+  session_change_amount: number | null
   session_change_pct: number | null
   market_session: 'overnight' | 'pre_market' | 'regular' | 'post_market' | 'closed' | null
-  quote_updated_at: string | null
+  session_time: string | null
 }
 
 export interface SectorSummaryOut {

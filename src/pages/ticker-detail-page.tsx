@@ -75,10 +75,9 @@ export function TickerDetailPage() {
                 {universeScore.industry}
               </Badge>
             )}
-            <TickerPriceHeader ticker={symbol} />
           </>
         }
-        description="Analysis, earnings, news, Twitter, Reddit, filings, and catalysts."
+        meta={<TickerPriceHeader ticker={symbol} />}
         actions={
           <>
             <ManageListsDialog ticker={symbol} labeled />
