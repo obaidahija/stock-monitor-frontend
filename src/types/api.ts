@@ -40,6 +40,16 @@ export interface UniverseTickerOut extends TrackedTickerOut {
   recent_pattern: ChartPatternDetail | null
 }
 
+export interface QuoteOut {
+  ticker: string
+  price: number | null
+  change_pct: number | null
+  session_price: number | null
+  session_change_pct: number | null
+  market_session: 'overnight' | 'pre_market' | 'regular' | 'post_market' | 'closed' | null
+  quote_updated_at: string | null
+}
+
 export interface SectorSummaryOut {
   sector: string
   avg_change_pct: number | null

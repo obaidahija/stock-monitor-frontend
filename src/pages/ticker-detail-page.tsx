@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AddTrackedTickerButton } from '@/features/discover/add-tracked-ticker-button'
 import { RemoveTickerDialog } from '@/features/discover/remove-ticker-dialog'
 import { PriceChart } from '@/features/ticker-detail/price-chart'
+import { TickerPriceHeader } from '@/features/ticker-detail/ticker-price-header'
 import { AiResearchTab } from '@/features/ticker-detail/ai-research/ai-research-tab'
 import { AnalysisTab } from '@/features/ticker-detail/analysis-tab'
 import { CompetitorsTab } from '@/features/ticker-detail/competitors/competitors-tab'
@@ -14,7 +15,11 @@ import { FilingsTab } from '@/features/ticker-detail/filings-tab'
 import { CatalystsTab } from '@/features/ticker-detail/catalysts-tab'
 import { TwitterTab } from '@/features/ticker-detail/twitter-tab'
 import { RedditTab } from '@/features/ticker-detail/reddit-tab'
-import { useAutoRefreshUniverseScore, useUniverseScore } from '@/features/ticker-detail/hooks'
+import {
+  useAutoRefreshQuote,
+  useAutoRefreshUniverseScore,
+  useUniverseScore,
+} from '@/features/ticker-detail/hooks'
 import { ManageListsDialog } from '@/features/watchlists/manage-lists-dialog'
 
 const DETAIL_TABS = [
@@ -35,6 +40,7 @@ export function TickerDetailPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   useAutoRefreshUniverseScore(symbol)
+  useAutoRefreshQuote(symbol)
   const { data: universeScore, isPending: universeScorePending } = useUniverseScore(symbol)
 
   const requestedTab = searchParams.get('tab')
@@ -69,6 +75,7 @@ export function TickerDetailPage() {
                 {universeScore.industry}
               </Badge>
             )}
+            <TickerPriceHeader ticker={symbol} />
           </>
         }
         description="Analysis, earnings, news, Twitter, Reddit, filings, and catalysts."

@@ -11,12 +11,14 @@ import {
   getEarningsReaction,
   getFilings,
   getNews,
+  getQuote,
   getSentimentHistory,
   getUniverseScore,
   refreshAiResearch,
   refreshCompetitors,
   refreshEarnings,
   refreshNews,
+  refreshQuote,
   refreshUniverseScore,
 } from '@/api/stocks'
 import type { SentimentBucketGranularity } from '@/types/api'
@@ -27,6 +29,43 @@ export function useAnalysis(ticker: string, extras: AnalysisExtras = {}, enabled
     queryFn: () => getAnalysis(ticker, extras),
     enabled,
   })
+}
+
+const QUOTE_LIVE_REFRESH_INTERVAL_MS = 10_000
+
+export function useQuote(ticker: string) {
+  return useQuery({
+    // The initial load and every subsequent update while the page stays
+    // open both go through useAutoRefreshQuote's live yfinance refresh
+    // below -- this query is cache-only (no queryFn refetch of its own).
+    queryKey: ['quote', ticker],
+    queryFn: () => getQuote(ticker),
+  })
+}
+
+export function useRefreshQuote(ticker: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => refreshQuote(ticker),
+    onSuccess: (quote) => queryClient.setQueryData(['quote', ticker], quote),
+  })
+}
+
+// Polls the live yfinance-backed refresh endpoint every 10s while the ticker
+// page is open, matching watchlist_price_sync's own cadence, instead of
+// waiting on the much slower scheduled price_sync job.
+export function useAutoRefreshQuote(ticker: string) {
+  const { mutate } = useRefreshQuote(ticker)
+  const mutateRef = useRef(mutate)
+  mutateRef.current = mutate
+
+  useEffect(() => {
+    if (!ticker) return
+
+    mutateRef.current()
+    const interval = setInterval(() => mutateRef.current(), QUOTE_LIVE_REFRESH_INTERVAL_MS)
+    return () => clearInterval(interval)
+  }, [ticker])
 }
 
 export function useUniverseScore(ticker: string) {

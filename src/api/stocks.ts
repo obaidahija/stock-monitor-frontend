@@ -13,6 +13,7 @@ import type {
   NewsClusterOut,
   NewsItemExtractOut,
   NewsRefreshResult,
+  QuoteOut,
   SentimentBucketGranularity,
   SentimentHistoryOut,
   TrackedTickerOut,
@@ -54,6 +55,14 @@ export function refreshEarnings(ticker: string) {
   return apiClient.post<EarningsRefreshResult>(
     `/v1/stocks/${encodeURIComponent(ticker)}/earnings/refresh`,
   )
+}
+
+export function getQuote(ticker: string) {
+  return apiClient.get<QuoteOut>(`/v1/stocks/${encodeURIComponent(ticker)}/quote`)
+}
+
+export function refreshQuote(ticker: string) {
+  return apiClient.post<QuoteOut>(`/v1/stocks/${encodeURIComponent(ticker)}/quote/refresh`)
 }
 
 export function getUniverseScore(ticker: string) {
