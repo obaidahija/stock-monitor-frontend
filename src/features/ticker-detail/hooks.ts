@@ -6,6 +6,7 @@ import {
   getAiResearch,
   getAnalysis,
   getCatalysts,
+  getCompetitors,
   getEarnings,
   getEarningsReaction,
   getFilings,
@@ -13,6 +14,7 @@ import {
   getSentimentHistory,
   getUniverseScore,
   refreshAiResearch,
+  refreshCompetitors,
   refreshEarnings,
   refreshNews,
   refreshUniverseScore,
@@ -138,5 +140,23 @@ export function useRefreshAiResearch(ticker: string) {
   return useMutation({
     mutationFn: () => refreshAiResearch(ticker),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['ai-research', ticker] }),
+  })
+}
+
+export function useCompetitors(ticker: string) {
+  return useQuery({
+    queryKey: ['competitors', ticker],
+    // cacheOnly: true -- auto-fetch on tab mount must never silently trigger
+    // the EDGAR+LLM pipeline; only the explicit Refresh action (POST
+    // .../refresh, see useRefreshCompetitors) should ever compute a fresh result.
+    queryFn: () => getCompetitors(ticker, { cacheOnly: true }),
+  })
+}
+
+export function useRefreshCompetitors(ticker: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => refreshCompetitors(ticker),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['competitors', ticker] }),
   })
 }

@@ -7,6 +7,7 @@ import { RemoveTickerDialog } from '@/features/discover/remove-ticker-dialog'
 import { PriceChart } from '@/features/ticker-detail/price-chart'
 import { AiResearchTab } from '@/features/ticker-detail/ai-research/ai-research-tab'
 import { AnalysisTab } from '@/features/ticker-detail/analysis-tab'
+import { CompetitorsTab } from '@/features/ticker-detail/competitors/competitors-tab'
 import { EarningsTab } from '@/features/ticker-detail/earnings-tab'
 import { NewsTab } from '@/features/ticker-detail/news-tab'
 import { FilingsTab } from '@/features/ticker-detail/filings-tab'
@@ -19,6 +20,7 @@ import { ManageListsDialog } from '@/features/watchlists/manage-lists-dialog'
 const DETAIL_TABS = [
   'analysis',
   'ai-research',
+  'competitors',
   'earnings',
   'news',
   'twitter',
@@ -93,6 +95,7 @@ export function TickerDetailPage() {
         <TabsList>
           <TabsTrigger value="analysis">Analysis</TabsTrigger>
           <TabsTrigger value="ai-research">AI Research</TabsTrigger>
+          <TabsTrigger value="competitors">Competitors</TabsTrigger>
           <TabsTrigger value="earnings">Earnings</TabsTrigger>
           <TabsTrigger value="news">News</TabsTrigger>
           <TabsTrigger value="twitter">Twitter</TabsTrigger>
@@ -105,6 +108,9 @@ export function TickerDetailPage() {
         </TabsContent>
         <TabsContent value="ai-research">
           <AiResearchTab ticker={symbol} />
+        </TabsContent>
+        <TabsContent value="competitors">
+          <CompetitorsTab ticker={symbol} />
         </TabsContent>
         <TabsContent value="earnings">
           <EarningsTab ticker={symbol} />

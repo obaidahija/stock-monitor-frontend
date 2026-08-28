@@ -412,6 +412,50 @@ export interface AiResearchOut {
   current_price: number | null
 }
 
+export type CompetitorConfidence = 'high' | 'medium' | 'low'
+
+export interface CompetitorRevenueDependenceOut {
+  is_core_business: boolean | null
+  confidence: CompetitorConfidence | null
+  reasoning: string | null
+}
+
+export interface CompetitorOut {
+  name: string
+  ticker: string | null
+  rank: number | null
+  impact_likelihood: CompetitorConfidence | null
+  reasoning: string | null
+  mutual_naming: boolean | null
+  revenue_dependence: CompetitorRevenueDependenceOut | null
+  source: string
+  confidence: CompetitorConfidence
+}
+
+export interface CompetitorAnalysisInputsOut {
+  target_extraction_id: number | null
+  named_competitor_count: number
+  competitors_capped_from: number | null
+  competitor_extraction_ids: number[]
+  reverse_search_candidate_count: number
+}
+
+export interface CompetitorAnalysisSourceOut {
+  ok: boolean
+  error: string | null
+}
+
+export interface CompetitorAnalysisOut {
+  snapshot_id: number | null
+  ticker: string
+  competitors: CompetitorOut[]
+  inputs_used: CompetitorAnalysisInputsOut
+  caveat: string
+  source: CompetitorAnalysisSourceOut
+  generated_at: string
+  cached: boolean
+}
+
 export type WatchlistSetupSide = 'long' | 'short'
 export type WatchlistSetupHorizon = 'short_term' | 'long_term' | 'custom'
 export type WatchlistSetupSource = 'ai_managed' | 'manual'

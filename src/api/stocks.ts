@@ -4,6 +4,7 @@ import type {
   AnalysisOut,
   CatalystOut,
   ChartPatternOut,
+  CompetitorAnalysisOut,
   EarningsReactionOut,
   EarningsRefreshResult,
   EarningsSummary,
@@ -115,6 +116,19 @@ export function getAiResearch(ticker: string) {
 export function refreshAiResearch(ticker: string) {
   return apiClient.post<AiResearchOut>(
     `/v1/stocks/${encodeURIComponent(ticker)}/ai-research/refresh`,
+  )
+}
+
+export function getCompetitors(ticker: string, opts?: { cacheOnly?: boolean }) {
+  const qs = opts?.cacheOnly ? '?cache_only=true' : ''
+  return apiClient.get<CompetitorAnalysisOut | null>(
+    `/v1/stocks/${encodeURIComponent(ticker)}/competitors${qs}`,
+  )
+}
+
+export function refreshCompetitors(ticker: string) {
+  return apiClient.post<CompetitorAnalysisOut>(
+    `/v1/stocks/${encodeURIComponent(ticker)}/competitors/refresh`,
   )
 }
 
