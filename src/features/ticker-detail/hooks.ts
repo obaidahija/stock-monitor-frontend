@@ -21,7 +21,7 @@ import type { SentimentBucketGranularity } from '@/types/api'
 
 export function useAnalysis(ticker: string, extras: AnalysisExtras = {}, enabled = true) {
   return useQuery({
-    queryKey: ['analysis', ticker, extras.includeChartPattern ?? false, extras.includeForecast ?? false],
+    queryKey: ['analysis', ticker, extras.includeChartPattern ?? false],
     queryFn: () => getAnalysis(ticker, extras),
     enabled,
   })

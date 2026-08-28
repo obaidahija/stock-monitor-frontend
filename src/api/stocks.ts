@@ -8,7 +8,6 @@ import type {
   EarningsRefreshResult,
   EarningsSummary,
   FilingOut,
-  ForecastOut,
   NewsClusterDetailOut,
   NewsClusterOut,
   NewsItemExtractOut,
@@ -21,7 +20,6 @@ import type {
 
 export interface AnalysisExtras {
   includeChartPattern?: boolean
-  includeForecast?: boolean
 }
 
 export function getFilings(ticker: string, opts?: { form?: string; days?: number }) {
@@ -100,7 +98,6 @@ export function getCatalysts(ticker: string) {
 export function getAnalysis(ticker: string, extras: AnalysisExtras = {}) {
   const params = new URLSearchParams()
   if (extras.includeChartPattern) params.set('include_chart_pattern', 'true')
-  if (extras.includeForecast) params.set('include_forecast', 'true')
   const qs = params.toString()
   return apiClient.get<AnalysisOut>(
     `/v1/stocks/${encodeURIComponent(ticker)}/analysis${qs ? `?${qs}` : ''}`,
@@ -109,10 +106,6 @@ export function getAnalysis(ticker: string, extras: AnalysisExtras = {}) {
 
 export function getChartPattern(ticker: string) {
   return apiClient.get<ChartPatternOut>(`/v1/stocks/${encodeURIComponent(ticker)}/chart-pattern`)
-}
-
-export function getForecast(ticker: string) {
-  return apiClient.get<ForecastOut>(`/v1/stocks/${encodeURIComponent(ticker)}/forecast`)
 }
 
 export function getAiResearch(ticker: string) {
