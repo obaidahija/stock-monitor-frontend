@@ -1,5 +1,5 @@
 import { Sparkles } from 'lucide-react'
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useAiResearch, useRefreshAiResearch } from '../hooks'
@@ -9,6 +9,12 @@ import { PriceReferenceLadder } from './price-reference-ladder'
 import { ProgressPanel } from './progress-panel'
 import { ScoreGauge } from './score-gauge'
 import { SaveAiSetupDialog } from '@/features/watchlists/save-ai-setup-dialog'
+import { Separator } from '@/components/ui/separator'
+import { Skeleton } from '@/components/ui/skeleton'
+
+const ResearchChat = lazy(() =>
+  import('./research-chat').then((module) => ({ default: module.ResearchChat })),
+)
 
 export function AiResearchTab({ ticker }: { ticker: string }) {
   const [started, setStarted] = useState(false)
@@ -28,7 +34,7 @@ export function AiResearchTab({ ticker }: { ticker: string }) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-muted-foreground text-sm">
           LLM-synthesized research read combining quantitative facts, news, X/Twitter, and
@@ -70,7 +76,7 @@ export function AiResearchTab({ ticker }: { ticker: string }) {
       )}
 
       {data && data.source.ok && data.lean && data.score !== null && data.confidence !== null && (
-        <div className="space-y-4">
+        <div className="flex flex-col gap-4">
           <ScoreGauge score={data.score} confidence={data.confidence} lean={data.lean} />
 
           <PriceReferenceLadder
@@ -87,6 +93,11 @@ export function AiResearchTab({ ticker }: { ticker: string }) {
           <p className="text-muted-foreground text-xs">{data.caveat}</p>
         </div>
       )}
+
+      <Separator />
+      <Suspense fallback={<Skeleton className="h-[42rem]" />}>
+        <ResearchChat ticker={ticker} />
+      </Suspense>
     </div>
   )
 }

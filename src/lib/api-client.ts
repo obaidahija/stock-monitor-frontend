@@ -13,15 +13,21 @@ export class ApiError extends Error {
   }
 }
 
+export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
+  const headers = new Headers(init?.headers)
+  if (API_KEY) headers.set('X-API-Key', API_KEY)
+  const isFormData = typeof FormData !== 'undefined' && init?.body instanceof FormData
+  if (init?.body && !isFormData && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json')
+  }
+  return fetch(`${API_BASE_URL}${path}`, { ...init, headers })
+}
+
 async function requestWithResponse<T>(
   path: string,
   init?: RequestInit,
 ): Promise<{ data: T; response: Response }> {
-  const headers = new Headers(init?.headers)
-  if (API_KEY) headers.set('X-API-Key', API_KEY)
-  if (init?.body) headers.set('Content-Type', 'application/json')
-
-  const res = await fetch(`${API_BASE_URL}${path}`, { ...init, headers })
+  const res = await apiFetch(path, init)
 
   if (!res.ok) {
     let detail: unknown = null

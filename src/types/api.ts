@@ -459,6 +459,45 @@ export interface OpenRouterModelOut {
   completion_price: string | null
 }
 
+export interface AiConversationMessageOut {
+  id: number
+  role: 'user' | 'assistant'
+  content: string
+  attachment_names: string[]
+  status: 'complete' | 'failed'
+  created_at: string
+  usage?: LlmUsageSummaryOut | null
+}
+
+export interface AiConversationSummaryOut {
+  id: number
+  ticker: string
+  provider: AiProvider
+  model: string
+  reasoning_enabled: boolean
+  streaming_enabled: boolean
+  title: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface AiConversationOut extends AiConversationSummaryOut {
+  messages: AiConversationMessageOut[]
+  usage: LlmUsageSummaryOut | null
+}
+
+export type ResearchStreamEvent =
+  | { event: 'started'; data: { conversation_id: number; provider: string; model: string } }
+  | { event: 'thinking'; data: { active: boolean } }
+  | { event: 'text_delta'; data: { text: string } }
+  | { event: 'attachment'; data: { name: string; status: string } }
+  | { event: 'usage'; data: LlmUsageSummaryOut }
+  | {
+      event: 'completed'
+      data: { message: AiConversationMessageOut; finish_reason: string | null }
+    }
+  | { event: 'error'; data: { code: string | number; message: string; retryable: boolean } }
+
 export type WatchlistSetupSide = 'long' | 'short'
 export type WatchlistSetupHorizon = 'short_term' | 'long_term' | 'custom'
 export type WatchlistSetupSource = 'ai_managed' | 'manual'
