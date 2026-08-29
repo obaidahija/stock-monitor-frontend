@@ -31,6 +31,24 @@ The frontend never runs `rdt-cli` directly and never receives or stores Reddit b
 credentials. Backend setup, recovery, retention, and read-only operational guidance live in the
 sibling backend's `docs/reddit-intelligence-runbook.md`.
 
+## AI Settings and Research Chat
+
+`/ai-settings` selects independent provider/model profiles for research and summarization. Only
+the OpenRouter catalog is discovered dynamically; local and Anthropic model IDs remain editable
+text. Provider cards show configured status, but the frontend never fetches, renders, stores, or
+submits API key values.
+
+Each ticker's AI Research tab keeps the structured report and adds persistent Research Chat below
+it. The chat streams Markdown responses, shows a generic “Thinking…” indicator, restores visible
+history after reload, and displays per-turn and conversation token/cost totals. Raw reasoning is
+never rendered. Users can attach up to four supported images/PDFs/videos and optionally include a
+transient MarketScout chart. Navigation, ticker changes, unmounts, and the Stop action abort the
+active request.
+
+The frontend sends chat turns as authenticated `multipart/form-data` and parses the backend's SSE
+events directly. It deliberately does not set a multipart `Content-Type` header, allowing the
+browser to add the required boundary.
+
 ## Vite notes
 
 This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
