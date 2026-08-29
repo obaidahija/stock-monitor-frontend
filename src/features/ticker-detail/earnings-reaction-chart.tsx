@@ -58,9 +58,24 @@ function eventKey(event: EarningsReactionEventOut): string {
   return `${event.event_date}-${event.bmo_amc}`
 }
 
+// Matches the Discover table's Tracked Universe P/E convention exactly
+// (universe-table.tsx): one decimal place, multiplication-sign suffix.
+function formatRatio(value: number | null): string {
+  return value !== null ? `${value.toFixed(1)}×` : '—'
+}
+
 function eventLineColorClass(event: EarningsReactionEventOut): string {
+  if (event.is_upcoming) return 'stroke-current text-amber-500'
   const result = resultFor(event)
   return cn('stroke-current', result ? EARNINGS_RESULT_TEXT_CLASSES[result] : 'text-muted-foreground')
+}
+
+// The most recent offset an in-progress (upcoming) quarter's curve actually
+// reaches -- i.e. "where things stand as of today" for that report's lead-up.
+function latestPointPct(event: EarningsReactionEventOut): number | null {
+  if (event.points.length === 0) return null
+  return event.points.reduce((latest, point) => (point.offset > latest.offset ? point : latest))
+    .pct
 }
 
 function milestoneOffsets(data: EarningsReactionOut): number[] {
@@ -74,17 +89,13 @@ function milestoneOffsets(data: EarningsReactionOut): number[] {
   )
 }
 
-function milestoneLabel(offset: number, data: EarningsReactionOut): string {
-  const anchoredToToday =
-    data.days_until_next_earnings !== null &&
-    data.days_until_next_earnings === data.before_days
-
-  if (anchoredToToday && offset <= 0) {
-    const daysFromToday = data.before_days + offset
-    const dayLabel =
-      daysFromToday === 0 ? 'Today' : daysFromToday === 1 ? 'Tomorrow' : `In ${daysFromToday}d`
-    return offset === 0 ? `${dayLabel} · earnings` : dayLabel
-  }
+// Every row in this table is a *past* report, so columns are always labeled
+// relative to that report's own reaction day -- never "Today"/"In Nd", which
+// would wrongly imply the value is N days from now rather than N trading
+// days from a report that already happened. (The chart's left-edge tick
+// still gets a "Today" label separately -- that one's accurate, since the
+// window's left edge is genuinely built from today's countdown.)
+function milestoneLabel(offset: number): string {
   if (offset < 0) return `${Math.abs(offset)}d before`
   if (offset === 0) return 'Earnings day'
   return offsetLabel(offset)
@@ -108,9 +119,11 @@ function ReactionTable({
           <TableRow>
             <TableHead className="whitespace-nowrap">Report</TableHead>
             <TableHead>Result</TableHead>
+            <TableHead className="text-right whitespace-nowrap">P/E</TableHead>
+            <TableHead className="text-right whitespace-nowrap">Volume</TableHead>
             {milestones.map((offset) => (
               <TableHead key={offset} className="text-right whitespace-nowrap">
-                {milestoneLabel(offset, data)}
+                {milestoneLabel(offset)}
               </TableHead>
             ))}
           </TableRow>
@@ -135,7 +148,11 @@ function ReactionTable({
                   <span className="text-muted-foreground text-xs uppercase">{event.bmo_amc}</span>
                 </TableCell>
                 <TableCell>
-                  {result ? (
+                  {event.is_upcoming ? (
+                    <span className="inline-flex rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-semibold whitespace-nowrap text-amber-600 dark:text-amber-400">
+                      Upcoming
+                    </span>
+                  ) : result ? (
                     <span
                       className={cn(
                         'inline-flex rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap',
@@ -147,6 +164,12 @@ function ReactionTable({
                   ) : (
                     <span className="text-muted-foreground">—</span>
                   )}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {formatRatio(event.pe_ratio)}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {formatRatio(event.volume_ratio)}
                 </TableCell>
                 {milestones.map((offset) => (
                   <TableCell key={offset} className="text-right tabular-nums">
@@ -199,9 +222,14 @@ export function EarningsReactionChart({ data }: { data: EarningsReactionOut }) {
   const ticks = tickOffsets(points)
   const hovered = points.find((point) => point.offset === hoveredOffset) ?? null
   const hoveredEvent = data.events.find((event) => eventKey(event) === hoveredEventKey) ?? null
-  const leftEdgeIsToday =
-    data.days_until_next_earnings !== null &&
-    data.days_until_next_earnings === data.before_days
+  // The window is a fixed before_days/after_days regardless of the actual
+  // countdown, so "today" can land anywhere inside it (or outside it, for a
+  // ticker further out than before_days) rather than always sitting at the
+  // left edge.
+  const todayOffset =
+    data.days_until_next_earnings !== null ? -data.days_until_next_earnings : null
+  const showTodayMarker =
+    todayOffset !== null && todayOffset >= -data.before_days && todayOffset <= data.after_days
 
   // Draw the hovered quarter's line last so it renders on top of the others
   // it's meant to stand out from.
@@ -214,8 +242,13 @@ export function EarningsReactionChart({ data }: { data: EarningsReactionOut }) {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between gap-3">
         <CardTitle>Earnings reaction pattern — avg of last {data.events_used} reports</CardTitle>
+        {data.current_pe_ratio !== null && (
+          <span className="text-muted-foreground text-xs whitespace-nowrap">
+            Current P/E {formatRatio(data.current_pe_ratio)}
+          </span>
+        )}
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-muted-foreground text-xs">
@@ -263,6 +296,27 @@ export function EarningsReactionChart({ data }: { data: EarningsReactionOut }) {
           >
             Earnings day
           </text>
+          {showTodayMarker && todayOffset !== null && (
+            <>
+              <line
+                x1={xForOffset(todayOffset)}
+                y1={PADDING_TOP}
+                x2={xForOffset(todayOffset)}
+                y2={PADDING_TOP + plotHeight}
+                className="stroke-amber-500/70"
+                strokeWidth={1.5}
+                strokeDasharray="3 3"
+              />
+              <text
+                x={xForOffset(todayOffset) + 6}
+                y={PADDING_TOP + plotHeight - 6}
+                textAnchor="start"
+                className="fill-amber-600 dark:fill-amber-400 text-[8px] font-semibold"
+              >
+                Today
+              </text>
+            </>
+          )}
           <path d={`${buildPath(bandPoints)} Z`} className={BAND_FILL_CLASS} stroke="none" />
           {orderedEvents.map((event) => {
             const key = eventKey(event)
@@ -280,6 +334,7 @@ export function EarningsReactionChart({ data }: { data: EarningsReactionOut }) {
                   isHovered ? 'opacity-100' : isDimmed ? 'opacity-10' : 'opacity-30',
                 )}
                 strokeWidth={isHovered ? 2.5 : 1.25}
+                strokeDasharray={event.is_upcoming ? '4 2' : undefined}
               />
             )
           })}
@@ -307,11 +362,7 @@ export function EarningsReactionChart({ data }: { data: EarningsReactionOut }) {
                 offset === hoveredOffset && 'fill-foreground font-medium',
               )}
             >
-              {offset === -data.before_days
-                ? leftEdgeIsToday
-                  ? 'Today'
-                  : `T-${data.before_days}d`
-                : offsetLabel(offset)}
+              {offsetLabel(offset)}
             </text>
           ))}
           {points.map((point, index) => (
@@ -352,6 +403,22 @@ export function EarningsReactionChart({ data }: { data: EarningsReactionOut }) {
               </svg>
               Individual quarters
             </span>
+            {data.events.some((event) => event.is_upcoming) && (
+              <span className="inline-flex items-center gap-1.5">
+                <svg width="16" height="8" aria-hidden="true">
+                  <line
+                    x1="0"
+                    y1="4"
+                    x2="16"
+                    y2="4"
+                    strokeWidth="1.5"
+                    strokeDasharray="4 2"
+                    className="stroke-amber-500"
+                  />
+                </svg>
+                Upcoming (so far)
+              </span>
+            )}
           </div>
           <span>yfinance, {data.events_used} quarters</span>
         </div>
@@ -361,14 +428,23 @@ export function EarningsReactionChart({ data }: { data: EarningsReactionOut }) {
             <>
               <span className="font-medium">{formatDate(hoveredEvent.event_date)}</span>{' '}
               <span className="uppercase">{hoveredEvent.bmo_amc}</span>
-              {(() => {
-                const result = resultFor(hoveredEvent)
-                return result ? ` — ${EARNINGS_RESULT_LABEL[result]}` : ''
-              })()}
-              {' — earnings day '}
-              {formatSignedPct(
-                hoveredEvent.points.find((point) => point.offset === 0)?.pct ?? null,
-                1,
+              {hoveredEvent.is_upcoming ? (
+                <>
+                  {' — upcoming report — so far '}
+                  {formatSignedPct(latestPointPct(hoveredEvent), 1)}
+                </>
+              ) : (
+                <>
+                  {(() => {
+                    const result = resultFor(hoveredEvent)
+                    return result ? ` — ${EARNINGS_RESULT_LABEL[result]}` : ''
+                  })()}
+                  {' — earnings day '}
+                  {formatSignedPct(
+                    hoveredEvent.points.find((point) => point.offset === 0)?.pct ?? null,
+                    1,
+                  )}
+                </>
               )}
             </>
           ) : hovered ? (

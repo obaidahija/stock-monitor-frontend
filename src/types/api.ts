@@ -131,6 +131,9 @@ export interface EarningsReactionEventOut {
   bmo_amc: string
   eps_estimate: number | null
   eps_actual: number | null
+  pe_ratio: number | null
+  volume_ratio: number | null
+  is_upcoming: boolean
   points: EarningsReactionEventPointOut[]
 }
 
@@ -142,6 +145,7 @@ export interface EarningsReactionOut {
   events: EarningsReactionEventOut[]
   events_used: number
   days_until_next_earnings: number | null
+  current_pe_ratio: number | null
   source: EarningsReactionSourceOut
 }
 
