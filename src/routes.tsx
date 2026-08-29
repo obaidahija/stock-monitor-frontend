@@ -9,6 +9,7 @@ import { MacroPage } from '@/pages/macro-page'
 import { TrendingPage } from '@/pages/trending-page'
 import { SystemPage } from '@/pages/system-page'
 import { WatchlistsPage } from '@/pages/watchlists-page'
+import { AiSettingsPage } from '@/pages/ai-settings-page'
 
 export function AppRoutes() {
   return (
@@ -23,6 +24,7 @@ export function AppRoutes() {
         <Route path="/macro" element={<MacroPage />} />
         <Route path="/trending" element={<TrendingPage />} />
         <Route path="/system" element={<SystemPage />} />
+        <Route path="/ai-settings" element={<AiSettingsPage />} />
       </Route>
     </Routes>
   )

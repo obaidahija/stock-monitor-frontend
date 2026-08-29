@@ -410,6 +410,53 @@ export interface AiResearchOut {
   generated_at: string
   cached: boolean
   current_price: number | null
+  usage?: LlmUsageSummaryOut | null
+}
+
+export type AiProvider = 'ollama' | 'llamacpp' | 'anthropic' | 'openrouter'
+
+export interface LlmUsageSummaryOut {
+  prompt_tokens: number
+  completion_tokens: number
+  reasoning_tokens: number
+  cached_tokens: number
+  cost_usd: string | null
+}
+
+export interface ResearchAiProfile {
+  provider: AiProvider
+  model: string
+  reasoning_enabled: boolean
+  streaming_enabled: boolean
+  include_chart: boolean
+}
+
+export interface SummarizationAiProfile {
+  provider: AiProvider
+  model: string
+}
+
+export interface AiSettingsOut {
+  research: ResearchAiProfile
+  summarization: SummarizationAiProfile
+  providers: Record<AiProvider, { configured: boolean }>
+  updated_at: string
+}
+
+export interface AiSettingsUpdate {
+  research: ResearchAiProfile
+  summarization: SummarizationAiProfile
+}
+
+export interface OpenRouterModelOut {
+  id: string
+  name: string
+  context_length: number | null
+  input_modalities: string[]
+  output_modalities: string[]
+  supported_parameters: string[]
+  prompt_price: string | null
+  completion_price: string | null
 }
 
 export type WatchlistSetupSide = 'long' | 'short'

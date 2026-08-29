@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { to: '/macro', label: 'Macro' },
   { to: '/trending', label: 'Trending', accent: true },
   { to: '/system', label: 'System' },
+  { to: '/ai-settings', label: 'AI Settings' },
 ]
 
 export function AppLayout() {
