@@ -145,6 +145,7 @@ export interface EarningsReactionOut {
   events: EarningsReactionEventOut[]
   events_used: number
   days_until_next_earnings: number | null
+  today_offset: number | null
   current_pe_ratio: number | null
   source: EarningsReactionSourceOut
 }

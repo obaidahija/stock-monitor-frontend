@@ -39,7 +39,14 @@ export function formatScore(value: number | null | undefined, digits = 2): strin
 
 export function formatDate(value: string | null | undefined): string {
   if (!value) return '—'
-  return new Date(value).toLocaleDateString('en-US', {
+  // value is a plain calendar date ("YYYY-MM-DD", no time/timezone --
+  // backend Pydantic `date` fields serialize this way). `new Date(value)`
+  // parses that as UTC midnight, so toLocaleDateString in any timezone
+  // behind UTC (e.g. America/Vancouver) rolls it back a day. Parse the
+  // components directly into a local-timezone Date instead so the
+  // calendar date displayed always matches the one the backend sent.
+  const [year, month, day] = value.split('-').map(Number)
+  return new Date(year, month - 1, day).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',

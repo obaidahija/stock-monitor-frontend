@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import {
@@ -78,15 +78,49 @@ function latestPointPct(event: EarningsReactionEventOut): number | null {
     .pct
 }
 
-function milestoneOffsets(data: EarningsReactionOut): number[] {
+// Shared by the chart's "Today" marker and the table's "Today" column so
+// they always agree on exactly the same offset.
+function todayOffsetFor(data: EarningsReactionOut): number | null {
+  // Backend-computed trading-day offset of today relative to whichever
+  // nearby report is the target -- negative while counting down to an
+  // upcoming report, positive if today is past a recently reported one and
+  // there's no report close enough on either side otherwise. Every
+  // quarter's own baseline sits at this same offset, so the marker and each
+  // curve's 0% point always agree on where "today" actually sits.
+  const offset = data.today_offset
+  if (offset === null || offset < -data.before_days || offset > data.after_days) return null
+  return offset
+}
+
+// A day-over-day move in the aggregate average this large is worth
+// surfacing as its own column even when it falls in an otherwise-skipped
+// gap between the fixed milestones below.
+const SIGNIFICANT_MOVE_THRESHOLD_PCT = 3
+
+function significantMoveOffsets(data: EarningsReactionOut): Set<number> {
+  const sorted = [...data.points].sort((a, b) => a.offset - b.offset)
+  const flagged = new Set<number>()
+  for (let index = 1; index < sorted.length; index++) {
+    if (
+      Math.abs(sorted[index].avg_pct - sorted[index - 1].avg_pct) >= SIGNIFICANT_MOVE_THRESHOLD_PCT
+    ) {
+      flagged.add(sorted[index].offset)
+    }
+  }
+  return flagged
+}
+
+function milestoneOffsets(data: EarningsReactionOut, flagged: Set<number>): number[] {
   const available = new Set(data.points.map((point) => point.offset))
   const leadUpOffsets =
     data.before_days <= 7
       ? Array.from({ length: data.before_days }, (_, index) => -data.before_days + index)
       : [-data.before_days, -data.before_days + 1, -14, -7, -4, -2, -1]
-  return [...new Set([...leadUpOffsets, 0, 1, 2, 4, 7, 14, 21, 30])].filter((offset) =>
-    available.has(offset),
-  )
+  const today = todayOffsetFor(data)
+  const candidates = today !== null ? [...leadUpOffsets, today] : leadUpOffsets
+  return [...new Set([...candidates, 0, 1, 2, 4, 7, 14, 21, 30, ...flagged])]
+    .filter((offset) => available.has(offset))
+    .sort((a, b) => a - b)
 }
 
 // Every row in this table is a *past* report, so columns are always labeled
@@ -95,11 +129,24 @@ function milestoneOffsets(data: EarningsReactionOut): number[] {
 // days from a report that already happened. (The chart's left-edge tick
 // still gets a "Today" label separately -- that one's accurate, since the
 // window's left edge is genuinely built from today's countdown.)
-function milestoneLabel(offset: number): string {
+// Every column is labeled relative to each report's own earnings day (offset
+// 0), including "Today" -- which is just whichever column happens to match
+// today's own position on that same axis. Columns to Today's left are
+// further before earnings (chronologically earlier); columns to its right
+// are closer to earnings (chronologically later), even though both read
+// "before" -- so Today's own signed position is spelled out in its label
+// to make that left/right relationship unambiguous at a glance.
+function milestoneLabel(offset: number, isToday: boolean): string {
+  if (isToday) return `Today (${signedOffsetLabel(offset)})`
   if (offset < 0) return `${Math.abs(offset)}d before`
   if (offset === 0) return 'Earnings day'
   return offsetLabel(offset)
 }
+
+// Distinct from the row-hover tint (bg-muted/60) so the two can combine
+// (a hovered row still shows which column is "today") without one hiding
+// the other.
+const TODAY_COLUMN_CLASS = 'bg-amber-500/10'
 
 function ReactionTable({
   data,
@@ -110,7 +157,21 @@ function ReactionTable({
   hoveredEventKey: string | null
   onHoverEvent: (key: string | null) => void
 }) {
-  const milestones = milestoneOffsets(data)
+  const flaggedOffsets = significantMoveOffsets(data)
+  const milestones = milestoneOffsets(data, flaggedOffsets)
+  const todayOffset = todayOffsetFor(data)
+  const todayHeadRef = useRef<HTMLTableCellElement | null>(null)
+
+  useEffect(() => {
+    todayHeadRef.current?.scrollIntoView({
+      behavior: 'smooth',
+      inline: 'center',
+      block: 'nearest',
+    })
+    // Re-run whenever the ticker or the resolved "today" offset changes --
+    // not on every re-render (e.g. row hover), which would fight the user's
+    // own scroll position.
+  }, [data.ticker, todayOffset])
 
   return (
     <div className="border-border rounded-lg border">
@@ -121,11 +182,29 @@ function ReactionTable({
             <TableHead>Result</TableHead>
             <TableHead className="text-right whitespace-nowrap">P/E</TableHead>
             <TableHead className="text-right whitespace-nowrap">Volume</TableHead>
-            {milestones.map((offset) => (
-              <TableHead key={offset} className="text-right whitespace-nowrap">
-                {milestoneLabel(offset)}
-              </TableHead>
-            ))}
+            {milestones.map((offset) => {
+              const isToday = offset === todayOffset
+              return (
+                <TableHead
+                  key={offset}
+                  ref={isToday ? todayHeadRef : undefined}
+                  className={cn(
+                    'text-right whitespace-nowrap',
+                    isToday && cn(TODAY_COLUMN_CLASS, 'text-amber-600 dark:text-amber-400'),
+                  )}
+                >
+                  {milestoneLabel(offset, isToday)}
+                  {flaggedOffsets.has(offset) && (
+                    <span
+                      className="ml-1 text-amber-500"
+                      title={`Day-over-day average move of ${SIGNIFICANT_MOVE_THRESHOLD_PCT}%+`}
+                    >
+                      !!
+                    </span>
+                  )}
+                </TableHead>
+              )
+            })}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -172,7 +251,13 @@ function ReactionTable({
                   {formatRatio(event.volume_ratio)}
                 </TableCell>
                 {milestones.map((offset) => (
-                  <TableCell key={offset} className="text-right tabular-nums">
+                  <TableCell
+                    key={offset}
+                    className={cn(
+                      'text-right tabular-nums',
+                      offset === todayOffset && TODAY_COLUMN_CLASS,
+                    )}
+                  >
                     {values.has(offset) ? formatSignedPct(values.get(offset), 1) : '—'}
                   </TableCell>
                 ))}
@@ -226,10 +311,8 @@ export function EarningsReactionChart({ data }: { data: EarningsReactionOut }) {
   // countdown, so "today" can land anywhere inside it (or outside it, for a
   // ticker further out than before_days) rather than always sitting at the
   // left edge.
-  const todayOffset =
-    data.days_until_next_earnings !== null ? -data.days_until_next_earnings : null
-  const showTodayMarker =
-    todayOffset !== null && todayOffset >= -data.before_days && todayOffset <= data.after_days
+  const todayOffset = todayOffsetFor(data)
+  const showTodayMarker = todayOffset !== null
 
   // Draw the hovered quarter's line last so it renders on top of the others
   // it's meant to stand out from.
@@ -252,10 +335,11 @@ export function EarningsReactionChart({ data }: { data: EarningsReactionOut }) {
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-muted-foreground text-xs">
-          Each quarter is measured against its own last close before the earnings reaction (0% one
-          trading day before the report) — offset 0 is the earnings reaction day itself. Recent
-          reports use the trading sessions available so far, so the sample size can decrease at
-          later offsets. Hover a row in the table below to track one quarter's line.
+          0% is today's own position in the cycle (the "Today" column/marker), applied to every
+          quarter at that same relative point — not always the day before earnings. Offset 0 is
+          the earnings reaction day itself. Recent reports use the trading sessions available so
+          far, so the sample size can decrease at later offsets. Hover a row in the table below to
+          track one quarter's line.
         </p>
         <svg
           viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
