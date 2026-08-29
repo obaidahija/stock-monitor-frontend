@@ -54,12 +54,13 @@ function resultFor(event: EarningsReactionEventOut): EarningsResult | null {
   return classifyEarnings(event.eps_actual, event.eps_estimate).result
 }
 
-function eventLineClass(event: EarningsReactionEventOut): string {
+function eventKey(event: EarningsReactionEventOut): string {
+  return `${event.event_date}-${event.bmo_amc}`
+}
+
+function eventLineColorClass(event: EarningsReactionEventOut): string {
   const result = resultFor(event)
-  return cn(
-    'fill-none stroke-current opacity-30',
-    result ? EARNINGS_RESULT_TEXT_CLASSES[result] : 'text-muted-foreground',
-  )
+  return cn('stroke-current', result ? EARNINGS_RESULT_TEXT_CLASSES[result] : 'text-muted-foreground')
 }
 
 function milestoneOffsets(data: EarningsReactionOut): number[] {
@@ -89,7 +90,15 @@ function milestoneLabel(offset: number, data: EarningsReactionOut): string {
   return offsetLabel(offset)
 }
 
-function ReactionTable({ data }: { data: EarningsReactionOut }) {
+function ReactionTable({
+  data,
+  hoveredEventKey,
+  onHoverEvent,
+}: {
+  data: EarningsReactionOut
+  hoveredEventKey: string | null
+  onHoverEvent: (key: string | null) => void
+}) {
   const milestones = milestoneOffsets(data)
 
   return (
@@ -109,9 +118,18 @@ function ReactionTable({ data }: { data: EarningsReactionOut }) {
         <TableBody>
           {data.events.map((event) => {
             const result = resultFor(event)
+            const key = eventKey(event)
             const values = new Map(event.points.map((point) => [point.offset, point.pct]))
             return (
-              <TableRow key={`${event.event_date}-${event.bmo_amc}`}>
+              <TableRow
+                key={key}
+                className={cn(
+                  'cursor-default transition-colors',
+                  hoveredEventKey === key && 'bg-muted/60',
+                )}
+                onPointerEnter={() => onHoverEvent(key)}
+                onPointerLeave={() => onHoverEvent(null)}
+              >
                 <TableCell className="whitespace-nowrap">
                   <span className="font-medium">{formatDate(event.event_date)}</span>{' '}
                   <span className="text-muted-foreground text-xs uppercase">{event.bmo_amc}</span>
@@ -146,6 +164,7 @@ function ReactionTable({ data }: { data: EarningsReactionOut }) {
 
 export function EarningsReactionChart({ data }: { data: EarningsReactionOut }) {
   const [hoveredOffset, setHoveredOffset] = useState<number | null>(null)
+  const [hoveredEventKey, setHoveredEventKey] = useState<string | null>(null)
 
   if (data.points.length === 0) return null
 
@@ -179,9 +198,19 @@ export function EarningsReactionChart({ data }: { data: EarningsReactionOut }) {
   }))
   const ticks = tickOffsets(points)
   const hovered = points.find((point) => point.offset === hoveredOffset) ?? null
+  const hoveredEvent = data.events.find((event) => eventKey(event) === hoveredEventKey) ?? null
   const leftEdgeIsToday =
     data.days_until_next_earnings !== null &&
     data.days_until_next_earnings === data.before_days
+
+  // Draw the hovered quarter's line last so it renders on top of the others
+  // it's meant to stand out from.
+  const orderedEvents = hoveredEventKey
+    ? [
+        ...data.events.filter((event) => eventKey(event) !== hoveredEventKey),
+        ...data.events.filter((event) => eventKey(event) === hoveredEventKey),
+      ]
+    : data.events
 
   return (
     <Card>
@@ -190,9 +219,10 @@ export function EarningsReactionChart({ data }: { data: EarningsReactionOut }) {
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-muted-foreground text-xs">
-          Each quarter starts at 0% on the left edge; every later offset is measured from that
-          quarter&apos;s starting close. Offset 0 is the earnings reaction day. Recent reports use
-          the trading sessions available so far, so the sample size can decrease at later offsets.
+          Each quarter is measured against its own last close before the earnings reaction (0% one
+          trading day before the report) — offset 0 is the earnings reaction day itself. Recent
+          reports use the trading sessions available so far, so the sample size can decrease at
+          later offsets. Hover a row in the table below to track one quarter's line.
         </p>
         <svg
           viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
@@ -234,16 +264,25 @@ export function EarningsReactionChart({ data }: { data: EarningsReactionOut }) {
             Earnings day
           </text>
           <path d={`${buildPath(bandPoints)} Z`} className={BAND_FILL_CLASS} stroke="none" />
-          {data.events.map((event) => (
-            <path
-              key={`${event.event_date}-${event.bmo_amc}`}
-              d={buildPath(
-                event.points.map((point) => ({ x: xForOffset(point.offset), y: yFor(point.pct) })),
-              )}
-              className={eventLineClass(event)}
-              strokeWidth={1.25}
-            />
-          ))}
+          {orderedEvents.map((event) => {
+            const key = eventKey(event)
+            const isHovered = key === hoveredEventKey
+            const isDimmed = hoveredEventKey !== null && !isHovered
+            return (
+              <path
+                key={key}
+                d={buildPath(
+                  event.points.map((point) => ({ x: xForOffset(point.offset), y: yFor(point.pct) })),
+                )}
+                className={cn(
+                  'fill-none',
+                  eventLineColorClass(event),
+                  isHovered ? 'opacity-100' : isDimmed ? 'opacity-10' : 'opacity-30',
+                )}
+                strokeWidth={isHovered ? 2.5 : 1.25}
+              />
+            )
+          })}
           <path d={buildPath(averagePoints)} className={cn('fill-none', AVERAGE_LINE_CLASS)} strokeWidth={2.5} />
           {points.map((point, index) => {
             const isHovered = point.offset === hoveredOffset
@@ -318,12 +357,28 @@ export function EarningsReactionChart({ data }: { data: EarningsReactionOut }) {
         </div>
 
         <p className="text-muted-foreground min-h-4 text-xs">
-          {hovered
-            ? `Offset ${signedOffsetLabel(hovered.offset)} — avg ${formatSignedPct(hovered.avg_pct, 1)} (range ${formatSignedPct(hovered.min_pct, 1)} to ${formatSignedPct(hovered.max_pct, 1)}, n=${hovered.n} quarters)`
-            : 'Hover or focus an offset for the average and historical range.'}
+          {hoveredEvent ? (
+            <>
+              <span className="font-medium">{formatDate(hoveredEvent.event_date)}</span>{' '}
+              <span className="uppercase">{hoveredEvent.bmo_amc}</span>
+              {(() => {
+                const result = resultFor(hoveredEvent)
+                return result ? ` — ${EARNINGS_RESULT_LABEL[result]}` : ''
+              })()}
+              {' — earnings day '}
+              {formatSignedPct(
+                hoveredEvent.points.find((point) => point.offset === 0)?.pct ?? null,
+                1,
+              )}
+            </>
+          ) : hovered ? (
+            `Offset ${signedOffsetLabel(hovered.offset)} — avg ${formatSignedPct(hovered.avg_pct, 1)} (range ${formatSignedPct(hovered.min_pct, 1)} to ${formatSignedPct(hovered.max_pct, 1)}, n=${hovered.n} quarters)`
+          ) : (
+            'Hover or focus an offset for the average and historical range.'
+          )}
         </p>
 
-        <ReactionTable data={data} />
+        <ReactionTable data={data} hoveredEventKey={hoveredEventKey} onHoverEvent={setHoveredEventKey} />
       </CardContent>
     </Card>
   )
