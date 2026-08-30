@@ -211,6 +211,35 @@ function ManualModelField({
   )
 }
 
+function MaxTokensField({
+  id,
+  label,
+  value,
+  onChange,
+}: {
+  id: string
+  label: string
+  value: number
+  onChange: (maxTokens: number) => void
+}) {
+  return (
+    <Field>
+      <FieldLabel htmlFor={id}>{label}</FieldLabel>
+      <Input
+        id={id}
+        type="number"
+        min={1}
+        value={value}
+        onChange={(event) => {
+          const parsed = Number.parseInt(event.target.value, 10)
+          if (Number.isFinite(parsed) && parsed > 0) onChange(parsed)
+        }}
+      />
+      <FieldDescription>Maximum tokens generated per LLM call for this task.</FieldDescription>
+    </Field>
+  )
+}
+
 function SettingsEditor({
   initial,
   models,
@@ -223,6 +252,8 @@ function SettingsEditor({
   const [form, setForm] = useState<AiSettingsUpdate>(() => ({
     research: { ...initial.research },
     summarization: { ...initial.summarization },
+    competitor: { ...initial.competitor },
+    macro_transmission: { ...initial.macro_transmission },
   }))
   const update = useUpdateAiSettings()
   const researchModel = models.find((model) => model.id === form.research.model)
@@ -273,6 +304,28 @@ function SettingsEditor({
         ...current.summarization,
         provider,
         model: modelForProvider(provider, initial.summarization),
+      },
+    }))
+  }
+
+  function setCompetitorProvider(provider: AiProvider) {
+    setForm((current) => ({
+      ...current,
+      competitor: {
+        ...current.competitor,
+        provider,
+        model: modelForProvider(provider, initial.competitor),
+      },
+    }))
+  }
+
+  function setMacroTransmissionProvider(provider: AiProvider) {
+    setForm((current) => ({
+      ...current,
+      macro_transmission: {
+        ...current.macro_transmission,
+        provider,
+        model: modelForProvider(provider, initial.macro_transmission),
       },
     }))
   }
@@ -428,6 +481,140 @@ function SettingsEditor({
           <CardFooter>
             <Badge variant={initial.providers[form.summarization.provider].configured ? 'secondary' : 'outline'}>
               {initial.providers[form.summarization.provider].configured
+                ? 'Provider configured'
+                : 'Provider not configured'}
+            </Badge>
+          </CardFooter>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              <h2>Competitor identification</h2>
+            </CardTitle>
+            <CardDescription>
+              Powers 10-K competitor extraction and ranking (GET/POST /stocks/{'{ticker}'}/competitors).
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FieldGroup>
+              <ProviderSelect
+                id="competitor-provider"
+                label="Competitor provider"
+                value={form.competitor.provider}
+                onChange={setCompetitorProvider}
+              />
+              {form.competitor.provider === 'openrouter' && models.length > 0 ? (
+                <ModelCatalogSelect
+                  label="Competitor model"
+                  models={models}
+                  value={form.competitor.model}
+                  onChange={(model) =>
+                    setForm((current) => ({
+                      ...current,
+                      competitor: { ...current.competitor, model },
+                    }))
+                  }
+                />
+              ) : (
+                <ManualModelField
+                  id="competitor-model"
+                  label="Competitor model"
+                  value={form.competitor.model}
+                  onChange={(model) =>
+                    setForm((current) => ({
+                      ...current,
+                      competitor: { ...current.competitor, model },
+                    }))
+                  }
+                />
+              )}
+              <MaxTokensField
+                id="competitor-max-tokens"
+                label="Competitor max tokens"
+                value={form.competitor.max_tokens}
+                onChange={(max_tokens) =>
+                  setForm((current) => ({
+                    ...current,
+                    competitor: { ...current.competitor, max_tokens },
+                  }))
+                }
+              />
+            </FieldGroup>
+          </CardContent>
+          <CardFooter>
+            <Badge variant={initial.providers[form.competitor.provider].configured ? 'secondary' : 'outline'}>
+              {initial.providers[form.competitor.provider].configured
+                ? 'Provider configured'
+                : 'Provider not configured'}
+            </Badge>
+          </CardFooter>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              <h2>Macro transmission</h2>
+            </CardTitle>
+            <CardDescription>
+              Powers macro sector-impact stance/magnitude resolution (GET /macro/sector-impact).
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FieldGroup>
+              <ProviderSelect
+                id="macro-transmission-provider"
+                label="Macro transmission provider"
+                value={form.macro_transmission.provider}
+                onChange={setMacroTransmissionProvider}
+              />
+              {form.macro_transmission.provider === 'openrouter' && models.length > 0 ? (
+                <ModelCatalogSelect
+                  label="Macro transmission model"
+                  models={models}
+                  value={form.macro_transmission.model}
+                  onChange={(model) =>
+                    setForm((current) => ({
+                      ...current,
+                      macro_transmission: { ...current.macro_transmission, model },
+                    }))
+                  }
+                />
+              ) : (
+                <ManualModelField
+                  id="macro-transmission-model"
+                  label="Macro transmission model"
+                  value={form.macro_transmission.model}
+                  onChange={(model) =>
+                    setForm((current) => ({
+                      ...current,
+                      macro_transmission: { ...current.macro_transmission, model },
+                    }))
+                  }
+                />
+              )}
+              <MaxTokensField
+                id="macro-transmission-max-tokens"
+                label="Macro transmission max tokens"
+                value={form.macro_transmission.max_tokens}
+                onChange={(max_tokens) =>
+                  setForm((current) => ({
+                    ...current,
+                    macro_transmission: { ...current.macro_transmission, max_tokens },
+                  }))
+                }
+              />
+            </FieldGroup>
+          </CardContent>
+          <CardFooter>
+            <Badge
+              variant={
+                initial.providers[form.macro_transmission.provider].configured
+                  ? 'secondary'
+                  : 'outline'
+              }
+            >
+              {initial.providers[form.macro_transmission.provider].configured
                 ? 'Provider configured'
                 : 'Provider not configured'}
             </Badge>

@@ -21,6 +21,8 @@ const settings = {
     include_chart: true,
   },
   summarization: { provider: 'ollama', model: 'qwen3:8b' },
+  competitor: { provider: 'ollama', model: 'qwen3:8b', max_tokens: 4000 },
+  macro_transmission: { provider: 'ollama', model: 'qwen3:8b', max_tokens: 200 },
   providers: {
     ollama: { configured: true, default_model: 'gpt-oss:20b' },
     llamacpp: { configured: true, default_model: 'local' },
@@ -77,11 +79,15 @@ test('loads independent profiles, readiness, and OpenRouter model metadata', asy
 
   expect(await screen.findByRole('heading', { name: 'Research' })).toBeInTheDocument()
   expect(screen.getByRole('heading', { name: 'Summarization' })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Competitor identification' })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Macro transmission' })).toBeInTheDocument()
+  expect(screen.getByLabelText('Competitor max tokens')).toHaveValue(4000)
+  expect(screen.getByLabelText('Macro transmission max tokens')).toHaveValue(200)
   expect(await screen.findByText('Qwen 3.8 27B')).toBeInTheDocument()
   expect(screen.getByText('131,072 context')).toBeInTheDocument()
   expect(screen.getByText('Image input')).toBeInTheDocument()
   expect(screen.getByText('OpenRouter key configured')).toBeInTheDocument()
-  expect(screen.getByDisplayValue('qwen3:8b')).toBeInTheDocument()
+  expect(screen.getByLabelText('Summarization model')).toHaveValue('qwen3:8b')
   expect(screen.getByRole('switch', { name: 'Reasoning' })).toBeChecked()
   expect(screen.getByRole('switch', { name: 'Streaming' })).toBeChecked()
   expect(screen.getByRole('switch', { name: 'Automatic chart inclusion' })).toBeChecked()
@@ -106,6 +112,8 @@ test('saves research and summarization settings without sending secrets', async 
       include_chart: false,
     },
     summarization: { provider: 'ollama', model: 'qwen3:14b' },
+    competitor: { provider: 'ollama', model: 'qwen3:8b', max_tokens: 4000 },
+    macro_transmission: { provider: 'ollama', model: 'qwen3:8b', max_tokens: 200 },
   })
   expect(JSON.stringify(api.updateAiSettings.mock.calls[0])).not.toContain('api_key')
 })
@@ -125,7 +133,7 @@ test("resets the model to the new provider's default when the provider changes",
   await screen.findByRole('heading', { name: 'Research' })
 
   // Summarization starts on ollama/qwen3:8b.
-  expect(screen.getByDisplayValue('qwen3:8b')).toBeInTheDocument()
+  expect(screen.getByLabelText('Summarization model')).toHaveValue('qwen3:8b')
 
   await user.click(screen.getByLabelText('Summarization provider'))
   await user.click(await screen.findByRole('option', { name: 'Anthropic' }))
@@ -133,7 +141,6 @@ test("resets the model to the new provider's default when the provider changes",
   expect(screen.getByLabelText('Summarization model')).toHaveValue(
     'claude-sonnet-4-5-20250929',
   )
-  expect(screen.queryByDisplayValue('qwen3:8b')).not.toBeInTheDocument()
 })
 
 test('restores the saved model when switching back to the saved provider', async () => {

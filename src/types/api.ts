@@ -454,9 +454,17 @@ export interface SummarizationAiProfile {
   model: string
 }
 
+export interface BackgroundAiProfile {
+  provider: AiProvider
+  model: string
+  max_tokens: number
+}
+
 export interface AiSettingsOut {
   research: ResearchAiProfile
   summarization: SummarizationAiProfile
+  competitor: BackgroundAiProfile
+  macro_transmission: BackgroundAiProfile
   providers: Record<AiProvider, { configured: boolean; default_model: string }>
   updated_at: string
 }
@@ -464,6 +472,8 @@ export interface AiSettingsOut {
 export interface AiSettingsUpdate {
   research: ResearchAiProfile
   summarization: SummarizationAiProfile
+  competitor: BackgroundAiProfile
+  macro_transmission: BackgroundAiProfile
 }
 
 export interface OpenRouterModelOut {
