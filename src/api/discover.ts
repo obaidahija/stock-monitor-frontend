@@ -2,6 +2,7 @@ import { apiClient } from '@/lib/api-client'
 import type {
   EarningsResult,
   FilingOut,
+  InsiderSummaryOut,
   SectorHeatmapOut,
   TickerSearchResult,
   TrackedTickerOut,
@@ -15,13 +16,26 @@ export function getNotableFilings() {
 }
 
 export interface UniverseParams {
-  sort?: 'score' | 'ticker' | 'next_earnings_date' | 'change_pct' | 'volume_ratio' | 'pe_ratio'
+  sort?:
+    | 'score'
+    | 'ticker'
+    | 'next_earnings_date'
+    | 'change_pct'
+    | 'volume_ratio'
+    | 'pe_ratio'
+    | 'score_change'
+    | 'short_percent_of_float'
+    | 'sector_score_percentile'
+    | 'industry_score_percentile'
   order?: 'asc' | 'desc'
   limit?: number
   offset?: number
   earningsResult?: EarningsResult
   minGapPct?: number
   minVolumeRatio?: number
+  minShortPct?: number
+  maxFloatShares?: number
+  hasInsiderBuy?: boolean
   patternLabel?: string
   sector?: string
   q?: string
@@ -41,6 +55,13 @@ export async function getUniverse(params: UniverseParams = {}): Promise<Universe
   if (params.earningsResult) qs.set('earnings_result', params.earningsResult)
   if (params.minGapPct !== undefined) qs.set('min_gap_pct', String(params.minGapPct))
   if (params.minVolumeRatio !== undefined) qs.set('min_volume_ratio', String(params.minVolumeRatio))
+  if (params.minShortPct !== undefined) qs.set('min_short_pct', String(params.minShortPct))
+  if (params.maxFloatShares !== undefined) {
+    qs.set('max_float_shares', String(params.maxFloatShares))
+  }
+  if (params.hasInsiderBuy !== undefined) {
+    qs.set('has_insider_buy', String(params.hasInsiderBuy))
+  }
   if (params.patternLabel) qs.set('pattern_label', params.patternLabel)
   if (params.sector) qs.set('sector', params.sector)
   if (params.q) qs.set('q', params.q)
@@ -53,6 +74,14 @@ export async function getUniverse(params: UniverseParams = {}): Promise<Universe
 
 export function getSectorHeatmap() {
   return apiClient.get<SectorHeatmapOut>('/v1/discover/universe/sectors')
+}
+
+export function getInsiderBuying(days = 30, minValue?: number) {
+  const qs = new URLSearchParams({ days: String(days) })
+  if (minValue !== undefined) qs.set('min_value', String(minValue))
+  return apiClient.get<InsiderSummaryOut[]>(
+    `/v1/discover/insider-buying?${qs.toString()}`,
+  )
 }
 
 export function addCustomTicker(ticker: string, note?: string) {

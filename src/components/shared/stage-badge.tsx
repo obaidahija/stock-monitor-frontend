@@ -7,6 +7,7 @@ import {
   Sunrise,
   TrendingDown,
   TrendingUp,
+  Users,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -44,6 +45,11 @@ export const STAGE_META: Record<string, { label: string; icon: LucideIcon; class
     label: 'Recent pattern',
     icon: History,
     className: 'bg-amber-500/20 text-amber-700 dark:text-amber-300 font-semibold',
+  },
+  insider_cluster_buy: {
+    label: 'Insider cluster buy',
+    icon: Users,
+    className: 'bg-violet-500/20 text-violet-700 dark:text-violet-300 font-semibold',
   },
   filing: {
     label: 'Filing',

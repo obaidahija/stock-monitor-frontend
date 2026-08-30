@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { getHealth, listJobs, runJob } from '@/api/system'
+import { getHealth, getSignalPerformance, listJobs, runJob } from '@/api/system'
 import type { JobRunResult } from '@/types/api'
 
 export function useHealth() {
@@ -46,5 +46,12 @@ export function useRunJobsInOrder() {
         }
       }
     },
+  })
+}
+
+export function useSignalPerformance(horizon: 5 | 20) {
+  return useQuery({
+    queryKey: ['system', 'signal-performance', horizon],
+    queryFn: () => getSignalPerformance(horizon),
   })
 }

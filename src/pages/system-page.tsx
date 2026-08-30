@@ -3,9 +3,10 @@ import { PageHeader } from '@/components/shared/page-header'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { HealthPanel } from '@/features/system/health-panel'
 import { JobsTable } from '@/features/system/jobs-table'
+import { SignalPerformanceTab } from '@/features/system/signal-performance-tab'
 import { AiSettingsForm } from '@/features/ai-settings/ai-settings-form'
 
-const SYSTEM_TABS = ['health', 'jobs', 'ai'] as const
+const SYSTEM_TABS = ['health', 'jobs', 'signals', 'ai'] as const
 
 export function SystemPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -35,12 +36,13 @@ export function SystemPage() {
     <div className="space-y-6">
       <PageHeader
         title="System"
-        description="Scheduler health, upstream sources, job runs, and AI provider settings."
+        description="Scheduler health, upstream sources, job runs, signal performance, and AI provider settings."
       />
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList>
           <TabsTrigger value="health">Health</TabsTrigger>
           <TabsTrigger value="jobs">Jobs</TabsTrigger>
+          <TabsTrigger value="signals">Signals</TabsTrigger>
           <TabsTrigger value="ai">AI</TabsTrigger>
         </TabsList>
         <TabsContent value="health">
@@ -48,6 +50,9 @@ export function SystemPage() {
         </TabsContent>
         <TabsContent value="jobs">
           <JobsTable />
+        </TabsContent>
+        <TabsContent value="signals">
+          <SignalPerformanceTab />
         </TabsContent>
         <TabsContent value="ai">
           <div className="space-y-4">

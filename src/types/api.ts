@@ -23,6 +23,49 @@ export interface TickerSearchResult {
 
 export type EarningsResult = 'beat' | 'miss' | 'inline'
 
+export interface ScoreHistoryPointOut {
+  captured_on: string
+  score: number
+  lean: string | null
+}
+
+export interface InsiderTransactionOut {
+  insider_name: string
+  insider_title: string | null
+  is_officer: boolean
+  is_director: boolean
+  is_ten_percent_owner: boolean
+  transaction_code: string | null
+  transaction_date: string | null
+  shares: number | null
+  price_per_share: number | null
+  value_usd: number | null
+  shares_owned_after: number | null
+  security_title: string | null
+  is_derivative: boolean
+  filed_at: string | null
+  source_url: string | null
+}
+
+export interface InsiderSummaryOut {
+  ticker: string
+  lookback_days: number
+  buy_count: number
+  buy_value_usd: number
+  sell_count: number
+  sell_value_usd: number
+  distinct_buyers: number
+  net_value_usd: number
+  cluster_buy: boolean
+  officer_buying: boolean
+  latest_transaction_date: string | null
+}
+
+export interface InsiderOut {
+  summary: InsiderSummaryOut
+  transactions: InsiderTransactionOut[]
+}
+
 export interface UniverseTickerOut extends TrackedTickerOut {
   next_earnings_date: string | null
   next_earnings_bmo_amc: string | null
@@ -38,6 +81,30 @@ export interface UniverseTickerOut extends TrackedTickerOut {
   catalyst: string | null
   quote_updated_at: string | null
   recent_pattern: ChartPatternDetail | null
+  score_change_1d: number | null
+  score_change_5d: number | null
+  insider_cluster_buy: boolean
+  insider_buy_value_usd: number | null
+  short_percent_of_float: number | null
+  float_shares: number | null
+  sector_score_percentile: number | null
+  industry_score_percentile: number | null
+}
+
+export interface ShortInterestOut {
+  short_percent_of_float: number | null
+  short_ratio: number | null
+  float_shares: number | null
+  held_percent_institutions: number | null
+  held_percent_insiders: number | null
+}
+
+export interface PeerRankOut {
+  group_kind: 'sector' | 'industry'
+  group_label: string
+  rank: number
+  group_size: number
+  percentile: number
 }
 
 export interface QuoteOut {
@@ -357,6 +424,8 @@ export interface AnalysisOut {
   price_levels: PriceLevelsOut | null
   analyst_detail: AnalystDetailOut | null
   chart_pattern: ChartPatternOut | null
+  short_interest: ShortInterestOut | null
+  peer_rank: PeerRankOut | null
   caveats: string[]
   generated_at: string
 }
@@ -1318,4 +1387,35 @@ export interface TrendingSummaryOut {
   sentiment_overview: TrendingSentimentOverviewOut
   platform_overlap: TrendingPlatformOverlapOut
   sources: TrendingSourceStatusOut[]
+}
+
+export interface LeanPerformanceOut {
+  lean: string
+  count: number
+  hit_rate: number
+  avg_excess_return_pct: number
+}
+
+export interface ScoreBucketPerformanceOut {
+  bucket: string
+  count: number
+  hit_rate: number
+  avg_excess_return_pct: number
+}
+
+export interface FactorPerformanceOut {
+  factor: string
+  positive_count: number
+  positive_hit_rate: number | null
+  negative_count: number
+  negative_hit_rate: number | null
+  spread: number | null
+}
+
+export interface SignalPerformanceOut {
+  horizon_days: number
+  evaluated_count: number
+  by_lean: LeanPerformanceOut[]
+  by_score_bucket: ScoreBucketPerformanceOut[]
+  by_factor: FactorPerformanceOut[]
 }

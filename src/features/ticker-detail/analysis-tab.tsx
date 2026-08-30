@@ -19,6 +19,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ScoreHistoryChart } from './score-history-chart'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState } from '@/components/shared/error-state'
 import { ApiError } from '@/lib/api-client'
@@ -26,6 +27,8 @@ import { formatCurrency, formatDate, formatDateTime, formatRelativeTime, formatS
 import { LEAN_COLOR_CLASSES } from '@/lib/lean-colors'
 import { cn } from '@/lib/utils'
 import { ChartPatternCard } from './chart-pattern-card'
+import { PeerRankLine } from './peer-rank-line'
+import { ShortInterestCard } from './short-interest-card'
 import { useAnalysis, useRefreshUniverseScore, useUniverseScore } from './hooks'
 import { SentimentTrendChart } from './sentiment-trend-chart'
 import type { AnalystDetailOut, AnalysisLean, PriceLevelPosition, PriceLevelsOut } from '@/types/api'
@@ -409,7 +412,10 @@ export function AnalysisTab({ ticker }: { ticker: string }) {
           Overall score {formatScore(data.overall_score)} · generated {formatDateTime(data.generated_at)}
         </span>
         <UniverseScoreBadge ticker={ticker} />
+        <PeerRankLine peerRank={data.peer_rank} />
       </div>
+
+      <ScoreHistoryChart ticker={ticker} />
 
       <div className="space-y-2">
         <h3 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
@@ -426,6 +432,7 @@ export function AnalysisTab({ ticker }: { ticker: string }) {
 
       {data.price_levels && <PriceLevelsCard priceLevels={data.price_levels} />}
       {data.analyst_detail && <AnalystDetailCard detail={data.analyst_detail} />}
+      <ShortInterestCard shortInterest={data.short_interest} />
       <ChartPatternCard
         ticker={ticker}
         chartPattern={data.chart_pattern}
