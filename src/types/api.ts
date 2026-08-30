@@ -439,7 +439,7 @@ export interface SummarizationAiProfile {
 export interface AiSettingsOut {
   research: ResearchAiProfile
   summarization: SummarizationAiProfile
-  providers: Record<AiProvider, { configured: boolean }>
+  providers: Record<AiProvider, { configured: boolean; default_model: string }>
   updated_at: string
 }
 

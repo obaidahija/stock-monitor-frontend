@@ -1,5 +1,5 @@
 import { Sparkles } from 'lucide-react'
-import { lazy, Suspense, useState } from 'react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useAiResearch, useRefreshAiResearch } from '../hooks'
@@ -9,12 +9,6 @@ import { PriceReferenceLadder } from './price-reference-ladder'
 import { ProgressPanel } from './progress-panel'
 import { ScoreGauge } from './score-gauge'
 import { SaveAiSetupDialog } from '@/features/watchlists/save-ai-setup-dialog'
-import { Separator } from '@/components/ui/separator'
-import { Skeleton } from '@/components/ui/skeleton'
-
-const ResearchChat = lazy(() =>
-  import('./research-chat').then((module) => ({ default: module.ResearchChat })),
-)
 
 export function AiResearchTab({ ticker }: { ticker: string }) {
   const [started, setStarted] = useState(false)
@@ -94,10 +88,6 @@ export function AiResearchTab({ ticker }: { ticker: string }) {
         </div>
       )}
 
-      <Separator />
-      <Suspense fallback={<Skeleton className="h-[42rem]" />}>
-        <ResearchChat ticker={ticker} />
-      </Suspense>
     </div>
   )
 }

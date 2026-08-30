@@ -21,6 +21,12 @@ Object.defineProperty(HTMLElement.prototype, 'releasePointerCapture', {
   configurable: true,
   value: () => undefined,
 })
+// jsdom implements neither pointer capture nor scrollIntoView, both of which
+// Radix's Select calls when its listbox opens.
+Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+  configurable: true,
+  value: () => undefined,
+})
 
 window.confirm = vi.fn(() => true)
 

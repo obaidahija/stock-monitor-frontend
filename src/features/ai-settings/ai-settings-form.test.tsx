@@ -22,10 +22,10 @@ const settings = {
   },
   summarization: { provider: 'ollama', model: 'qwen3:8b' },
   providers: {
-    ollama: { configured: true },
-    llamacpp: { configured: true },
-    anthropic: { configured: false },
-    openrouter: { configured: true },
+    ollama: { configured: true, default_model: 'gpt-oss:20b' },
+    llamacpp: { configured: true, default_model: 'local' },
+    anthropic: { configured: false, default_model: 'claude-sonnet-4-5-20250929' },
+    openrouter: { configured: true, default_model: 'qwen/qwen3.8-27b' },
   },
   updated_at: '2026-08-29T10:00:00Z',
 }
@@ -46,6 +46,27 @@ beforeEach(() => {
       supported_parameters: ['reasoning'],
       prompt_price: '0.0000002',
       completion_price: '0.0000006',
+    },
+    {
+      id: 'z-ai/glm-5.2:free',
+      name: 'Z-AI GLM 5.2 (free)',
+      context_length: 256000,
+      input_modalities: ['text'],
+      output_modalities: ['text'],
+      supported_parameters: [],
+      prompt_price: '0',
+      completion_price: '0',
+    },
+    {
+      // Free without a :free suffix -- pricing decides, not the name.
+      id: 'google/lyria-3-pro-preview',
+      name: 'Lyria 3 Pro Preview',
+      context_length: 1048576,
+      input_modalities: ['text', 'image'],
+      output_modalities: ['text'],
+      supported_parameters: [],
+      prompt_price: '0',
+      completion_price: '0',
     },
   ])
   api.updateAiSettings.mockResolvedValue(settings)
@@ -96,4 +117,70 @@ test('falls back to a manual OpenRouter model field when catalog discovery fails
 
   expect(await screen.findByText(/catalog is unavailable/i)).toBeInTheDocument()
   expect(screen.getByLabelText('Research model')).toHaveValue('qwen/qwen3.8-27b')
+})
+
+test("resets the model to the new provider's default when the provider changes", async () => {
+  const user = userEvent.setup()
+  renderWithProviders(<AiSettingsForm />)
+  await screen.findByRole('heading', { name: 'Research' })
+
+  // Summarization starts on ollama/qwen3:8b.
+  expect(screen.getByDisplayValue('qwen3:8b')).toBeInTheDocument()
+
+  await user.click(screen.getByLabelText('Summarization provider'))
+  await user.click(await screen.findByRole('option', { name: 'Anthropic' }))
+
+  expect(screen.getByLabelText('Summarization model')).toHaveValue(
+    'claude-sonnet-4-5-20250929',
+  )
+  expect(screen.queryByDisplayValue('qwen3:8b')).not.toBeInTheDocument()
+})
+
+test('restores the saved model when switching back to the saved provider', async () => {
+  const user = userEvent.setup()
+  renderWithProviders(<AiSettingsForm />)
+  await screen.findByRole('heading', { name: 'Research' })
+
+  await user.click(screen.getByLabelText('Summarization provider'))
+  await user.click(await screen.findByRole('option', { name: 'Anthropic' }))
+  await user.click(screen.getByLabelText('Summarization provider'))
+  await user.click(await screen.findByRole('option', { name: 'Ollama' }))
+
+  // Back to the persisted provider, so the persisted model returns rather
+  // than the env default (gpt-oss:20b).
+  expect(screen.getByLabelText('Summarization model')).toHaveValue('qwen3:8b')
+})
+
+// The catalog select only replaces the manual model input once the models
+// query resolves, so wait for a catalog-only element before interacting.
+async function openResearchCatalog(user: ReturnType<typeof userEvent.setup>) {
+  const trigger = await screen.findByRole('combobox', { name: 'Research model' })
+  await user.click(trigger)
+  return screen.findByPlaceholderText('Search OpenRouter models…')
+}
+
+test('filters the catalog to free models, including ones without a :free suffix', async () => {
+  const user = userEvent.setup()
+  renderWithProviders(<AiSettingsForm />)
+  await openResearchCatalog(user)
+
+  expect(screen.getByRole('option', { name: /Qwen 3.8 27B/ })).toBeInTheDocument()
+
+  await user.click(screen.getByRole('switch', { name: 'Free models only' }))
+
+  expect(screen.getByRole('option', { name: /Z-AI GLM 5.2 \(free\)/ })).toBeInTheDocument()
+  expect(screen.getByRole('option', { name: /Lyria 3 Pro Preview/ })).toBeInTheDocument()
+  expect(screen.queryByRole('option', { name: /Qwen 3.8 27B/ })).not.toBeInTheDocument()
+})
+
+test('shows a Free badge instead of zero prices for a free model', async () => {
+  const user = userEvent.setup()
+  renderWithProviders(<AiSettingsForm />)
+  await openResearchCatalog(user)
+
+  await user.click(screen.getByRole('option', { name: /Z-AI GLM 5.2 \(free\)/ }))
+
+  expect(screen.getByText('Free')).toBeInTheDocument()
+  expect(screen.queryByText('Input $0/token')).not.toBeInTheDocument()
+  expect(screen.queryByText('Output $0/token')).not.toBeInTheDocument()
 })

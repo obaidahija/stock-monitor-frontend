@@ -81,6 +81,13 @@ function ProviderSelect({
   )
 }
 
+// OpenRouter reports a free model as the string "0" for both prices. Test the
+// price rather than a ":free" suffix -- a few free models (e.g. the Lyria
+// previews) carry no suffix, and a model can stop being free without renaming.
+function isFreeModel(model: OpenRouterModelOut) {
+  return model.prompt_price === '0' && model.completion_price === '0'
+}
+
 function ModelCatalogSelect({
   label,
   models,
@@ -93,7 +100,10 @@ function ModelCatalogSelect({
   onChange: (model: string) => void
 }) {
   const [open, setOpen] = useState(false)
+  const [freeOnly, setFreeOnly] = useState(false)
   const selected = models.find((model) => model.id === value)
+  const visibleModels = freeOnly ? models.filter(isFreeModel) : models
+  const freeCount = models.filter(isFreeModel).length
   return (
     <Field>
       <FieldLabel>{label}</FieldLabel>
@@ -113,10 +123,24 @@ function ModelCatalogSelect({
         <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
           <Command>
             <CommandInput placeholder="Search OpenRouter models…" />
+            <div className="border-border flex items-center justify-between gap-2 border-b px-3 py-2">
+              <label className="text-sm" htmlFor="free-models-only">
+                Free models only
+              </label>
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground text-xs">{freeCount} free</span>
+                <Switch
+                  aria-label="Free models only"
+                  checked={freeOnly}
+                  id="free-models-only"
+                  onCheckedChange={setFreeOnly}
+                />
+              </div>
+            </div>
             <CommandList>
               <CommandEmpty>No model found.</CommandEmpty>
               <CommandGroup>
-                {models.map((model) => (
+                {visibleModels.map((model) => (
                   <CommandItem
                     key={model.id}
                     value={`${model.name} ${model.id}`}
@@ -127,6 +151,11 @@ function ModelCatalogSelect({
                   >
                     <Check className={cn(model.id === value ? 'opacity-100' : 'opacity-0')} />
                     <span className="truncate">{model.name}</span>
+                    {isFreeModel(model) ? (
+                      <Badge className="ml-auto" variant="secondary">
+                        Free
+                      </Badge>
+                    ) : null}
                   </CommandItem>
                 ))}
               </CommandGroup>
@@ -151,10 +180,11 @@ function ModelMetadata({ model }: { model: OpenRouterModelOut }) {
       {model.supported_parameters.includes('reasoning') ? (
         <Badge variant="outline">Reasoning</Badge>
       ) : null}
-      {model.prompt_price ? (
+      {isFreeModel(model) ? <Badge variant="secondary">Free</Badge> : null}
+      {!isFreeModel(model) && model.prompt_price ? (
         <Badge variant="outline">Input ${model.prompt_price}/token</Badge>
       ) : null}
-      {model.completion_price ? (
+      {!isFreeModel(model) && model.completion_price ? (
         <Badge variant="outline">Output ${model.completion_price}/token</Badge>
       ) : null}
     </div>
@@ -212,14 +242,38 @@ function SettingsEditor({
     }
   }
 
+  // Switching providers must not leave the previous provider's model ID in the
+  // field (an Ollama tag is meaningless to OpenRouter). Fall back to the saved
+  // model when switching back to the saved provider, and to that provider's
+  // server-configured default otherwise.
+  function modelForProvider(
+    provider: AiProvider,
+    saved: { provider: AiProvider; model: string },
+  ) {
+    return provider === saved.provider
+      ? saved.model
+      : initial.providers[provider].default_model
+  }
+
   function setResearchProvider(provider: AiProvider) {
-    setForm((current) => ({ ...current, research: { ...current.research, provider } }))
+    setForm((current) => ({
+      ...current,
+      research: {
+        ...current.research,
+        provider,
+        model: modelForProvider(provider, initial.research),
+      },
+    }))
   }
 
   function setSummarizationProvider(provider: AiProvider) {
     setForm((current) => ({
       ...current,
-      summarization: { ...current.summarization, provider },
+      summarization: {
+        ...current.summarization,
+        provider,
+        model: modelForProvider(provider, initial.summarization),
+      },
     }))
   }
 
