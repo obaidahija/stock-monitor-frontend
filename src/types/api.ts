@@ -507,6 +507,11 @@ export interface CompetitorOut {
   confidence: CompetitorConfidence
 }
 
+export interface SimilarCompanyOut {
+  ticker: string
+  name: string | null
+}
+
 export interface CompetitorAnalysisInputsOut {
   target_extraction_id: number | null
   named_competitor_count: number
@@ -524,6 +529,7 @@ export interface CompetitorAnalysisOut {
   snapshot_id: number | null
   ticker: string
   competitors: CompetitorOut[]
+  similar_companies: SimilarCompanyOut[]
   inputs_used: CompetitorAnalysisInputsOut
   caveat: string
   source: CompetitorAnalysisSourceOut

@@ -9,6 +9,7 @@ import { useCompetitors, useRefreshCompetitors } from '../hooks'
 import { CompetitorRow } from './competitor-row'
 import { CompetitorsSummary } from './competitors-summary'
 import { ProgressPanel } from './progress-panel'
+import { SimilarCompaniesSection } from './similar-companies-section'
 
 const IMPACT_RANK: Record<CompetitorConfidence, number> = { high: 0, medium: 1, low: 2 }
 const CONFIDENCE_RANK: Record<CompetitorConfidence, number> = { high: 0, medium: 1, low: 2 }
@@ -114,6 +115,7 @@ export function CompetitorsTab({ ticker }: { ticker: string }) {
         <div className="space-y-4">
           {current.competitors.length > 0 ? (
             <>
+              <h3 className="text-sm font-semibold">Confirmed Competitors</h3>
               <CompetitorsSummary competitors={current.competitors} />
 
               <div className="flex items-center gap-2">
@@ -149,6 +151,10 @@ export function CompetitorsTab({ ticker }: { ticker: string }) {
 
           <p className="text-muted-foreground text-xs">{current.caveat}</p>
         </div>
+      )}
+
+      {current && current.similar_companies.length > 0 && (
+        <SimilarCompaniesSection companies={current.similar_companies} />
       )}
     </div>
   )
