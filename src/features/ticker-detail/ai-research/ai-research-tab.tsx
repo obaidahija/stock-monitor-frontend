@@ -28,7 +28,7 @@ export function AiResearchTab({ ticker }: { ticker: string }) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-muted-foreground text-sm">
           LLM-synthesized research read combining quantitative facts, news, X/Twitter, and
@@ -70,7 +70,7 @@ export function AiResearchTab({ ticker }: { ticker: string }) {
       )}
 
       {data && data.source.ok && data.lean && data.score !== null && data.confidence !== null && (
-        <div className="space-y-4">
+        <div className="flex flex-col gap-4">
           <ScoreGauge score={data.score} confidence={data.confidence} lean={data.lean} />
 
           <PriceReferenceLadder
@@ -87,6 +87,7 @@ export function AiResearchTab({ ticker }: { ticker: string }) {
           <p className="text-muted-foreground text-xs">{data.caveat}</p>
         </div>
       )}
+
     </div>
   )
 }

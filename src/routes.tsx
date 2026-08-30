@@ -1,4 +1,4 @@
-import { Route, Routes } from 'react-router'
+import { Navigate, Route, Routes } from 'react-router'
 import { AppLayout } from '@/components/layout/app-layout'
 import { DigestPage } from '@/pages/digest-page'
 import { TickerDetailPage } from '@/pages/ticker-detail-page'
@@ -23,6 +23,8 @@ export function AppRoutes() {
         <Route path="/macro" element={<MacroPage />} />
         <Route path="/trending" element={<TrendingPage />} />
         <Route path="/system" element={<SystemPage />} />
+        {/* AI settings now live in the System page's AI tab; keep the old path linkable. */}
+        <Route path="/ai-settings" element={<Navigate to="/system?tab=ai" replace />} />
       </Route>
     </Routes>
   )
