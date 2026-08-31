@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { getMorningDigest, getTickerDigest } from '@/api/digest'
+import { dismissDigestItem, getMorningDigest, getTickerDigest } from '@/api/digest'
 import { runJob } from '@/api/system'
 
 export function useMorningDigest() {
@@ -21,6 +21,14 @@ export function useBuildDigest() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: () => runJob('digest_build'),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['digest', 'morning'] }),
+  })
+}
+
+export function useDismissDigestItem() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (ticker: string) => dismissDigestItem(ticker),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['digest', 'morning'] }),
   })
 }

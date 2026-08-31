@@ -1,17 +1,30 @@
+import { Trash2 } from 'lucide-react'
 import { Link } from 'react-router'
+import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { SentimentBadge } from '@/components/shared/sentiment-badge'
 import { StageBadge } from '@/components/shared/stage-badge'
 import { formatCurrency, formatSignedPct } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { DigestItem } from '@/types/api'
+import { useDismissDigestItem } from './hooks'
 
 export function DigestItemCard({ item }: { item: DigestItem }) {
   const changePct = item.premarket?.change_pct ?? null
   const pattern = item.recent_pattern
+  const dismissItem = useDismissDigestItem()
+
+  function handleDismiss() {
+    dismissItem.mutate(item.ticker, {
+      onSuccess: () => toast.success(`${item.ticker} hidden from the digest for 7 days`),
+      onError: () => toast.error(`Failed to hide ${item.ticker}`),
+    })
+  }
 
   return (
-    <Card>
+    <Card className="group relative">
       <CardHeader className="flex flex-row items-start justify-between gap-4">
         <div>
           <Link
@@ -29,23 +42,42 @@ export function DigestItemCard({ item }: { item: DigestItem }) {
             ))}
           </div>
         </div>
-        {item.premarket && (
-          <div className="text-right">
-            <div className="font-medium tabular-nums">{formatCurrency(item.premarket.price)}</div>
-            <div
-              className={cn(
-                'text-sm tabular-nums',
-                changePct === null
-                  ? 'text-muted-foreground'
-                  : changePct >= 0
-                    ? 'text-emerald-600 dark:text-emerald-400'
-                    : 'text-red-600 dark:text-red-400',
-              )}
-            >
-              {formatSignedPct(changePct)}
+        <div className="flex flex-col items-end gap-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={`Hide ${item.ticker} from digest`}
+                className="cursor-pointer opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+                disabled={dismissItem.isPending}
+                onClick={handleDismiss}
+              >
+                <Trash2 />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Hide from digest for 7 days</TooltipContent>
+          </Tooltip>
+          {item.premarket && (
+            <div className="text-right">
+              <div className="font-medium tabular-nums">
+                {formatCurrency(item.premarket.price)}
+              </div>
+              <div
+                className={cn(
+                  'text-sm tabular-nums',
+                  changePct === null
+                    ? 'text-muted-foreground'
+                    : changePct >= 0
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : 'text-red-600 dark:text-red-400',
+                )}
+              >
+                {formatSignedPct(changePct)}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-2">
         {pattern && (

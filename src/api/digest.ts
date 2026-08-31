@@ -14,3 +14,7 @@ export async function getMorningDigest(date?: string): Promise<DigestOut | null>
 export function getTickerDigest(ticker: string) {
   return apiClient.get<DigestItemOut>(`/v1/digest/ticker/${encodeURIComponent(ticker)}`)
 }
+
+export function dismissDigestItem(ticker: string) {
+  return apiClient.delete<void>(`/v1/digest/${encodeURIComponent(ticker)}`)
+}
