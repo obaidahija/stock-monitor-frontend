@@ -12,6 +12,7 @@ import { CompetitorsTab } from '@/features/ticker-detail/competitors/competitors
 import { EarningsTab } from '@/features/ticker-detail/earnings-tab'
 import { NewsTab } from '@/features/ticker-detail/news-tab'
 import { FilingsTab } from '@/features/ticker-detail/filings-tab'
+import { InsiderTab } from '@/features/ticker-detail/insider-tab'
 import { CatalystsTab } from '@/features/ticker-detail/catalysts-tab'
 import { TwitterTab } from '@/features/ticker-detail/twitter-tab'
 import { RedditTab } from '@/features/ticker-detail/reddit-tab'
@@ -31,6 +32,7 @@ const DETAIL_TABS = [
   'twitter',
   'reddit',
   'filings',
+  'insider',
   'catalysts',
 ] as const
 
@@ -107,6 +109,7 @@ export function TickerDetailPage() {
           <TabsTrigger value="twitter">Twitter</TabsTrigger>
           <TabsTrigger value="reddit">Reddit</TabsTrigger>
           <TabsTrigger value="filings">Filings</TabsTrigger>
+          <TabsTrigger value="insider">Insider</TabsTrigger>
           <TabsTrigger value="catalysts">Catalysts</TabsTrigger>
         </TabsList>
         <TabsContent value="analysis">
@@ -132,6 +135,9 @@ export function TickerDetailPage() {
         </TabsContent>
         <TabsContent value="filings">
           <FilingsTab ticker={symbol} />
+        </TabsContent>
+        <TabsContent value="insider">
+          <InsiderTab ticker={symbol} />
         </TabsContent>
         <TabsContent value="catalysts">
           <CatalystsTab ticker={symbol} />

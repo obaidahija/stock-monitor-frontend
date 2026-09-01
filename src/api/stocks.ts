@@ -9,11 +9,13 @@ import type {
   EarningsRefreshResult,
   EarningsSummary,
   FilingOut,
+  InsiderOut,
   NewsClusterDetailOut,
   NewsClusterOut,
   NewsItemExtractOut,
   NewsRefreshResult,
   QuoteOut,
+  ScoreHistoryPointOut,
   SentimentBucketGranularity,
   SentimentHistoryOut,
   TrackedTickerOut,
@@ -148,5 +150,17 @@ export function getSentimentHistory(
 ) {
   return apiClient.get<SentimentHistoryOut>(
     `/v1/stocks/${encodeURIComponent(ticker)}/sentiment-history?bucket=${bucket}&periods=${periods}`,
+  )
+}
+
+export function getScoreHistory(ticker: string, days = 90) {
+  return apiClient.get<ScoreHistoryPointOut[]>(
+    `/v1/stocks/${ticker.toUpperCase()}/score-history?days=${days}`,
+  )
+}
+
+export function getInsider(ticker: string, days = 90) {
+  return apiClient.get<InsiderOut>(
+    `/v1/stocks/${ticker.toUpperCase()}/insider?days=${days}`,
   )
 }

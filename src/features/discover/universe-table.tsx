@@ -43,6 +43,15 @@ const PAGE_SIZE = 25
 const GAP_CHIP_THRESHOLD = 3
 const VOLUME_RATIO_CHIP_THRESHOLD = 2
 
+// Squeeze-screen thresholds. A starting screen, not a validated rule: ~15% of
+// float is roughly the top decile of US short interest, 75M shares is a
+// conventional low-float ceiling, and 1.5x is a gentler volume trigger than
+// the 2x Unusual Volume chip because a squeeze screen wants early volume
+// expansion rather than a completed spike.
+const SQUEEZE_SHORT_PCT = 15
+const SQUEEZE_MAX_FLOAT_SHARES = 75_000_000
+const SQUEEZE_VOLUME_RATIO = 1.5
+
 // First click on "Next earnings" should read soonest-first, unlike the other
 // fields (score/ticker/change_pct/volume_ratio), which default to
 // desc on first click.
@@ -168,6 +177,11 @@ export function UniverseTable() {
   const minVolumeRatioRaw = searchParams.get('min_volume_ratio')
   const minGapPct = minGapPctRaw !== null ? Number(minGapPctRaw) : undefined
   const minVolumeRatio = minVolumeRatioRaw !== null ? Number(minVolumeRatioRaw) : undefined
+  const minShortPctRaw = searchParams.get('min_short_pct')
+  const maxFloatSharesRaw = searchParams.get('max_float_shares')
+  const minShortPct = minShortPctRaw !== null ? Number(minShortPctRaw) : undefined
+  const maxFloatShares = maxFloatSharesRaw !== null ? Number(maxFloatSharesRaw) : undefined
+  const hasInsiderBuy = searchParams.get('has_insider_buy') === 'true' ? true : undefined
   const patternLabel = searchParams.get('pattern_label') ?? undefined
   const sector = searchParams.get('sector') ?? undefined
   const q = searchParams.get('q') ?? ''
@@ -180,6 +194,9 @@ export function UniverseTable() {
     earningsResult,
     minGapPct,
     minVolumeRatio,
+    minShortPct,
+    maxFloatShares,
+    hasInsiderBuy,
     patternLabel,
     sector,
     q: q || undefined,
@@ -249,6 +266,28 @@ export function UniverseTable() {
       updateParams({
         min_volume_ratio: String(VOLUME_RATIO_CHIP_THRESHOLD),
         sort: 'volume_ratio',
+        order: 'desc',
+      })
+    }
+  }
+
+  /** Squeeze combines high short interest, a low float, and early volume
+   * expansion -- three existing filters, one click. Toggling off clears all
+   * three, matching the other chips' "the numeric inputs stay the source of
+   * truth" behaviour. */
+  function toggleSqueezeChip() {
+    if (minShortPct !== undefined) {
+      updateParams({
+        min_short_pct: undefined,
+        max_float_shares: undefined,
+        min_volume_ratio: undefined,
+      })
+    } else {
+      updateParams({
+        min_short_pct: String(SQUEEZE_SHORT_PCT),
+        max_float_shares: String(SQUEEZE_MAX_FLOAT_SHARES),
+        min_volume_ratio: String(SQUEEZE_VOLUME_RATIO),
+        sort: 'short_percent_of_float',
         order: 'desc',
       })
     }
@@ -328,6 +367,23 @@ export function UniverseTable() {
         >
           Unusual volume ≥{VOLUME_RATIO_CHIP_THRESHOLD}×
         </Button>
+        <Button
+          size="sm"
+          variant={hasInsiderBuy ? 'secondary' : 'ghost'}
+          onClick={() =>
+            updateParams({ has_insider_buy: hasInsiderBuy ? undefined : 'true' })
+          }
+        >
+          Insider buying
+        </Button>
+        <Button
+          size="sm"
+          variant={minShortPct !== undefined ? 'secondary' : 'ghost'}
+          onClick={toggleSqueezeChip}
+          title={`Short interest ≥${SQUEEZE_SHORT_PCT}% of float, float ≤${(SQUEEZE_MAX_FLOAT_SHARES / 1_000_000).toFixed(0)}M shares, volume ≥${SQUEEZE_VOLUME_RATIO}× the 20-day average`}
+        >
+          Squeeze
+        </Button>
         <div className="flex items-center gap-2">
           <Label htmlFor="min-gap" className="text-muted-foreground text-xs">
             Min gap %
@@ -406,6 +462,13 @@ export function UniverseTable() {
                   onSort={toggleSort}
                 />
                 <SortableHead
+                  label="Δ Score"
+                  field="score_change"
+                  sort={sort}
+                  order={order}
+                  onSort={toggleSort}
+                />
+                <SortableHead
                   label="Price"
                   field="change_pct"
                   sort={sort}
@@ -422,6 +485,13 @@ export function UniverseTable() {
                 <SortableHead
                   label="Volume"
                   field="volume_ratio"
+                  sort={sort}
+                  order={order}
+                  onSort={toggleSort}
+                />
+                <SortableHead
+                  label="Short %"
+                  field="short_percent_of_float"
                   sort={sort}
                   order={order}
                   onSort={toggleSort}
@@ -450,6 +520,14 @@ export function UniverseTable() {
                         </Badge>
                       )}
                       <PatternBadge pattern={item.recent_pattern} />
+                      {item.insider_cluster_buy ? (
+                        <Badge
+                          variant="outline"
+                          title="Two or more insiders bought on the open market within 30 days"
+                        >
+                          Insider
+                        </Badge>
+                      ) : null}
                     </div>
                     {(item.company_name || item.sector) && (
                       <div className="flex max-w-56 items-center gap-1">
@@ -497,6 +575,24 @@ export function UniverseTable() {
                       '—'
                     )}
                   </TableCell>
+                  <TableCell data-testid={`score-change-${item.ticker}`}>
+                    {item.score_change_1d === null ? (
+                      <span className="text-muted-foreground">—</span>
+                    ) : (
+                      <span
+                        className={cn(
+                          'text-xs tabular-nums',
+                          item.score_change_1d >= 0
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : 'text-red-600 dark:text-red-400',
+                        )}
+                        title="Change vs. yesterday's score"
+                      >
+                        {item.score_change_1d >= 0 ? '+' : ''}
+                        {item.score_change_1d.toFixed(1)}
+                      </span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <div className="tabular-nums">{formatCurrency(item.price)}</div>
                     <div
@@ -520,6 +616,23 @@ export function UniverseTable() {
                     <div className="text-muted-foreground text-xs tabular-nums">
                       {item.volume_ratio !== null ? `${item.volume_ratio.toFixed(1)}×` : '—'}
                     </div>
+                  </TableCell>
+                  <TableCell
+                    className="tabular-nums"
+                    data-testid={`short-interest-${item.ticker}`}
+                  >
+                    {item.short_percent_of_float !== null ? (
+                      <>
+                        <div>{item.short_percent_of_float.toFixed(1)}%</div>
+                        {item.float_shares !== null && (
+                          <div className="text-muted-foreground text-xs">
+                            {formatNumber(item.float_shares)} float
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                   <TableCell className="max-w-32">
                     {item.catalyst ? (

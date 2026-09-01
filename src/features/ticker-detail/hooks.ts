@@ -10,8 +10,10 @@ import {
   getEarnings,
   getEarningsReaction,
   getFilings,
+  getInsider,
   getNews,
   getQuote,
+  getScoreHistory,
   getSentimentHistory,
   getUniverseScore,
   refreshAiResearch,
@@ -197,5 +199,19 @@ export function useRefreshCompetitors(ticker: string) {
   return useMutation({
     mutationFn: () => refreshCompetitors(ticker),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['competitors', ticker] }),
+  })
+}
+
+export function useScoreHistory(ticker: string, days = 90) {
+  return useQuery({
+    queryKey: ['stocks', ticker, 'score-history', days],
+    queryFn: () => getScoreHistory(ticker, days),
+  })
+}
+
+export function useInsider(ticker: string, days = 90) {
+  return useQuery({
+    queryKey: ['stocks', ticker, 'insider', days],
+    queryFn: () => getInsider(ticker, days),
   })
 }
