@@ -1,5 +1,5 @@
 import { ExternalLinkIcon, RotateCcwIcon, SearchIcon } from 'lucide-react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -18,12 +18,61 @@ import { useGoogleFinanceResearch } from '../hooks'
 
 const GOOGLE_FINANCE_RESEARCH_URL = 'https://www.google.com/finance/beta/#research'
 
+// Starting points only -- picking one fills the box, it never sends. These are
+// deliberately questions the web-grounded Google page answers better than our own
+// /ai-research read, which never sees the open web.
+const PRESET_PROMPTS: { id: string; label: string; build: (ticker: string) => string }[] = [
+  {
+    id: 'today',
+    label: "Today's move",
+    build: (t) => `Why is ${t} moving today?`,
+  },
+  {
+    id: 'up',
+    label: 'Why it went up',
+    build: (t) => `Why has ${t} gone up today, and what is driving the buying?`,
+  },
+  {
+    id: 'down',
+    label: 'Why it went down',
+    build: (t) => `Why has ${t} gone down today, and what is driving the selling?`,
+  },
+  {
+    id: 'earnings',
+    label: 'After earnings',
+    build: (t) => `What happened to ${t} after its most recent earnings report, and why?`,
+  },
+  {
+    id: 'catalysts',
+    label: 'Recent catalysts',
+    build: (t) =>
+      `What are the most significant news catalysts for ${t} in the past month, and how did the stock react to each?`,
+  },
+  {
+    id: 'analysts',
+    label: 'Analyst view',
+    build: (t) =>
+      `What have analysts said about ${t} recently, and what are the main bull and bear arguments?`,
+  },
+  {
+    id: 'competitors',
+    label: 'Competitive position',
+    build: (t) => `How is ${t} positioned against its main competitors right now?`,
+  },
+  {
+    id: 'risks',
+    label: 'Key risks',
+    build: (t) => `What are the biggest risks facing ${t} over the next 6-12 months?`,
+  },
+]
+
 function defaultQuestion(ticker: string) {
-  return `Why is ${ticker} moving today?`
+  return PRESET_PROMPTS[0].build(ticker)
 }
 
 export function GoogleFinanceResearch({ ticker }: { ticker: string }) {
   const [question, setQuestion] = useState(() => defaultQuestion(ticker))
+  const questionRef = useRef<HTMLTextAreaElement>(null)
   const research = useGoogleFinanceResearch(ticker)
   const result = research.data
   // Nothing to clear until one answer or error is on screen.
@@ -36,6 +85,11 @@ export function GoogleFinanceResearch({ ticker }: { ticker: string }) {
     event.preventDefault()
     const normalized = question.trim()
     if (normalized.length >= 3 && !research.isPending) research.mutate(normalized)
+  }
+
+  function handlePreset(build: (ticker: string) => string) {
+    setQuestion(build(ticker))
+    questionRef.current?.focus()
   }
 
   function handleClear() {
@@ -53,11 +107,31 @@ export function GoogleFinanceResearch({ ticker }: { ticker: string }) {
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Suggested questions">
+            {PRESET_PROMPTS.map((preset) => {
+              const text = preset.build(ticker)
+              return (
+                <Button
+                  key={preset.id}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  // Derived from the textarea, so hand-editing clears it on its own.
+                  aria-pressed={question === text}
+                  disabled={research.isPending}
+                  onClick={() => handlePreset(preset.build)}
+                >
+                  {preset.label}
+                </Button>
+              )
+            })}
+          </div>
           <FieldGroup>
             <Field data-disabled={research.isPending}>
               <FieldLabel htmlFor="google-finance-question">Question</FieldLabel>
               <Textarea
                 id="google-finance-question"
+                ref={questionRef}
                 aria-label="Google Finance question"
                 disabled={research.isPending}
                 maxLength={1000}

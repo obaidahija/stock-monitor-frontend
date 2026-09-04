@@ -182,3 +182,66 @@ test('Clear is unavailable while a request is in flight', () => {
 
   expect(screen.getByRole('button', { name: 'Clear' })).toBeDisabled()
 })
+
+test('a preset chip fills the question without sending it', async () => {
+  const user = userEvent.setup()
+  renderWithProviders(<GoogleFinanceResearch ticker="MSTR" />)
+
+  await user.click(screen.getByRole('button', { name: 'Why it went down' }))
+
+  expect(screen.getByRole('textbox', { name: 'Google Finance question' })).toHaveValue(
+    'Why has MSTR gone down recently, and what is driving the selling?',
+  )
+  expect(mutate).not.toHaveBeenCalled()
+})
+
+test('submits the preset question after a chip is picked', async () => {
+  const user = userEvent.setup()
+  renderWithProviders(<GoogleFinanceResearch ticker="NVDA" />)
+
+  await user.click(screen.getByRole('button', { name: 'After earnings' }))
+  await user.click(screen.getByRole('button', { name: 'Ask Google Finance' }))
+
+  expect(mutate).toHaveBeenCalledWith(
+    'What happened to NVDA after its most recent earnings report, and why?',
+  )
+})
+
+test('marks the chip matching the current question as pressed', async () => {
+  const user = userEvent.setup()
+  renderWithProviders(<GoogleFinanceResearch ticker="MSTR" />)
+
+  // The textarea is seeded with the first preset, so its chip starts pressed.
+  expect(screen.getByRole('button', { name: "Today's move" })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
+
+  await user.click(screen.getByRole('button', { name: 'Key risks' }))
+
+  expect(screen.getByRole('button', { name: 'Key risks' })).toHaveAttribute('aria-pressed', 'true')
+  expect(screen.getByRole('button', { name: "Today's move" })).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  )
+})
+
+test('drops the pressed marker once the question is edited by hand', async () => {
+  const user = userEvent.setup()
+  renderWithProviders(<GoogleFinanceResearch ticker="MSTR" />)
+
+  await user.type(screen.getByRole('textbox', { name: 'Google Finance question' }), ' Explain.')
+
+  expect(screen.getByRole('button', { name: "Today's move" })).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  )
+})
+
+test('disables preset chips while a request is in flight', () => {
+  setHookState({ isPending: true })
+
+  renderWithProviders(<GoogleFinanceResearch ticker="MSTR" />)
+
+  expect(screen.getByRole('button', { name: 'Recent catalysts' })).toBeDisabled()
+})
