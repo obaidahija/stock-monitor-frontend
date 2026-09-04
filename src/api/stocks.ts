@@ -9,6 +9,7 @@ import type {
   EarningsRefreshResult,
   EarningsSummary,
   FilingOut,
+  GoogleFinanceResearchOut,
   InsiderOut,
   NewsClusterDetailOut,
   NewsClusterOut,
@@ -127,6 +128,13 @@ export function getAiResearch(ticker: string) {
 export function refreshAiResearch(ticker: string) {
   return apiClient.post<AiResearchOut>(
     `/v1/stocks/${encodeURIComponent(ticker)}/ai-research/refresh`,
+  )
+}
+
+export function askGoogleFinanceResearch(ticker: string, question: string) {
+  return apiClient.post<GoogleFinanceResearchOut>(
+    `/v1/stocks/${ticker.toUpperCase()}/google-finance-research`,
+    { question },
   )
 }
 

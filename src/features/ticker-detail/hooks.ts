@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { AnalysisExtras } from '@/api/stocks'
 import {
+  askGoogleFinanceResearch,
   extractNewsItem,
   getAiResearch,
   getAnalysis,
@@ -181,6 +182,12 @@ export function useRefreshAiResearch(ticker: string) {
   return useMutation({
     mutationFn: () => refreshAiResearch(ticker),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['ai-research', ticker] }),
+  })
+}
+
+export function useGoogleFinanceResearch(ticker: string) {
+  return useMutation({
+    mutationFn: (question: string) => askGoogleFinanceResearch(ticker, question),
   })
 }
 

@@ -500,6 +500,22 @@ export interface AiResearchOut {
   usage?: LlmUsageSummaryOut | null
 }
 
+export interface GoogleFinanceResearchSourceOut {
+  title: string
+  publisher: string | null
+  url: string
+}
+
+export interface GoogleFinanceResearchOut {
+  ticker: string
+  question: string
+  answer_markdown: string | null
+  sources: GoogleFinanceResearchSourceOut[]
+  generated_at: string
+  caveat: string
+  source: SourceStatus
+}
+
 export type AiProvider = 'ollama' | 'llamacpp' | 'anthropic' | 'openrouter'
 
 export interface LlmUsageSummaryOut {

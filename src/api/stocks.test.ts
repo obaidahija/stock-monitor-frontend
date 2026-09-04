@@ -1,6 +1,6 @@
 import { beforeEach, expect, test, vi } from 'vitest'
 import { apiClient } from '@/lib/api-client'
-import { getInsider, getScoreHistory } from './stocks'
+import { askGoogleFinanceResearch, getInsider, getScoreHistory } from './stocks'
 
 beforeEach(() => vi.restoreAllMocks())
 
@@ -26,4 +26,14 @@ test('defaults the insider window to 90 days', async () => {
   const get = vi.spyOn(apiClient, 'get').mockResolvedValue({} as never)
   await getInsider('ABNB')
   expect(get).toHaveBeenCalledWith('/v1/stocks/ABNB/insider?days=90')
+})
+
+test('submits a ticker-scoped Google Finance question', async () => {
+  const post = vi.spyOn(apiClient, 'post').mockResolvedValue({} as never)
+
+  await askGoogleFinanceResearch('mstr', 'Why today?')
+
+  expect(post).toHaveBeenCalledWith('/v1/stocks/MSTR/google-finance-research', {
+    question: 'Why today?',
+  })
 })

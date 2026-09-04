@@ -31,23 +31,24 @@ The frontend never runs `rdt-cli` directly and never receives or stores Reddit b
 credentials. Backend setup, recovery, retention, and read-only operational guidance live in the
 sibling backend's `docs/reddit-intelligence-runbook.md`.
 
-## AI Settings and Research Chat
+## AI Settings and AI Research tab
 
 `/ai-settings` selects independent provider/model profiles for research and summarization. Only
 the OpenRouter catalog is discovered dynamically; local and Anthropic model IDs remain editable
 text. Provider cards show configured status, but the frontend never fetches, renders, stores, or
 submits API key values.
 
-Each ticker's AI Research tab keeps the structured report and adds persistent Research Chat below
-it. The chat streams Markdown responses, shows a generic “Thinking…” indicator, restores visible
-history after reload, and displays per-turn and conversation token/cost totals. Raw reasoning is
-never rendered. Users can attach up to four supported images/PDFs/videos and optionally include a
-transient MarketScout chart. Navigation, ticker changes, unmounts, and the Stop action abort the
-active request.
+Each ticker's AI Research tab shows a Google Finance Research card above the unchanged
+MarketScout Structured Report. The card is experimental and single-turn: it opens with a
+ticker-aware default question, submits one edited question at a time, and renders the latest
+answer as Markdown with the external sources Google cited (all links open in a new tab with
+`rel="noopener noreferrer"`). Nothing is cached or persisted — a second submission replaces the
+first result, and changing ticker resets the card. It costs no MarketScout LLM tokens.
 
-The frontend sends chat turns as authenticated `multipart/form-data` and parses the backend's SSE
-events directly. It deliberately does not set a multipart `Content-Type` header, allowing the
-browser to add the required boundary.
+When the backend reports `source.ok=false` or the request itself fails, the card shows the bounded
+error, keeps the question editable, and always offers a direct link to Google Finance's own
+Research page. The structured report below it — generate, refresh, live progress, and saving an
+AI setup — is unchanged and independent.
 
 ## Vite notes
 
