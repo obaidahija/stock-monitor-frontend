@@ -15,6 +15,7 @@ import {
 import { cn } from '@/lib/utils'
 import { EpsTrendChart } from './eps-trend-chart'
 import { EarningsReactionChart } from './earnings-reaction-chart'
+import { EarningsPlaybookCard } from './earnings-playbook-card'
 import { useEarnings, useEarningsReaction, useRefreshEarnings } from './hooks'
 import type { EarningsEventOut, EarningsResult } from '@/types/api'
 
@@ -121,7 +122,7 @@ function computeTrackRecord(history: EarningsEventOut[]): TrackRecord | null {
 
 function TrackRecordSummary({ trackRecord }: { trackRecord: TrackRecord }) {
   return (
-    <div className="border-border space-y-2 border-t pt-3">
+    <div className="space-y-2 pt-3">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
         <span>
           Beat rate <span className="font-semibold">{trackRecord.beatRatePct.toFixed(0)}%</span>{' '}
@@ -158,13 +159,7 @@ function TrackRecordSummary({ trackRecord }: { trackRecord: TrackRecord }) {
   )
 }
 
-function NextEarningsCard({
-  next,
-  trackRecord,
-}: {
-  next: EarningsEventOut
-  trackRecord: TrackRecord | null
-}) {
+function NextEarningsCard({ next }: { next: EarningsEventOut }) {
   const countdown = countdownLabel(next.event_date)
   return (
     <Card>
@@ -199,7 +194,6 @@ function NextEarningsCard({
             <p className="text-sm font-medium">{formatCompactCurrency(next.revenue_estimate)}</p>
           </div>
         </div>
-        {trackRecord && <TrackRecordSummary trackRecord={trackRecord} />}
       </CardContent>
     </Card>
   )
@@ -287,7 +281,7 @@ export function EarningsTab({ ticker }: { ticker: string }) {
       <div className="flex justify-end">{refreshButton}</div>
 
       {data.next ? (
-        <NextEarningsCard next={data.next} trackRecord={trackRecord} />
+        <NextEarningsCard next={data.next} />
       ) : (
         <EmptyState
           title="No upcoming earnings date known"
@@ -295,6 +289,19 @@ export function EarningsTab({ ticker }: { ticker: string }) {
           action={refreshButton}
         />
       )}
+
+      {/* Outside NextEarningsCard on purpose: a ticker with no known upcoming
+          date still has a track record worth showing, and nesting it there
+          hid it entirely whenever data.next was null. */}
+      {trackRecord && (
+        <Card>
+          <CardContent className="pt-6">
+            <TrackRecordSummary trackRecord={trackRecord} />
+          </CardContent>
+        </Card>
+      )}
+
+      <EarningsPlaybookCard ticker={ticker} />
 
       {data.history.length > 0 && (
         <div className="space-y-2">

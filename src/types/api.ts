@@ -1456,3 +1456,35 @@ export interface SectorRotationOut {
   caveat: string
   sectors: SectorRotationEntryOut[]
 }
+
+export interface EarningsPlaybookDriftOut {
+  horizon_days: number
+  mean_pct: number | null
+  median_pct: number | null
+  /** Per-horizon, not shared: deeper horizons have fewer usable quarters. */
+  quarters: number
+}
+
+export interface EarningsPlaybookQuarterOut {
+  event_date: string
+  bmo_amc: string
+  reaction_pct: number
+  drift_1d_pct: number | null
+  drift_5d_pct: number | null
+  drift_20d_pct: number | null
+}
+
+export interface EarningsPlaybookOut {
+  ticker: string
+  reaction_quarters: number
+  reaction_mean_pct: number | null
+  reaction_median_pct: number | null
+  reaction_mean_abs_pct: number | null
+  up_count: number
+  down_count: number
+  direction_consistency_pct: number | null
+  drift: EarningsPlaybookDriftOut[]
+  quarters: EarningsPlaybookQuarterOut[]
+  days_until_next_earnings: number | null
+  source: { ok: boolean; error: string | null }
+}
