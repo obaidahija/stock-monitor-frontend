@@ -2,6 +2,7 @@ import { PageHeader } from '@/components/shared/page-header'
 import { MacroSignalDashboard } from '@/features/macro/macro-signal-dashboard'
 import { MacroHistoryChart } from '@/features/macro/macro-history-chart'
 import { MacroSectorImpact } from '@/features/macro/macro-sector-impact'
+import { SectorRotation } from '@/features/macro/sector-rotation'
 import { MacroCategoryFilter } from '@/features/macro/macro-category-filter'
 import { MacroNewsFeed } from '@/features/macro/macro-news-feed'
 
@@ -14,6 +15,7 @@ export function MacroPage() {
       />
       <MacroSignalDashboard />
       <MacroHistoryChart />
+      <SectorRotation />
       <MacroSectorImpact />
       <div className="space-y-4">
         <MacroCategoryFilter />

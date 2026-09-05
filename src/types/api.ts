@@ -1435,3 +1435,24 @@ export interface SignalPerformanceOut {
   by_score_bucket: ScoreBucketPerformanceOut[]
   by_factor: FactorPerformanceOut[]
 }
+
+export interface SectorRotationEntryOut {
+  etf_symbol: string
+  sector: string
+  trend_pct: number
+  rank: number
+  trend_pct_prior: number | null
+  rank_prior: number | null
+  /** Positive means the sector improved: rank_prior - rank, so 8 -> 3 is +5. */
+  rank_change: number | null
+  trend_pct_change: number | null
+}
+
+export interface SectorRotationOut {
+  window_days: number
+  as_of: string | null
+  prior_as_of: string | null
+  history_days_available: number
+  caveat: string
+  sectors: SectorRotationEntryOut[]
+}
