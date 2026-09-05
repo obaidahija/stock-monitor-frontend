@@ -2,6 +2,7 @@ import {
   BarChart3,
   CalendarClock,
   FileText,
+  Flame,
   History,
   Star,
   Sunrise,
@@ -30,6 +31,11 @@ export const STAGE_META: Record<string, { label: string; icon: LucideIcon; class
     label: 'Unusual volume',
     icon: BarChart3,
     className: 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400',
+  },
+  mention_spike: {
+    label: 'Mention spike',
+    icon: Flame,
+    className: 'bg-pink-500/15 text-pink-600 dark:text-pink-400',
   },
   near_low: {
     label: 'Near 12wk low',

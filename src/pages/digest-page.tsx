@@ -17,7 +17,8 @@ import type { DigestItem } from '@/types/api'
 // Tier 10 ("Tracked", nothing notable today) tends to be the largest and
 // least interesting bucket -- start it collapsed so the page opens on the
 // tiers that actually carry a signal.
-const COLLAPSED_BY_DEFAULT_TIER = 10
+// The "nothing notable" bucket, which is by far the largest section.
+const COLLAPSED_BY_DEFAULT_TIER = 12
 
 // Stable reference so the useMemo hooks below don't see a "changed" items
 // array on every render when there's no digest yet.
