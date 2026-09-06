@@ -12,9 +12,15 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState } from '@/components/shared/error-state'
 import { EmptyState } from '@/components/shared/empty-state'
 import { formatDateTime } from '@/lib/format'
+import { FilingChangesPanel } from './filing-changes/filing-changes-panel'
 import { useFilings } from './hooks'
 
-export function FilingsTab({ ticker }: { ticker: string }) {
+/**
+ * The 30-day recent-filing list. Extracted so its early returns stay local to
+ * it: the annual comparison panel is a sibling and must render even when this
+ * list is empty, loading or failed.
+ */
+function RecentFilingsList({ ticker }: { ticker: string }) {
   const { data, isPending, isError, error, refetch } = useFilings(ticker)
 
   if (isPending) return <Skeleton className="h-64 rounded-xl" />
@@ -48,5 +54,14 @@ export function FilingsTab({ ticker }: { ticker: string }) {
         ))}
       </TableBody>
     </Table>
+  )
+}
+
+export function FilingsTab({ ticker }: { ticker: string }) {
+  return (
+    <div>
+      <FilingChangesPanel ticker={ticker} />
+      <RecentFilingsList ticker={ticker} />
+    </div>
   )
 }
