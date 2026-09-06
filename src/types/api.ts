@@ -597,6 +597,56 @@ export interface CompetitorOut {
   confidence: CompetitorConfidence
 }
 
+export type GoogleFinanceMarketPicksHorizonKey = '1-2w' | '2-4w'
+
+export interface GoogleFinanceMarketPickSourceOut {
+  title: string
+  publisher: string | null
+  url: string
+}
+
+export interface GoogleFinanceMarketPickOut {
+  rank: number
+  ticker: string
+  company_name_reported: string | null
+  conviction_score: number
+  explanation: string
+  tracked: boolean
+  composite_score: number | null
+  lean: string | null
+  sector: string | null
+  market_cap: number | null
+  current_price: number | null
+  change_pct: number | null
+}
+
+export interface GoogleFinanceMarketPicksHorizonOut {
+  horizon: GoogleFinanceMarketPicksHorizonKey
+  horizon_label: string
+  source_ok: boolean
+  source_error: string | null
+  fetched_at: string | null
+  parse_warning: string | null
+  items: GoogleFinanceMarketPickOut[]
+  sources: GoogleFinanceMarketPickSourceOut[]
+}
+
+export interface GoogleFinanceMarketPicksOut {
+  horizons: GoogleFinanceMarketPicksHorizonOut[]
+  generated_at: string | null
+  refresh_active: boolean
+  active_run_id: string | null
+  stale: boolean
+  stale_reason: string | null
+  disclaimer: string
+}
+
+export interface GoogleFinanceMarketPicksRefreshOut {
+  run_id: string
+  status: string
+  reused: boolean
+}
+
 export interface SimilarCompanyOut {
   ticker: string
   name: string | null
