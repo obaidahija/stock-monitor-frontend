@@ -244,6 +244,8 @@ export interface NewsClusterOut {
   sources: string[]
   sentiment_label: string | null
   sentiment_net_score: number | null
+  event_category: string | null
+  is_material: boolean
 }
 
 export interface NewsItemOut {
@@ -258,6 +260,8 @@ export interface NewsItemOut {
   sentiment_label: string | null
   sentiment_score: number | null
   sentiment_classified_at: string | null
+  event_category: string | null
+  is_material: boolean
 }
 
 export interface NewsClusterDetailOut extends NewsClusterOut {

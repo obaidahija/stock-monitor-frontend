@@ -95,6 +95,11 @@ export function NewsTab({ ticker }: { ticker: string }) {
                 <div className="space-y-1">
                   <p className="text-sm font-medium">{cluster.representative_title}</p>
                   <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
+                    {!cluster.is_material && (
+                      <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5">
+                        Routine
+                      </span>
+                    )}
                     <span>{formatRelativeTime(cluster.last_seen_at)}</span>
                     <span>·</span>
                     <span>{cluster.sources.join(', ')}</span>
