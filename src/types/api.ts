@@ -727,11 +727,22 @@ export interface WatchlistEventConditionOut {
   level: WatchlistSetupLevel | null
 }
 
+export type WatchlistRuleType =
+  | 'price'
+  | 'new_filing'
+  | 'earnings_in_days'
+  | 'insider_cluster_buy'
+  | 'score_change'
+  | 'new_pattern'
+  | 'pct_change'
+  | 'volume_ratio'
+
 export interface WatchlistEventOccurrenceOut {
   id: number
-  observed_price: number
-  market_session: 'pre_market' | 'regular' | 'post_market'
-  quote_at: string
+  /** Null for a non-price occurrence: a filing alert has no quote. */
+  observed_price: number | null
+  market_session: 'pre_market' | 'regular' | 'post_market' | null
+  quote_at: string | null
   triggered_at: string
   delivery_status: 'pending' | 'retrying' | 'sent' | 'failed'
   delivery_attempts: number
@@ -744,8 +755,12 @@ export interface WatchlistEventOut {
   watchlist_item_id: number
   ticker: string
   event_type: 'price_threshold'
+  rule_type: WatchlistRuleType
   state: WatchlistEventState
-  condition: WatchlistEventConditionOut
+  /** Null for every non-price rule. */
+  condition: WatchlistEventConditionOut | null
+  params: Record<string, unknown>
+  last_trigger_key: string | null
   message: string | null
   activation_version: number
   triggered_at: string | null

@@ -28,6 +28,7 @@ import { Label } from '@/components/ui/label'
 import { formatCurrency, formatEasternDateTime } from '@/lib/format'
 import type {
   WatchlistEventComparison,
+  WatchlistRuleType,
   WatchlistEventOut,
   WatchlistItemOut,
   WatchlistSetupLevel,
@@ -50,9 +51,62 @@ const LEVEL_LABELS: Record<WatchlistSetupLevel, string> = {
   take_profit: 'Take profit',
 }
 
+// Every rule type the backend accepts. `paramKey` is the single generic
+// number a rule takes, if any -- unlike a price threshold these are reusable
+// across tickers and are not consumed when the rule fires, which is why they
+// are set-once rather than per-alert bookkeeping.
+const RULE_META: Record<
+  WatchlistRuleType,
+  { label: string; blurb: string; paramKey?: string; paramLabel?: string; paramDefault?: number }
+> = {
+  price: { label: 'Price threshold', blurb: 'Fires once when a live quote crosses your target.' },
+  new_filing: {
+    label: 'New filing',
+    blurb: 'A notable SEC filing (8-K and similar) appears for this ticker.',
+  },
+  earnings_in_days: {
+    label: 'Earnings approaching',
+    blurb: 'The next earnings date falls inside your window.',
+    paramKey: 'days',
+    paramLabel: 'Days ahead',
+    paramDefault: 2,
+  },
+  insider_cluster_buy: {
+    label: 'Insider cluster buy',
+    blurb: 'Two or more insiders bought on the open market within 30 days.',
+  },
+  score_change: {
+    label: 'Score moved',
+    blurb: 'The composite score jumped day over day.',
+    paramKey: 'min_abs_change',
+    paramLabel: 'Minimum move (points)',
+    paramDefault: 10,
+  },
+  new_pattern: {
+    label: 'Bullish chart pattern',
+    blurb: 'A bullish pattern was detected by the daily chart-pattern scan.',
+  },
+  pct_change: {
+    label: 'Big move',
+    blurb: 'Price moved more than this much today, in either direction.',
+    paramKey: 'min_abs_pct',
+    paramLabel: 'Minimum move (%)',
+    paramDefault: 5,
+  },
+  volume_ratio: {
+    label: 'Unusual volume',
+    blurb: 'Volume ran well above the 20-day average.',
+    paramKey: 'min_ratio',
+    paramLabel: 'Minimum ratio (x)',
+    paramDefault: 2,
+  },
+}
+
 export function WatchlistEventsDialog({ item }: { item: WatchlistItemOut }) {
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<WatchlistEventOut | null>(null)
+  const [ruleType, setRuleType] = useState<WatchlistRuleType>('price')
+  const [ruleNumber, setRuleNumber] = useState('')
   const [comparison, setComparison] = useState<WatchlistEventComparison>('lte')
   const [threshold, setThreshold] = useState('')
   const [message, setMessage] = useState('')
@@ -117,9 +171,20 @@ export function WatchlistEventsDialog({ item }: { item: WatchlistItemOut }) {
 
   function editEvent(event: WatchlistEventOut) {
     setEditing(event)
+    setRuleType(event.rule_type)
+    setMessage(event.message ?? '')
+    // A non-price rule has no condition at all -- reading .comparison off it
+    // would throw. Its configuration lives in `params` instead.
+    if (event.rule_type !== 'price' || !event.condition) {
+      const meta = RULE_META[event.rule_type]
+      setRuleNumber(
+        meta.paramKey ? String(event.params?.[meta.paramKey] ?? meta.paramDefault ?? '') : '',
+      )
+      setSourceLevel(null)
+      return
+    }
     setComparison(event.condition.comparison)
     setThreshold(String(event.condition.threshold_price))
-    setMessage(event.message ?? '')
     const canKeepSource =
       event.condition.kind === 'setup_level' &&
       event.condition.setup_id === item.current_setup?.id &&
@@ -129,8 +194,21 @@ export function WatchlistEventsDialog({ item }: { item: WatchlistItemOut }) {
 
   function buildBody(): WatchlistEventInput {
     const setup = item.current_setup
+    if (ruleType !== 'price') {
+      const meta = RULE_META[ruleType]
+      const value = Number(ruleNumber)
+      return {
+        rule_type: ruleType,
+        params:
+          meta.paramKey && ruleNumber.trim() && Number.isFinite(value)
+            ? { [meta.paramKey]: value }
+            : {},
+        message: message.trim() || undefined,
+      }
+    }
     return {
       event_type: 'price_threshold',
+      rule_type: 'price',
       condition:
         sourceLevel && setup
           ? { kind: 'setup_level', setup_id: setup.id, level: sourceLevel }
@@ -241,7 +319,45 @@ export function WatchlistEventsDialog({ item }: { item: WatchlistItemOut }) {
             {editing && <Button variant="ghost" size="sm" onClick={resetForm}>New event</Button>}
           </div>
 
-          {setupLevels.length > 0 && (
+          <div className="space-y-1.5">
+            <Label htmlFor={`event-rule-${item.id}`}>Alert on</Label>
+            <select
+              id={`event-rule-${item.id}`}
+              value={ruleType}
+              onChange={(e) => {
+                const next = e.target.value as WatchlistRuleType
+                setRuleType(next)
+                setSourceLevel(null)
+                const meta = RULE_META[next]
+                setRuleNumber(meta.paramDefault != null ? String(meta.paramDefault) : '')
+              }}
+              className="border-input bg-background h-9 w-full rounded-lg border px-3 text-sm"
+            >
+              {(Object.keys(RULE_META) as WatchlistRuleType[]).map((key) => (
+                <option key={key} value={key}>
+                  {RULE_META[key].label}
+                </option>
+              ))}
+            </select>
+            <p className="text-muted-foreground text-xs">{RULE_META[ruleType].blurb}</p>
+          </div>
+
+          {ruleType !== 'price' && RULE_META[ruleType].paramKey && (
+            <div className="space-y-1.5">
+              <Label htmlFor={`event-param-${item.id}`}>{RULE_META[ruleType].paramLabel}</Label>
+              <Input
+                id={`event-param-${item.id}`}
+                type="number"
+                min="0"
+                step="any"
+                value={ruleNumber}
+                onChange={(e) => setRuleNumber(e.target.value)}
+                placeholder={String(RULE_META[ruleType].paramDefault ?? '')}
+              />
+            </div>
+          )}
+
+          {ruleType === 'price' && setupLevels.length > 0 && (
             <div className="space-y-1.5">
               <Label>Use setup level</Label>
               <div className="flex flex-wrap gap-2">
@@ -260,6 +376,7 @@ export function WatchlistEventsDialog({ item }: { item: WatchlistItemOut }) {
             </div>
           )}
 
+          {ruleType === 'price' && (
           <div className="grid gap-3 sm:grid-cols-[1fr_1.5fr]">
             <div className="space-y-1.5">
               <Label htmlFor={`event-comparison-${item.id}`}>Condition</Label>
@@ -292,6 +409,7 @@ export function WatchlistEventsDialog({ item }: { item: WatchlistItemOut }) {
               />
             </div>
           </div>
+          )}
 
           <div className="space-y-1.5">
             <Label htmlFor={`event-message-${item.id}`}>Message</Label>
@@ -400,21 +518,29 @@ function EventRow({
   onRetry: () => void
 }) {
   const occurrence = event.last_occurrence
-  const operator = event.condition.comparison === 'lte' ? '≤' : '≥'
+  // A non-price rule carries no condition; describe it by rule type instead.
+  const headline = event.condition
+    ? `Price ${event.condition.comparison === 'lte' ? '≤' : '≥'} ${formatCurrency(event.condition.threshold_price)}`
+    : RULE_META[event.rule_type].label
   return (
     <div className="space-y-2 rounded-lg border p-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-medium">Price {operator} {formatCurrency(event.condition.threshold_price)}</span>
+            <span className="font-medium">{headline}</span>
             <Badge variant={event.state === 'active' ? 'secondary' : 'outline'} className="capitalize">
               {event.state}
             </Badge>
             {occurrence && <DeliveryBadge status={occurrence.delivery_status} />}
           </div>
-          {event.condition.level && (
+          {event.condition?.level && (
             <p className="text-muted-foreground mt-1 text-xs">
               From {LEVEL_LABELS[event.condition.level]}
+            </p>
+          )}
+          {!event.condition && (
+            <p className="text-muted-foreground mt-1 text-xs">
+              {RULE_META[event.rule_type].blurb}
             </p>
           )}
           {event.message && <p className="mt-1 text-sm whitespace-pre-wrap break-words">{event.message}</p>}
