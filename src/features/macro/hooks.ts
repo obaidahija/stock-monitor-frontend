@@ -10,6 +10,7 @@ export const macroKeys = {
   news: (params: api.MacroNewsParams) => ['macro', 'news', params] as const,
   sectorImpact: (date: string | undefined) => ['macro', 'sector-impact', date ?? 'today'] as const,
   sectorImpactDates: (limit: number) => ['macro', 'sector-impact-dates', limit] as const,
+  sectorRotation: (window: number) => ['macro', 'sector-rotation', window] as const,
 }
 
 export function useMacroSignal(hours = 24) {
@@ -80,5 +81,15 @@ export function useMacroSectorImpactDates(limit = 30) {
   return useQuery({
     queryKey: macroKeys.sectorImpactDates(limit),
     queryFn: () => api.getMacroSectorImpactDates(limit),
+  })
+}
+
+export function useSectorRotation(window: 5 | 20 = 5) {
+  return useQuery({
+    queryKey: macroKeys.sectorRotation(window),
+    queryFn: () => api.getSectorRotation(window),
+    // sector_context_sync runs every 30 min and trend_pct only actually
+    // changes once per trading day, so this needs no aggressive poll.
+    refetchInterval: 300_000,
   })
 }

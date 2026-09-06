@@ -8,6 +8,7 @@ import type {
   WatchlistSetupHorizon,
   WatchlistSetupOut,
   WatchlistSetupSide,
+  WatchlistRuleType,
   WatchlistSetupLevel,
   TelegramStatusOut,
 } from '@/types/api'
@@ -26,7 +27,10 @@ export type PriceEventConditionInput =
 
 export interface WatchlistEventInput {
   event_type?: 'price_threshold'
-  condition: PriceEventConditionInput
+  rule_type?: WatchlistRuleType
+  /** Required for price rules; omitted for every other rule type. */
+  condition?: PriceEventConditionInput
+  params?: Record<string, unknown>
   message?: string
 }
 

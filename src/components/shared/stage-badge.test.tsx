@@ -13,3 +13,8 @@ test('renders nothing for an unknown stage', () => {
   const { container } = render(<StageBadge stage="not_a_stage" />)
   expect(container).toBeEmptyDOMElement()
 })
+
+test('renders the mention spike badge', () => {
+  render(<StageBadge stage="mention_spike" />)
+  expect(screen.getByText('Mention spike')).toBeInTheDocument()
+})

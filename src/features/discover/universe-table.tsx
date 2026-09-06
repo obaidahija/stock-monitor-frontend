@@ -19,13 +19,7 @@ import { ErrorState } from '@/components/shared/error-state'
 import { EmptyState } from '@/components/shared/empty-state'
 import { Pagination } from '@/components/shared/pagination'
 import { PATTERN_LABEL_SHORT, PatternBadge } from '@/components/shared/pattern-badge'
-import {
-  formatCurrency,
-  formatDate,
-  formatNumber,
-  formatRelativeTime,
-  formatSignedPct,
-} from '@/lib/format'
+import { formatCurrency, formatDate, formatNumber, formatOrdinal, formatRelativeTime, formatSignedPct } from '@/lib/format'
 import { EARNINGS_RESULT_BADGE_CLASSES } from '@/lib/earnings-colors'
 import { cn } from '@/lib/utils'
 import { AddTickerDialog } from './add-ticker-dialog'
@@ -496,6 +490,13 @@ export function UniverseTable() {
                   order={order}
                   onSort={toggleSort}
                 />
+                <SortableHead
+                  label="Sector %ile"
+                  field="sector_score_percentile"
+                  sort={sort}
+                  order={order}
+                  onSort={toggleSort}
+                />
                 <TableHead>Catalyst</TableHead>
                 <SortableHead
                   label="Earnings"
@@ -627,6 +628,25 @@ export function UniverseTable() {
                         {item.float_shares !== null && (
                           <div className="text-muted-foreground text-xs">
                             {formatNumber(item.float_shares)} float
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell data-testid={`sector-percentile-${item.ticker}`}>
+                    {item.sector_score_percentile !== null ? (
+                      <>
+                        <div
+                          className="tabular-nums"
+                          title="Composite-score percentile among scored sector peers"
+                        >
+                          {formatOrdinal(item.sector_score_percentile)}
+                        </div>
+                        {item.industry_score_percentile !== null && (
+                          <div className="text-muted-foreground text-xs">
+                            Ind. {formatOrdinal(item.industry_score_percentile)}
                           </div>
                         )}
                       </>

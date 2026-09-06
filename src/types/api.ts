@@ -244,6 +244,8 @@ export interface NewsClusterOut {
   sources: string[]
   sentiment_label: string | null
   sentiment_net_score: number | null
+  event_category: string | null
+  is_material: boolean
 }
 
 export interface NewsItemOut {
@@ -258,6 +260,8 @@ export interface NewsItemOut {
   sentiment_label: string | null
   sentiment_score: number | null
   sentiment_classified_at: string | null
+  event_category: string | null
+  is_material: boolean
 }
 
 export interface NewsClusterDetailOut extends NewsClusterOut {
@@ -778,11 +782,22 @@ export interface WatchlistEventConditionOut {
   level: WatchlistSetupLevel | null
 }
 
+export type WatchlistRuleType =
+  | 'price'
+  | 'new_filing'
+  | 'earnings_in_days'
+  | 'insider_cluster_buy'
+  | 'score_change'
+  | 'new_pattern'
+  | 'pct_change'
+  | 'volume_ratio'
+
 export interface WatchlistEventOccurrenceOut {
   id: number
-  observed_price: number
-  market_session: 'pre_market' | 'regular' | 'post_market'
-  quote_at: string
+  /** Null for a non-price occurrence: a filing alert has no quote. */
+  observed_price: number | null
+  market_session: 'pre_market' | 'regular' | 'post_market' | null
+  quote_at: string | null
   triggered_at: string
   delivery_status: 'pending' | 'retrying' | 'sent' | 'failed'
   delivery_attempts: number
@@ -795,8 +810,12 @@ export interface WatchlistEventOut {
   watchlist_item_id: number
   ticker: string
   event_type: 'price_threshold'
+  rule_type: WatchlistRuleType
   state: WatchlistEventState
-  condition: WatchlistEventConditionOut
+  /** Null for every non-price rule. */
+  condition: WatchlistEventConditionOut | null
+  params: Record<string, unknown>
+  last_trigger_key: string | null
   message: string | null
   activation_version: number
   triggered_at: string | null
@@ -811,6 +830,17 @@ export interface TelegramStatusOut {
   configured: boolean
   ready: boolean
   error: string | null
+  digest_enabled: boolean
+}
+
+export interface DigestDeliveryOut {
+  digest_date: string
+  slot: string
+  status: string
+  message_count: number
+  messages_sent: number
+  last_error: string | null
+  skipped: boolean
 }
 
 export interface GapperOut {
@@ -1489,4 +1519,57 @@ export interface SignalPerformanceOut {
   by_lean: LeanPerformanceOut[]
   by_score_bucket: ScoreBucketPerformanceOut[]
   by_factor: FactorPerformanceOut[]
+}
+
+export interface SectorRotationEntryOut {
+  etf_symbol: string
+  sector: string
+  trend_pct: number
+  rank: number
+  trend_pct_prior: number | null
+  rank_prior: number | null
+  /** Positive means the sector improved: rank_prior - rank, so 8 -> 3 is +5. */
+  rank_change: number | null
+  trend_pct_change: number | null
+}
+
+export interface SectorRotationOut {
+  window_days: number
+  as_of: string | null
+  prior_as_of: string | null
+  history_days_available: number
+  caveat: string
+  sectors: SectorRotationEntryOut[]
+}
+
+export interface EarningsPlaybookDriftOut {
+  horizon_days: number
+  mean_pct: number | null
+  median_pct: number | null
+  /** Per-horizon, not shared: deeper horizons have fewer usable quarters. */
+  quarters: number
+}
+
+export interface EarningsPlaybookQuarterOut {
+  event_date: string
+  bmo_amc: string
+  reaction_pct: number
+  drift_1d_pct: number | null
+  drift_5d_pct: number | null
+  drift_20d_pct: number | null
+}
+
+export interface EarningsPlaybookOut {
+  ticker: string
+  reaction_quarters: number
+  reaction_mean_pct: number | null
+  reaction_median_pct: number | null
+  reaction_mean_abs_pct: number | null
+  up_count: number
+  down_count: number
+  direction_consistency_pct: number | null
+  drift: EarningsPlaybookDriftOut[]
+  quarters: EarningsPlaybookQuarterOut[]
+  days_until_next_earnings: number | null
+  source: { ok: boolean; error: string | null }
 }

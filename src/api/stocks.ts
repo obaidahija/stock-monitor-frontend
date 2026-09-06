@@ -5,6 +5,7 @@ import type {
   CatalystOut,
   ChartPatternOut,
   CompetitorAnalysisOut,
+  EarningsPlaybookOut,
   EarningsReactionOut,
   EarningsRefreshResult,
   EarningsSummary,
@@ -52,6 +53,12 @@ export function getEarningsReaction(
   const qs = params.toString()
   return apiClient.get<EarningsReactionOut>(
     `/v1/stocks/${encodeURIComponent(ticker)}/earnings-reaction${qs ? `?${qs}` : ''}`,
+  )
+}
+
+export function getEarningsPlaybook(ticker: string) {
+  return apiClient.get<EarningsPlaybookOut>(
+    `/v1/stocks/${encodeURIComponent(ticker)}/earnings-playbook`,
   )
 }
 

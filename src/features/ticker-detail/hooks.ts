@@ -9,6 +9,7 @@ import {
   getCatalysts,
   getCompetitors,
   getEarnings,
+  getEarningsPlaybook,
   getEarningsReaction,
   getFilings,
   getInsider,
@@ -122,6 +123,13 @@ export function useEarningsReaction(ticker: string) {
   return useQuery({
     queryKey: ['earnings-reaction', ticker],
     queryFn: () => getEarningsReaction(ticker),
+  })
+}
+
+export function useEarningsPlaybook(ticker: string) {
+  return useQuery({
+    queryKey: ['earnings-playbook', ticker],
+    queryFn: () => getEarningsPlaybook(ticker),
   })
 }
 

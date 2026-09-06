@@ -93,6 +93,7 @@ test('creates a setup-linked take-profit event', async () => {
     itemId: 10,
     body: {
       event_type: 'price_threshold',
+      rule_type: 'price',
       condition: { kind: 'setup_level', setup_id: 20, level: 'take_profit' },
       message: 'Take profits now',
     },
@@ -126,6 +127,9 @@ test('shows a failed latest delivery and retries it', async () => {
       watchlist_item_id: 10,
       ticker: 'NVDA',
       event_type: 'price_threshold',
+      rule_type: 'price',
+      params: {},
+      last_trigger_key: null,
       state: 'triggered',
       condition: {
         kind: 'custom',
@@ -160,4 +164,64 @@ test('shows a failed latest delivery and retries it', async () => {
   await user.click(screen.getByRole('button', { name: /retry delivery/i }))
 
   expect(retry).toHaveBeenCalledWith(30)
+})
+
+test('a non-price rule hides the price fields and renders its own config', async () => {
+  eventsData = []
+  render(<WatchlistEventsDialog item={item} />)
+  await userEvent.click(screen.getByRole('button', { name: /events/i }))
+
+  // Price is the default, so the threshold field is present up front.
+  expect(screen.getByLabelText(/target price/i)).toBeTruthy()
+
+  await userEvent.selectOptions(screen.getByLabelText(/alert on/i), 'earnings_in_days')
+
+  // The price condition is gone; the rule's own single generic number replaces it.
+  expect(screen.queryByLabelText(/target price/i)).toBeNull()
+  expect(screen.getByLabelText(/days ahead/i)).toBeTruthy()
+})
+
+test('a zero-config rule asks for no number at all', async () => {
+  eventsData = []
+  render(<WatchlistEventsDialog item={item} />)
+  await userEvent.click(screen.getByRole('button', { name: /events/i }))
+
+  await userEvent.selectOptions(screen.getByLabelText(/alert on/i), 'new_filing')
+
+  expect(screen.queryByLabelText(/target price/i)).toBeNull()
+  expect(screen.queryByLabelText(/minimum/i)).toBeNull()
+  expect(screen.queryByLabelText(/days ahead/i)).toBeNull()
+})
+
+test('a non-price event renders without reading a null condition', async () => {
+  // Regression guard: the dialog used to read event.condition.comparison
+  // unconditionally, which throws on every non-price rule.
+  eventsData = [
+    {
+      id: 44,
+      watchlist_item_id: 10,
+      ticker: 'NVDA',
+      event_type: 'price_threshold',
+      rule_type: 'new_filing',
+      params: {},
+      last_trigger_key: null,
+      state: 'active',
+      condition: null,
+      message: null,
+      activation_version: 1,
+      triggered_at: null,
+      disabled_at: null,
+      disabled_reason: null,
+      last_occurrence: null,
+      created_at: '2026-09-06T00:00:00Z',
+      updated_at: '2026-09-06T00:00:00Z',
+    },
+  ]
+  render(<WatchlistEventsDialog item={item} />)
+  await userEvent.click(screen.getByRole('button', { name: /events/i }))
+
+  // The <option> in the rule selector also reads "New filing", so scope the
+  // assertion to the rendered event row rather than the whole dialog.
+  const headings = screen.getAllByText('New filing')
+  expect(headings.some((el) => el.tagName !== 'OPTION')).toBe(true)
 })

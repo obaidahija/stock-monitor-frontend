@@ -6,6 +6,7 @@ import type {
   MacroSectorImpactOut,
   MacroSignalHistoryBucketOut,
   MacroSignalOut,
+  SectorRotationOut,
 } from '@/types/api'
 
 export interface MacroNewsParams {
@@ -41,4 +42,8 @@ export function refreshMacroSectorImpact() {
 
 export function getMacroSectorImpactDates(limit = 30) {
   return apiClient.get<MacroSectorImpactDateOut[]>(`/v1/macro/sector-impact/dates?limit=${limit}`)
+}
+
+export function getSectorRotation(window: 5 | 20 = 5) {
+  return apiClient.get<SectorRotationOut>(`/v1/macro/sector-rotation?window=${window}`)
 }
