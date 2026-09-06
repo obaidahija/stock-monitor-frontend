@@ -91,3 +91,31 @@ test('offers a squeeze quick filter', () => {
 
   expect(screen.getByRole('button', { name: /squeeze/i })).toBeInTheDocument()
 })
+
+test('renders the sector percentile column', () => {
+  renderTable([universeRow({ ticker: 'NVDA', sector_score_percentile: 82 })])
+
+  expect(screen.getByTestId('sector-percentile-NVDA')).toHaveTextContent('82nd')
+})
+
+test('shows the industry percentile alongside the sector one when known', () => {
+  renderTable([
+    universeRow({ ticker: 'NVDA', sector_score_percentile: 82, industry_score_percentile: 74 }),
+  ])
+
+  expect(screen.getByTestId('sector-percentile-NVDA')).toHaveTextContent('Ind. 74th')
+})
+
+test('shows a placeholder when the peer group is too small to rank', () => {
+  // The backend writes null whenever a sector holds fewer than 5 scored
+  // tickers, so this is a common state, not an edge case.
+  renderTable([universeRow({ ticker: 'TINY', sector_score_percentile: null })])
+
+  expect(screen.getByTestId('sector-percentile-TINY')).toHaveTextContent('—')
+})
+
+test('exposes a sortable sector percentile header', () => {
+  renderTable([universeRow({ ticker: 'NVDA', sector_score_percentile: 82 })])
+
+  expect(screen.getByRole('button', { name: /Sector %ile/ })).toBeInTheDocument()
+})

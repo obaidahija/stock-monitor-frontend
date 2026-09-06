@@ -97,3 +97,21 @@ export function formatRelativeTime(value: string | null | undefined): string {
   }
   return 'just now'
 }
+
+/** 82 -> "82nd". The teens are the exception to the last-digit rule
+ * (11th/12th/13th, not 11st/12nd/13rd), so they are checked first. */
+export function formatOrdinal(value: number): string {
+  const n = Math.round(value)
+  const lastTwo = n % 100
+  if (lastTwo >= 11 && lastTwo <= 13) return `${n}th`
+  switch (n % 10) {
+    case 1:
+      return `${n}st`
+    case 2:
+      return `${n}nd`
+    case 3:
+      return `${n}rd`
+    default:
+      return `${n}th`
+  }
+}

@@ -775,6 +775,17 @@ export interface TelegramStatusOut {
   configured: boolean
   ready: boolean
   error: string | null
+  digest_enabled: boolean
+}
+
+export interface DigestDeliveryOut {
+  digest_date: string
+  slot: string
+  status: string
+  message_count: number
+  messages_sent: number
+  last_error: string | null
+  skipped: boolean
 }
 
 export interface GapperOut {

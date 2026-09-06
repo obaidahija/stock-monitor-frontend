@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router'
-import { Newspaper } from 'lucide-react'
+import { Newspaper, Send } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { ErrorState } from '@/components/shared/error-state'
 import { EmptyState } from '@/components/shared/empty-state'
@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/button'
 import { STAGE_META } from '@/components/shared/stage-badge'
 import { DIGEST_TIER_ORDER, TIER_META } from '@/components/shared/tier-badge'
 import { DigestItemCard } from '@/features/digest/digest-item-card'
-import { useBuildDigest, useMorningDigest } from '@/features/digest/hooks'
+import { useBuildDigest, useMorningDigest, useSendMorningDigest } from '@/features/digest/hooks'
+import { useTelegramStatus } from '@/features/watchlists/hooks'
 import { formatDateTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { DigestItem } from '@/types/api'
@@ -27,6 +28,8 @@ const EMPTY_ITEMS: DigestItem[] = []
 export function DigestPage() {
   const { data: digest, isPending, isError, error, refetch } = useMorningDigest()
   const buildDigest = useBuildDigest()
+  const sendDigest = useSendMorningDigest()
+  const { data: telegram } = useTelegramStatus()
   // Lives in the URL (not component state) so the back button, a bookmark,
   // or a shared link all restore the same filtered view -- same pattern as
   // the Discover table's sort/filter params.
@@ -95,16 +98,57 @@ export function DigestPage() {
             : 'Signals mixed from score, momentum, volume, chart patterns, and catalysts'
         }
         actions={
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => buildDigest.mutate()}
-            disabled={buildDigest.isPending}
-          >
-            {buildDigest.isPending ? 'Building…' : 'Build now'}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => buildDigest.mutate()}
+              disabled={buildDigest.isPending}
+            >
+              {buildDigest.isPending ? 'Building…' : 'Build now'}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => sendDigest.mutate()}
+              disabled={sendDigest.isPending || !digest || !telegram?.ready}
+              title={
+                !telegram?.ready
+                  ? (telegram?.error ?? 'Telegram is not configured')
+                  : !digest
+                    ? 'Build a digest before sending it'
+                    : 'Send this digest to Telegram now'
+              }
+            >
+              <Send className="size-3.5" />
+              {sendDigest.isPending ? 'Sending…' : 'Send to Telegram'}
+            </Button>
+          </div>
         }
       />
+
+      {sendDigest.isSuccess && (
+        <p className="text-muted-foreground text-xs" data-testid="digest-send-result">
+          {sendDigest.data.skipped
+            ? `Already sent to Telegram today (${sendDigest.data.slot} slot).`
+            : sendDigest.data.status === 'sent'
+              ? `Sent ${sendDigest.data.messages_sent} of ${sendDigest.data.message_count} messages to Telegram.`
+              : `Telegram delivery ${sendDigest.data.status}: ${sendDigest.data.last_error ?? 'unknown error'}`}
+        </p>
+      )}
+
+      {sendDigest.isError && (
+        <p className="text-destructive text-xs" data-testid="digest-send-result">
+          Could not send to Telegram: {(sendDigest.error as Error).message}
+        </p>
+      )}
+
+      {telegram && !telegram.digest_enabled && (
+        <p className="text-muted-foreground text-xs" data-testid="digest-schedule-note">
+          Scheduled Telegram delivery (07:50 and 09:10 ET) is off. Set DIGEST_TELEGRAM_ENABLED=true
+          in the backend .env to turn it on — manual sends work either way.
+        </p>
+      )}
 
       {isPending && (
         <div className="grid gap-4 sm:grid-cols-2">
