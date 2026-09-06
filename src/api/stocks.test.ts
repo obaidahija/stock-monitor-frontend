@@ -28,12 +28,25 @@ test('defaults the insider window to 90 days', async () => {
   expect(get).toHaveBeenCalledWith('/v1/stocks/ABNB/insider?days=90')
 })
 
-test('submits a ticker-scoped Google Finance question', async () => {
+test('submits a ticker-scoped Google Finance question with no history by default', async () => {
   const post = vi.spyOn(apiClient, 'post').mockResolvedValue({} as never)
 
   await askGoogleFinanceResearch('mstr', 'Why today?')
 
   expect(post).toHaveBeenCalledWith('/v1/stocks/MSTR/google-finance-research', {
     question: 'Why today?',
+    history: [],
+  })
+})
+
+test('submits a Google Finance follow-up question with prior turns as history', async () => {
+  const post = vi.spyOn(apiClient, 'post').mockResolvedValue({} as never)
+  const history = [{ question: 'Why today?', answer: 'MSTR moved with Bitcoin.' }]
+
+  await askGoogleFinanceResearch('mstr', 'What about its competitor?', history)
+
+  expect(post).toHaveBeenCalledWith('/v1/stocks/MSTR/google-finance-research', {
+    question: 'What about its competitor?',
+    history,
   })
 })

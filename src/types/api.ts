@@ -516,6 +516,11 @@ export interface GoogleFinanceResearchOut {
   source: SourceStatus
 }
 
+export interface GoogleFinanceChatTurnIn {
+  question: string
+  answer: string
+}
+
 export type AiProvider = 'ollama' | 'llamacpp' | 'anthropic' | 'openrouter'
 
 export interface LlmUsageSummaryOut {

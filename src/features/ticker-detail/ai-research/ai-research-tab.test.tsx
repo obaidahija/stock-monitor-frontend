@@ -24,8 +24,8 @@ beforeEach(() => {
     isError: false,
   })
   hooks.useGoogleFinanceResearch.mockReturnValue({
-    mutate: vi.fn(),
-    data: undefined,
+    mutateAsync: vi.fn(),
+    reset: vi.fn(),
     error: null,
     isError: false,
     isPending: false,
@@ -43,8 +43,6 @@ test('renders the structured report above the Google Finance card', () => {
   expect(
     reportHeading.compareDocumentPosition(googleCard) & Node.DOCUMENT_POSITION_FOLLOWING,
   ).toBeTruthy()
-  expect(screen.getByRole('textbox', { name: 'Google Finance question' })).toHaveValue(
-    'Why is MSTR moving today?',
-  )
+  expect(screen.getByRole('button', { name: 'Ask Google Finance' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: /Generate AI research/ })).toBeInTheDocument()
 })

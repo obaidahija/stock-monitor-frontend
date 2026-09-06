@@ -24,7 +24,7 @@ import {
   refreshQuote,
   refreshUniverseScore,
 } from '@/api/stocks'
-import type { SentimentBucketGranularity } from '@/types/api'
+import type { GoogleFinanceChatTurnIn, SentimentBucketGranularity } from '@/types/api'
 
 export function useAnalysis(ticker: string, extras: AnalysisExtras = {}, enabled = true) {
   return useQuery({
@@ -187,7 +187,8 @@ export function useRefreshAiResearch(ticker: string) {
 
 export function useGoogleFinanceResearch(ticker: string) {
   return useMutation({
-    mutationFn: (question: string) => askGoogleFinanceResearch(ticker, question),
+    mutationFn: (vars: { question: string; history: GoogleFinanceChatTurnIn[] }) =>
+      askGoogleFinanceResearch(ticker, vars.question, vars.history),
   })
 }
 

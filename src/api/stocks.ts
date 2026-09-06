@@ -9,6 +9,7 @@ import type {
   EarningsRefreshResult,
   EarningsSummary,
   FilingOut,
+  GoogleFinanceChatTurnIn,
   GoogleFinanceResearchOut,
   InsiderOut,
   NewsClusterDetailOut,
@@ -131,10 +132,14 @@ export function refreshAiResearch(ticker: string) {
   )
 }
 
-export function askGoogleFinanceResearch(ticker: string, question: string) {
+export function askGoogleFinanceResearch(
+  ticker: string,
+  question: string,
+  history: GoogleFinanceChatTurnIn[] = [],
+) {
   return apiClient.post<GoogleFinanceResearchOut>(
     `/v1/stocks/${ticker.toUpperCase()}/google-finance-research`,
-    { question },
+    { question, history },
   )
 }
 
