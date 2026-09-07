@@ -20,18 +20,25 @@ const DEFAULT_CHART_HEIGHT = 'h-[600px]'
 // host-page CSS can reach their internals — background/theming can only be
 // controlled through the JSON config each widget reads at init.
 function mountTradingViewWidget(container: HTMLDivElement, src: string, config: Record<string, unknown>) {
-  container.innerHTML = ''
+  // StrictMode cleans up its first effect immediately. Starting an async
+  // script there leaves it executing against a detached parent when it loads.
+  // Let that cleanup cancel initialization before any external script starts.
+  const timer = window.setTimeout(() => {
+    const widgetDiv = document.createElement('div')
+    widgetDiv.className = 'tradingview-widget-container__widget'
+    container.replaceChildren(widgetDiv)
 
-  const widgetDiv = document.createElement('div')
-  widgetDiv.className = 'tradingview-widget-container__widget'
-  container.appendChild(widgetDiv)
-
-  const script = document.createElement('script')
-  script.type = 'text/javascript'
-  script.src = src
-  script.async = true
-  script.textContent = JSON.stringify(config)
-  container.appendChild(script)
+    const script = document.createElement('script')
+    script.type = 'text/javascript'
+    script.src = src
+    script.async = true
+    script.textContent = JSON.stringify(config)
+    container.appendChild(script)
+  }, 0)
+  return () => {
+    window.clearTimeout(timer)
+    container.replaceChildren()
+  }
 }
 
 export function PriceChart({ ticker }: { ticker: string }) {
@@ -66,22 +73,19 @@ export function PriceChart({ ticker }: { ticker: string }) {
   useEffect(() => {
     const container = quoteContainerRef.current
     if (!container) return
-    mountTradingViewWidget(container, QUOTE_WIDGET_SRC, {
+    return mountTradingViewWidget(container, QUOTE_WIDGET_SRC, {
       symbol: ticker,
       width: '100%',
       locale: 'en',
       colorTheme: theme,
       isTransparent: false,
     })
-    return () => {
-      container.innerHTML = ''
-    }
   }, [ticker, theme])
 
   useEffect(() => {
     const container = chartContainerRef.current
     if (!container) return
-    mountTradingViewWidget(container, CHART_WIDGET_SRC, {
+    return mountTradingViewWidget(container, CHART_WIDGET_SRC, {
       autosize: true,
       symbol: ticker,
       interval: 'D',
@@ -93,9 +97,6 @@ export function PriceChart({ ticker }: { ticker: string }) {
       calendar: false,
       support_host: 'https://www.tradingview.com',
     })
-    return () => {
-      container.innerHTML = ''
-    }
   }, [ticker, theme])
 
   return (
