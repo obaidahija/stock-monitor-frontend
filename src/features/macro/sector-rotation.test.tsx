@@ -1,4 +1,5 @@
 import { cleanup, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, expect, test, vi } from 'vitest'
 import type { SectorRotationEntryOut, SectorRotationOut } from '@/types/api'
 import { SectorRotation } from './sector-rotation'
@@ -72,4 +73,42 @@ test('shows an unchanged marker rather than a signed zero', () => {
   mockData = payload({ sectors: [entry({ rank_change: 0 })] })
   render(<SectorRotation />)
   expect(screen.getByText('—')).toBeInTheDocument()
+})
+
+test('summarizes the leader, strongest rotation, and positive breadth', () => {
+  mockData = payload({
+    sectors: [
+      entry({ etf_symbol: 'XLK', sector: 'Technology', rank: 1, rank_change: 1, trend_pct: 4 }),
+      entry({ etf_symbol: 'XLE', sector: 'Energy', rank: 2, rank_change: 5, trend_pct: 2 }),
+      entry({ etf_symbol: 'XLU', sector: 'Utilities', rank: 3, rank_change: -2, trend_pct: -1 }),
+    ],
+  })
+  render(<SectorRotation />)
+
+  expect(screen.getByText('Current leader').parentElement?.parentElement).toHaveTextContent(
+    'Technology',
+  )
+  expect(screen.getByText('Strongest rotation').parentElement?.parentElement).toHaveTextContent(
+    'Energy',
+  )
+  expect(screen.getByText('Positive breadth').parentElement?.parentElement).toHaveTextContent(
+    '2 of 3',
+  )
+})
+
+test('can reorder the board by current rank', async () => {
+  const user = userEvent.setup()
+  mockData = payload({
+    sectors: [
+      entry({ etf_symbol: 'XLK', sector: 'Technology', rank: 1, rank_change: -2 }),
+      entry({ etf_symbol: 'XLE', sector: 'Energy', rank: 2, rank_change: 5 }),
+    ],
+  })
+  render(<SectorRotation />)
+
+  await user.click(screen.getByRole('button', { name: /current rank/i }))
+
+  const rows = screen.getAllByTestId('rotation-row')
+  expect(rows[0]).toHaveTextContent('Technology')
+  expect(rows[1]).toHaveTextContent('Energy')
 })
