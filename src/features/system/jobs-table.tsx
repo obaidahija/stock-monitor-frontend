@@ -99,6 +99,13 @@ const JOB_DESCRIPTIONS: Record<string, string> = {
   twitter_tweet_type_classify:
     'Tags newly collected tweets news/recommendation/analysis/other/general via a local ' +
     'zero-shot classifier.',
+  google_finance_market_picks_scan:
+    'Asks Google Finance Research two open-ended "which US stocks will rise" questions ' +
+    '(1-2 week and 2-4 week horizons) and persists up to 20 ranked picks per horizon as ' +
+    'the "Google Finance Outlook" shown on Discover and Trending. Runs twice daily.',
+  google_finance_market_picks_retention:
+    'Deletes old Google Finance Outlook runs after 30 days, always keeping the latest ' +
+    'published run.',
 }
 
 const JOB_GROUPS: JobGroup[] = [
