@@ -38,6 +38,8 @@ import type {
   AiProvider,
   AiSettingsOut,
   AiSettingsUpdate,
+  BackgroundAiProfile,
+  BackgroundAiProfileKey,
   OpenRouterModelOut,
 } from '@/types/api'
 import { useAiSettings, useOpenRouterModels, useUpdateAiSettings } from './hooks'
@@ -48,6 +50,52 @@ const PROVIDERS: { value: AiProvider; label: string }[] = [
   { value: 'anthropic', label: 'Anthropic' },
   { value: 'openrouter', label: 'OpenRouter' },
 ]
+
+// The four background profiles are structurally identical (provider + model +
+// max_tokens), so they render from one description rather than four hand-copied
+// cards. `noun` drives the field labels and element ids, which are part of the
+// accessible names the settings tests address.
+const BACKGROUND_PROFILES: {
+  key: BackgroundAiProfileKey
+  noun: string
+  heading: string
+  description: string
+}[] = [
+  {
+    key: 'competitor',
+    noun: 'Competitor',
+    heading: 'Competitor identification',
+    description:
+      'Powers 10-K competitor extraction and ranking (GET/POST /stocks/{ticker}/competitors).',
+  },
+  {
+    key: 'macro_transmission',
+    noun: 'Macro transmission',
+    heading: 'Macro transmission',
+    description:
+      'Powers macro sector-impact stance/magnitude resolution (GET /macro/sector-impact).',
+  },
+  {
+    key: 'filing_changes',
+    noun: 'Filing changes',
+    heading: 'Annual filing changes',
+    description:
+      'Powers 10-K change explanations and the filing insight summary ' +
+      '(GET/POST /stocks/{ticker}/filing-changes). One token budget covers both calls.',
+  },
+  {
+    key: 'commitments',
+    noun: 'Commitments',
+    heading: 'Management commitments',
+    description:
+      'Powers commitment candidate extraction and the commitments summary ' +
+      '(GET/POST /stocks/{ticker}/commitments). One token budget covers both calls.',
+  },
+]
+
+function slug(noun: string) {
+  return noun.toLowerCase().replaceAll(' ', '-')
+}
 
 function ProviderSelect({
   id,
@@ -240,6 +288,83 @@ function MaxTokensField({
   )
 }
 
+function BackgroundProfileCard({
+  profile,
+  value,
+  models,
+  catalogFailed,
+  configured,
+  onProviderChange,
+  onModelChange,
+  onMaxTokensChange,
+}: {
+  profile: (typeof BACKGROUND_PROFILES)[number]
+  value: BackgroundAiProfile
+  models: OpenRouterModelOut[]
+  catalogFailed: boolean
+  configured: boolean
+  onProviderChange: (provider: AiProvider) => void
+  onModelChange: (model: string) => void
+  onMaxTokensChange: (maxTokens: number) => void
+}) {
+  const id = slug(profile.noun)
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>
+          <h2>{profile.heading}</h2>
+        </CardTitle>
+        <CardDescription>{profile.description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <FieldGroup>
+          <ProviderSelect
+            id={`${id}-provider`}
+            label={`${profile.noun} provider`}
+            value={value.provider}
+            onChange={onProviderChange}
+          />
+          {value.provider === 'openrouter' && models.length > 0 ? (
+            <ModelCatalogSelect
+              label={`${profile.noun} model`}
+              models={models}
+              value={value.model}
+              onChange={onModelChange}
+            />
+          ) : (
+            <ManualModelField
+              id={`${id}-model`}
+              label={`${profile.noun} model`}
+              value={value.model}
+              onChange={onModelChange}
+            />
+          )}
+          {catalogFailed && value.provider === 'openrouter' ? (
+            <Alert>
+              <AlertTitle>OpenRouter catalog is unavailable</AlertTitle>
+              <AlertDescription>
+                You can still enter and save an OpenRouter model ID manually.
+              </AlertDescription>
+            </Alert>
+          ) : null}
+          <MaxTokensField
+            id={`${id}-max-tokens`}
+            label={`${profile.noun} max tokens`}
+            value={value.max_tokens}
+            onChange={onMaxTokensChange}
+          />
+        </FieldGroup>
+      </CardContent>
+      <CardFooter>
+        <Badge variant={configured ? 'secondary' : 'outline'}>
+          {configured ? 'Provider configured' : 'Provider not configured'}
+        </Badge>
+      </CardFooter>
+    </Card>
+  )
+}
+
+
 function SettingsEditor({
   initial,
   models,
@@ -254,6 +379,8 @@ function SettingsEditor({
     summarization: { ...initial.summarization },
     competitor: { ...initial.competitor },
     macro_transmission: { ...initial.macro_transmission },
+    filing_changes: { ...initial.filing_changes },
+    commitments: { ...initial.commitments },
   }))
   const update = useUpdateAiSettings()
   const researchModel = models.find((model) => model.id === form.research.model)
@@ -308,26 +435,22 @@ function SettingsEditor({
     }))
   }
 
-  function setCompetitorProvider(provider: AiProvider) {
+  function setBackgroundProvider(key: BackgroundAiProfileKey, provider: AiProvider) {
     setForm((current) => ({
       ...current,
-      competitor: {
-        ...current.competitor,
+      [key]: {
+        ...current[key],
         provider,
-        model: modelForProvider(provider, initial.competitor),
+        model: modelForProvider(provider, initial[key]),
       },
     }))
   }
 
-  function setMacroTransmissionProvider(provider: AiProvider) {
-    setForm((current) => ({
-      ...current,
-      macro_transmission: {
-        ...current.macro_transmission,
-        provider,
-        model: modelForProvider(provider, initial.macro_transmission),
-      },
-    }))
+  function setBackgroundField(
+    key: BackgroundAiProfileKey,
+    patch: { model: string } | { max_tokens: number },
+  ) {
+    setForm((current) => ({ ...current, [key]: { ...current[key], ...patch } }))
   }
 
   return (
@@ -487,139 +610,19 @@ function SettingsEditor({
           </CardFooter>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              <h2>Competitor identification</h2>
-            </CardTitle>
-            <CardDescription>
-              Powers 10-K competitor extraction and ranking (GET/POST /stocks/{'{ticker}'}/competitors).
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <FieldGroup>
-              <ProviderSelect
-                id="competitor-provider"
-                label="Competitor provider"
-                value={form.competitor.provider}
-                onChange={setCompetitorProvider}
-              />
-              {form.competitor.provider === 'openrouter' && models.length > 0 ? (
-                <ModelCatalogSelect
-                  label="Competitor model"
-                  models={models}
-                  value={form.competitor.model}
-                  onChange={(model) =>
-                    setForm((current) => ({
-                      ...current,
-                      competitor: { ...current.competitor, model },
-                    }))
-                  }
-                />
-              ) : (
-                <ManualModelField
-                  id="competitor-model"
-                  label="Competitor model"
-                  value={form.competitor.model}
-                  onChange={(model) =>
-                    setForm((current) => ({
-                      ...current,
-                      competitor: { ...current.competitor, model },
-                    }))
-                  }
-                />
-              )}
-              <MaxTokensField
-                id="competitor-max-tokens"
-                label="Competitor max tokens"
-                value={form.competitor.max_tokens}
-                onChange={(max_tokens) =>
-                  setForm((current) => ({
-                    ...current,
-                    competitor: { ...current.competitor, max_tokens },
-                  }))
-                }
-              />
-            </FieldGroup>
-          </CardContent>
-          <CardFooter>
-            <Badge variant={initial.providers[form.competitor.provider].configured ? 'secondary' : 'outline'}>
-              {initial.providers[form.competitor.provider].configured
-                ? 'Provider configured'
-                : 'Provider not configured'}
-            </Badge>
-          </CardFooter>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              <h2>Macro transmission</h2>
-            </CardTitle>
-            <CardDescription>
-              Powers macro sector-impact stance/magnitude resolution (GET /macro/sector-impact).
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <FieldGroup>
-              <ProviderSelect
-                id="macro-transmission-provider"
-                label="Macro transmission provider"
-                value={form.macro_transmission.provider}
-                onChange={setMacroTransmissionProvider}
-              />
-              {form.macro_transmission.provider === 'openrouter' && models.length > 0 ? (
-                <ModelCatalogSelect
-                  label="Macro transmission model"
-                  models={models}
-                  value={form.macro_transmission.model}
-                  onChange={(model) =>
-                    setForm((current) => ({
-                      ...current,
-                      macro_transmission: { ...current.macro_transmission, model },
-                    }))
-                  }
-                />
-              ) : (
-                <ManualModelField
-                  id="macro-transmission-model"
-                  label="Macro transmission model"
-                  value={form.macro_transmission.model}
-                  onChange={(model) =>
-                    setForm((current) => ({
-                      ...current,
-                      macro_transmission: { ...current.macro_transmission, model },
-                    }))
-                  }
-                />
-              )}
-              <MaxTokensField
-                id="macro-transmission-max-tokens"
-                label="Macro transmission max tokens"
-                value={form.macro_transmission.max_tokens}
-                onChange={(max_tokens) =>
-                  setForm((current) => ({
-                    ...current,
-                    macro_transmission: { ...current.macro_transmission, max_tokens },
-                  }))
-                }
-              />
-            </FieldGroup>
-          </CardContent>
-          <CardFooter>
-            <Badge
-              variant={
-                initial.providers[form.macro_transmission.provider].configured
-                  ? 'secondary'
-                  : 'outline'
-              }
-            >
-              {initial.providers[form.macro_transmission.provider].configured
-                ? 'Provider configured'
-                : 'Provider not configured'}
-            </Badge>
-          </CardFooter>
-        </Card>
+        {BACKGROUND_PROFILES.map((profile) => (
+          <BackgroundProfileCard
+            key={profile.key}
+            catalogFailed={catalogFailed}
+            configured={initial.providers[form[profile.key].provider].configured}
+            models={models}
+            profile={profile}
+            value={form[profile.key]}
+            onMaxTokensChange={(max_tokens) => setBackgroundField(profile.key, { max_tokens })}
+            onModelChange={(model) => setBackgroundField(profile.key, { model })}
+            onProviderChange={(provider) => setBackgroundProvider(profile.key, provider)}
+          />
+        ))}
       </div>
       <div className="flex justify-end">
         <Button disabled={update.isPending} type="submit">

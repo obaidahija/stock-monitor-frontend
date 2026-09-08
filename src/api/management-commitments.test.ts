@@ -7,11 +7,13 @@ import {
   createManualCommitmentCandidate,
   extractCommitmentSource,
   getCommitment,
+  getCommitmentSummary,
   getCommitmentCandidates,
   getCommitments,
   getCommitmentSource,
   getCommitmentSources,
   loadCommitmentSource,
+  refreshCommitmentSummary,
   reviewCommitmentCandidate,
 } from './management-commitments'
 
@@ -92,8 +94,16 @@ test('reads use GET and never POST', async () => {
   await getCommitmentSources('ACME', { offset: 0, limit: 25 })
   await getCommitmentSource('ACME', 4, { offset: 0, limit: 25 })
   await getCommitmentCandidates('ACME', { offset: 0, limit: 25 })
-  expect(get).toHaveBeenCalledTimes(5)
+  await getCommitmentSummary('ACME')
+  expect(get).toHaveBeenCalledTimes(6)
   expect(post).not.toHaveBeenCalled()
+})
+
+test('summary read and refresh use fixed uppercase paths', async () => {
+  await getCommitmentSummary('a b')
+  await refreshCommitmentSummary('a b')
+  expect(get).toHaveBeenCalledWith('/v1/stocks/A%20B/commitments/summary')
+  expect(post).toHaveBeenCalledWith('/v1/stocks/A%20B/commitments/summary/refresh')
 })
 
 test('upstream actions are POSTs', async () => {

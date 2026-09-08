@@ -4,18 +4,24 @@ import {
   explainFilingChanges,
   getFilingChangePage,
   getFilingChanges,
+  getFilingInsightSummary,
+  refreshFilingInsightSummary,
 } from '@/api/filing-changes'
+import type { InsightSummaryOut } from '@/types/insight-summary'
 import type {
   FilingChangeFilters,
   FilingComparisonOut,
 } from '@/types/filing-changes'
 
-export const filingChangesKey = (ticker: string) => ['filing-changes', ticker] as const
+export const filingChangesKey = (ticker: string) =>
+  ['filing-changes', ticker.toUpperCase()] as const
+export const filingInsightSummaryKey = (ticker: string) =>
+  ['filing-insight-summary', ticker.toUpperCase()] as const
 export const filingChangePageKey = (
   ticker: string,
   comparisonId: number | undefined,
   filters: FilingChangeFilters,
-) => ['filing-change-page', ticker, comparisonId, filters] as const
+) => ['filing-change-page', ticker.toUpperCase(), comparisonId, filters] as const
 
 /**
  * Cache-only read of the saved comparison. Mounting the panel does exactly
@@ -28,17 +34,48 @@ export function useFilingChanges(ticker: string) {
   })
 }
 
+export function useFilingInsightSummary(ticker: string) {
+  return useQuery({
+    queryKey: filingInsightSummaryKey(ticker),
+    queryFn: () => getFilingInsightSummary(ticker),
+  })
+}
+
+export function useRefreshFilingInsightSummary(ticker: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => refreshFilingInsightSummary(ticker),
+    retry: false,
+    onSuccess: async (result) => {
+      if (result.summary) {
+        await queryClient.cancelQueries({
+          queryKey: filingInsightSummaryKey(ticker),
+          exact: true,
+        })
+        queryClient.setQueryData<InsightSummaryOut | null>(
+          filingInsightSummaryKey(ticker),
+          result.summary,
+        )
+      }
+      if (result.diagnostics.comparison_changed) {
+        queryClient.invalidateQueries({ queryKey: filingChangesKey(ticker) })
+      }
+    },
+  })
+}
+
 export function useFilingChangePage(
   ticker: string,
   comparisonId: number | undefined,
   filters: FilingChangeFilters,
+  enabled = true,
 ) {
   return useQuery({
     queryKey: filingChangePageKey(ticker, comparisonId, filters),
     queryFn: () => getFilingChangePage(ticker, comparisonId as number, filters),
     // Without a comparison there is no page to read, and firing the request
     // anyway would 404 on every fresh ticker.
-    enabled: comparisonId !== undefined,
+    enabled: comparisonId !== undefined && enabled,
   })
 }
 

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { InsightSummaryCard } from '@/components/shared/insight-summary-card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -14,15 +15,18 @@ import {
 import { CandidateReview } from './candidate-review'
 import { CommitmentTimeline } from './commitment-timeline'
 import { describeIdentity, formatPeriod, formatTarget, outcomeLabel, outcomeVariant } from './format'
-import { useCommitments } from './hooks'
+import {
+  useCommitments,
+  useCommitmentSummary,
+  useRefreshCommitmentSummary,
+} from './hooks'
 import { SourcePicker } from './source-picker'
 
-type View = 'ledger' | 'sources' | 'review'
+type View = 'ledger' | 'sources'
 
 const VIEWS: { id: View; label: string }[] = [
   { id: 'ledger', label: 'Ledger' },
   { id: 'sources', label: 'Sources' },
-  { id: 'review', label: 'Review' },
 ]
 
 /**
@@ -30,8 +34,8 @@ const VIEWS: { id: View; label: string }[] = [
  * reported.
  *
  * Opening it issues GET requests only. Checking SEC and asking for proposals
- * are explicit buttons inside the Sources view, and nothing enters the ledger
- * without passing through Review first.
+ * are explicit buttons inside the Sources view; proposals are resolved
+ * automatically, so there is no review queue to work through.
  */
 export function CommitmentsTab({ ticker }: { ticker: string }) {
   const [view, setView] = useState<View>('ledger')
@@ -44,10 +48,29 @@ export function CommitmentsTab({ ticker }: { ticker: string }) {
   const [expandedId, setExpandedId] = useState<number | null>(null)
 
   const commitments = useCommitments(ticker, filters)
-  const pendingCount = commitments.data?.pending_count ?? 0
-
+  const insight = useCommitmentSummary(ticker)
+  const refreshInsight = useRefreshCommitmentSummary(ticker)
   return (
-    <div className="space-y-4">
+    <div className="flex min-w-0 flex-col gap-4">
+      <InsightSummaryCard
+        title="Management commitments"
+        summary={insight.data ?? null}
+        isRefreshing={refreshInsight.isPending}
+        refreshError={refreshInsight.error ?? insight.error}
+        onRefresh={() => refreshInsight.mutate()}
+      />
+
+      <details className="group min-w-0 rounded-xl border bg-card">
+        <summary className="cursor-pointer list-none rounded-xl px-4 py-3 font-medium outline-none transition-colors hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring">
+          <span className="flex flex-col gap-0.5">
+            <span>Evidence &amp; Advanced</span>
+            <span className="text-xs font-normal text-muted-foreground">
+              Ledger and source documents
+            </span>
+          </span>
+        </summary>
+
+        <div className="flex min-w-0 flex-col gap-4 border-t p-4">
       <div className="flex flex-wrap items-center gap-2" role="tablist" aria-label="Commitments views">
         {VIEWS.map((entry) => (
           <Button
@@ -59,34 +82,27 @@ export function CommitmentsTab({ ticker }: { ticker: string }) {
             onClick={() => setView(entry.id)}
           >
             {entry.label}
-            {entry.id === 'review' && pendingCount > 0 && (
-              <Badge variant="outline" className="ml-1">
-                {pendingCount}
-              </Badge>
-            )}
           </Button>
         ))}
       </div>
 
       {view === 'sources' && (
-        <SourcePicker
-          ticker={ticker}
-          selectedDocumentId={selectedDocumentId}
-          onSelectDocument={setSelectedDocumentId}
-          onEnterManually={(documentId, blocks) => {
-            setManualEntry({ documentId, blocks })
-            setView('review')
-          }}
-        />
-      )}
-
-      {view === 'review' && (
-        <CandidateReview
-          ticker={ticker}
-          commitments={commitments.data?.items ?? []}
-          manualEntry={manualEntry}
-          onManualEntryClosed={() => setManualEntry(null)}
-        />
+        <>
+          <SourcePicker
+            ticker={ticker}
+            selectedDocumentId={selectedDocumentId}
+            onSelectDocument={setSelectedDocumentId}
+            onEnterManually={(documentId, blocks) => setManualEntry({ documentId, blocks })}
+          />
+          {manualEntry && (
+            <CandidateReview
+              ticker={ticker}
+              commitments={commitments.data?.items ?? []}
+              manualEntry={manualEntry}
+              onManualEntryClosed={() => setManualEntry(null)}
+            />
+          )}
+        </>
       )}
 
       {view === 'ledger' && (
@@ -235,6 +251,8 @@ export function CommitmentsTab({ ticker }: { ticker: string }) {
           </CardContent>
         </Card>
       )}
+        </div>
+      </details>
     </div>
   )
 }

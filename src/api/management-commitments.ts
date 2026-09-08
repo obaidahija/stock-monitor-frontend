@@ -9,6 +9,7 @@ import type {
   CandidatesPageOut,
   CommitmentDetailOut,
   CommitmentFilters,
+  CommitmentSummaryRefreshOut,
   CommitmentsPageOut,
   ExtractionOut,
   ManualCandidateIn,
@@ -17,6 +18,7 @@ import type {
   SourceDocumentOut,
   SourcesPageOut,
 } from '@/types/management-commitments'
+import type { InsightSummaryOut } from '@/types/insight-summary'
 
 function base(ticker: string) {
   return `/v1/stocks/${encodeURIComponent(ticker.toUpperCase())}/commitments`
@@ -38,6 +40,16 @@ export function getCommitments(ticker: string, filters: CommitmentFilters) {
   // query key and the URL readable.
   if (filters.include_archived) params.set('include_archived', 'true')
   return apiClient.get<CommitmentsPageOut>(`${base(ticker)}?${params.toString()}`)
+}
+
+/** Cache-only compact insight. */
+export function getCommitmentSummary(ticker: string) {
+  return apiClient.get<InsightSummaryOut | null>(`${base(ticker)}/summary`)
+}
+
+/** Explicit one-click SEC, extraction, verification, and summary refresh. */
+export function refreshCommitmentSummary(ticker: string) {
+  return apiClient.post<CommitmentSummaryRefreshOut>(`${base(ticker)}/summary/refresh`)
 }
 
 /** Cache-only. */

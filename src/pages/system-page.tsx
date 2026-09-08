@@ -57,8 +57,9 @@ export function SystemPage() {
         <TabsContent value="ai">
           <div className="space-y-4">
             <p className="text-muted-foreground text-sm">
-              Independent providers and models for research and summarization. API keys remain
-              server-side and are never sent to the browser.
+              Independent providers and models per task — research, summarization, and the
+              background profiles below. API keys remain server-side and are never sent to the
+              browser.
             </p>
             <AiSettingsForm />
           </div>

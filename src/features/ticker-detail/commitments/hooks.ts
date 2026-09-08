@@ -9,10 +9,13 @@ import {
   getCommitmentCandidates,
   getCommitmentSource,
   getCommitmentSources,
+  getCommitmentSummary,
   getCommitments,
   loadCommitmentSource,
   reviewCommitmentCandidate,
+  refreshCommitmentSummary,
 } from '@/api/management-commitments'
+import type { InsightSummaryOut } from '@/types/insight-summary'
 import {
   DEFAULT_PAGE_PARAMS,
   type AppendEventIn,
@@ -32,6 +35,9 @@ import {
  */
 export const commitmentsKey = (ticker: string) =>
   ['management-commitments', ticker.toUpperCase()] as const
+
+export const commitmentSummaryKey = (ticker: string) =>
+  ['commitment-summary', ticker.toUpperCase()] as const
 
 export const commitmentListKey = (ticker: string, filters: CommitmentFilters) =>
   [...commitmentsKey(ticker), 'list', filters] as const
@@ -61,6 +67,33 @@ export function useCommitments(ticker: string, filters: CommitmentFilters) {
   return useQuery({
     queryKey: commitmentListKey(ticker, filters),
     queryFn: () => getCommitments(ticker, filters),
+  })
+}
+
+export function useCommitmentSummary(ticker: string) {
+  return useQuery({
+    queryKey: commitmentSummaryKey(ticker),
+    queryFn: () => getCommitmentSummary(ticker),
+  })
+}
+
+export function useRefreshCommitmentSummary(ticker: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => refreshCommitmentSummary(ticker),
+    retry: false,
+    onSuccess: async (result) => {
+      if (result.summary) {
+        await queryClient.cancelQueries({ queryKey: commitmentSummaryKey(ticker), exact: true })
+        queryClient.setQueryData<InsightSummaryOut | null>(
+          commitmentSummaryKey(ticker),
+          result.summary,
+        )
+      }
+      if (result.diagnostics.auto_accepted > 0) {
+        queryClient.invalidateQueries({ queryKey: commitmentsKey(ticker) })
+      }
+    },
   })
 }
 

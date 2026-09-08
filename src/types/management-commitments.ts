@@ -1,4 +1,5 @@
 import type { SourceStatus } from './api'
+import type { InsightSummaryOut } from './insight-summary'
 
 /**
  * Mirrors app/schemas/management_commitments.py.
@@ -35,6 +36,7 @@ export type CommitmentStatus =
   | 'needs_review'
 export type CandidateState = 'pending' | 'accepted' | 'rejected'
 export type CandidateOrigin = 'model' | 'manual'
+export type CandidateReviewMode = 'manual' | 'automatic'
 export type ExtractionStatus = 'running' | 'ready' | 'failed'
 export type DocumentContentState =
   | 'never_checked'
@@ -339,6 +341,8 @@ export interface CandidateOut {
   accepted_event_id: number | null
   accepted_commitment_id: number | null
   review_note: string | null
+  review_mode: CandidateReviewMode | null
+  review_version: string | null
   created_at: string
   reviewed_at: string | null
 }
@@ -418,6 +422,28 @@ export interface PageParams {
 }
 
 export const DEFAULT_PAGE_PARAMS: PageParams = { offset: 0, limit: 25 }
+
+export interface CommitmentRefreshDiagnosticsOut {
+  documents_discovered: number
+  documents_selected: number
+  documents_loaded: number
+  documents_reused: number
+  documents_extracted: number
+  extractions_reused: number
+  auto_accepted: number
+  pending: number
+  documents_skipped: number
+  reason_codes: string[]
+}
+
+export interface CommitmentSummaryRefreshOut {
+  status: 'ready' | 'partial' | 'unavailable'
+  reason: string | null
+  summary: InsightSummaryOut | null
+  source: SourceStatus
+  ai: SourceStatus | null
+  diagnostics: CommitmentRefreshDiagnosticsOut
+}
 
 /** Field names the backend reports as unresolved, in reviewer-facing wording. */
 export const UNRESOLVED_FIELD_LABELS: Record<string, string> = {

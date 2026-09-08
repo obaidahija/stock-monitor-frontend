@@ -7,6 +7,8 @@ import {
   explainFilingChanges,
   getFilingChangePage,
   getFilingChanges,
+  getFilingInsightSummary,
+  refreshFilingInsightSummary,
 } from '@/api/filing-changes'
 import { DEFAULT_FILING_CHANGE_FILTERS } from '@/types/filing-changes'
 import type { FilingComparisonOut } from '@/types/filing-changes'
@@ -15,6 +17,10 @@ import {
   useExplainFilingChanges,
   useFilingChangePage,
   useFilingChanges,
+  useFilingInsightSummary,
+  useRefreshFilingInsightSummary,
+  filingChangesKey,
+  filingInsightSummaryKey,
 } from './hooks'
 
 vi.mock('@/api/filing-changes', () => ({
@@ -22,6 +28,8 @@ vi.mock('@/api/filing-changes', () => ({
   compareAnnualFilings: vi.fn(),
   getFilingChangePage: vi.fn(),
   explainFilingChanges: vi.fn(),
+  getFilingInsightSummary: vi.fn(),
+  refreshFilingInsightSummary: vi.fn(),
 }))
 
 const comparison = (overrides: Partial<FilingComparisonOut> = {}): FilingComparisonOut => ({
@@ -215,4 +223,44 @@ test('mutations do not retry automatically', async () => {
 
   expect(compareAnnualFilings).toHaveBeenCalledTimes(1)
   await waitFor(() => expect(result.current.isError).toBe(true))
+})
+
+test('the change page remains lazy until evidence is opened', async () => {
+  vi.mocked(getFilingChangePage).mockResolvedValue({ items: [], total: 0, offset: 0, limit: 25 })
+  const { wrapper } = makeWrapper()
+  const { rerender } = renderHook(
+    ({ open }: { open: boolean }) =>
+      useFilingChangePage('NVDA', 7, DEFAULT_FILING_CHANGE_FILTERS, open),
+    { wrapper, initialProps: { open: false } },
+  )
+  expect(getFilingChangePage).not.toHaveBeenCalled()
+  rerender({ open: true })
+  await waitFor(() => expect(getFilingChangePage).toHaveBeenCalledTimes(1))
+})
+
+test('filing insight mount is cache-only and key is uppercase', async () => {
+  vi.mocked(getFilingInsightSummary).mockResolvedValue(null)
+  const { wrapper } = makeWrapper()
+  const { result } = renderHook(() => useFilingInsightSummary('nvda'), { wrapper })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(filingInsightSummaryKey('nvda')).toEqual(['filing-insight-summary', 'NVDA'])
+  expect(refreshFilingInsightSummary).not.toHaveBeenCalled()
+})
+
+test('filing refresh stores the summary and invalidates comparison when changed', async () => {
+  const summary = { headline: 'Material changes' } as never
+  vi.mocked(refreshFilingInsightSummary).mockResolvedValue({
+    status: 'ready',
+    reason: null,
+    summary,
+    source: {} as never,
+    ai: null,
+    diagnostics: { comparison_changed: true },
+  } as never)
+  const { queryClient, wrapper } = makeWrapper()
+  const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
+  const { result } = renderHook(() => useRefreshFilingInsightSummary('nvda'), { wrapper })
+  await act(async () => { await result.current.mutateAsync() })
+  expect(queryClient.getQueryData(filingInsightSummaryKey('NVDA'))).toBe(summary)
+  expect(invalidate).toHaveBeenCalledWith({ queryKey: filingChangesKey('NVDA') })
 })

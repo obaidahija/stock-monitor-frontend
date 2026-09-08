@@ -5,6 +5,18 @@ feed, explicit ticker searches, trusted subreddit and author sources, and bounde
 threads. Each ticker also has an independent Reddit tab and monitoring control; Twitter and
 Reddit evidence remain separate in AI research.
 
+## Summary-first SEC tabs
+
+The ticker's Commitments and Filings tabs open with a compact business-impact card: explicit
+Positive, Negative, Neutral, Mixed, or Unavailable status; confidence; up to three key factors;
+and a few decision-useful facts. This is business impact, not a buy/sell recommendation.
+
+Mounting either tab reads saved summaries only. The single **Refresh analysis** button runs the
+complete backend workflow and keeps the last useful result visible if refresh fails. Commitment
+Ledger, Sources, manual entry, and the data-quality Review queue remain under **Evidence &
+Advanced**. Filing references, Compare/Explain tools, filters, and raw diffs remain under
+**Evidence & All Changes**; the raw change page is not requested until that disclosure opens.
+
 Live collection is controlled by the backend's `REDDIT_INTELLIGENCE_ENABLED` flag. When disabled,
 the UI continues to show cached Reddit content and explains why refresh actions are unavailable.
 The Reddit auth banner polls every 30 seconds. During automatic recovery it shows that

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { InsightSummaryCard } from '@/components/shared/insight-summary-card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -29,6 +30,8 @@ import {
   useExplainFilingChanges,
   useFilingChangePage,
   useFilingChanges,
+  useFilingInsightSummary,
+  useRefreshFilingInsightSummary,
 } from './hooks'
 
 const ALL = 'all'
@@ -174,6 +177,8 @@ export function FilingChangesPanel({ ticker }: { ticker: string }) {
 }
 
 function TickerFilingChanges({ ticker }: { ticker: string }) {
+  const insight = useFilingInsightSummary(ticker)
+  const refreshInsight = useRefreshFilingInsightSummary(ticker)
   const saved = useFilingChanges(ticker)
   const comparison = saved.data ?? null
   const compare = useCompareAnnualFilings(ticker)
@@ -182,13 +187,14 @@ function TickerFilingChanges({ ticker }: { ticker: string }) {
   const [filters, setFilters] = useState<FilingChangeFilters>(
     DEFAULT_FILING_CHANGE_FILTERS,
   )
+  const [evidenceOpen, setEvidenceOpen] = useState(false)
   // A page offset only means something for the filter set and comparison it
   // was produced under; carrying it across either would show the wrong slice.
   useEffect(() => {
     setFilters((current) => ({ ...current, offset: 0 }))
   }, [comparison?.id])
 
-  const page = useFilingChangePage(ticker, comparison?.id, filters)
+  const page = useFilingChangePage(ticker, comparison?.id, filters, evidenceOpen)
 
   const update = (patch: Partial<FilingChangeFilters>) =>
     setFilters((current) => ({ ...current, ...patch, offset: 0 }))
@@ -202,10 +208,32 @@ function TickerFilingChanges({ ticker }: { ticker: string }) {
   )
 
   return (
-    <Card className="mb-6 py-4">
+    <div className="mb-6 flex min-w-0 flex-col gap-4">
+      <InsightSummaryCard
+        title="Annual filing changes"
+        summary={insight.data ?? null}
+        isRefreshing={refreshInsight.isPending}
+        refreshError={refreshInsight.error ?? insight.error}
+        onRefresh={() => refreshInsight.mutate()}
+      />
+
+      <details
+        className="group min-w-0 rounded-xl border bg-card"
+        onToggle={(event) => setEvidenceOpen(event.currentTarget.open)}
+      >
+        <summary className="cursor-pointer list-none rounded-xl px-4 py-3 font-medium outline-none transition-colors hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring">
+          <span className="flex flex-col gap-0.5">
+            <span>Evidence &amp; All Changes</span>
+            <span className="text-xs font-normal text-muted-foreground">
+              Filing pair, source links, filters, raw diffs, and troubleshooting tools
+            </span>
+          </span>
+        </summary>
+
+    <Card className="border-0 py-4 shadow-none ring-0">
       <CardHeader className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <CardTitle>Annual filing changes</CardTitle>
+          <CardTitle>Comparison evidence &amp; tools</CardTitle>
           <CardDescription className="mt-1 max-w-xl text-xs">
             Compares Item 1A (Risk Factors) and Item 7 (MD&amp;A) between the two most
             recent original 10-K filings. These are disclosure changes: added wording does
@@ -430,5 +458,7 @@ function TickerFilingChanges({ ticker }: { ticker: string }) {
       )}
       </CardContent>
     </Card>
+      </details>
+    </div>
   )
 }

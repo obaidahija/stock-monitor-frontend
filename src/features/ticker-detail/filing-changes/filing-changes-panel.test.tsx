@@ -7,6 +7,8 @@ import {
   explainFilingChanges,
   getFilingChangePage,
   getFilingChanges,
+  getFilingInsightSummary,
+  refreshFilingInsightSummary,
 } from '@/api/filing-changes'
 import type {
   FilingChangeOut,
@@ -20,7 +22,21 @@ vi.mock('@/api/filing-changes', () => ({
   compareAnnualFilings: vi.fn(),
   getFilingChangePage: vi.fn(),
   explainFilingChanges: vi.fn(),
+  getFilingInsightSummary: vi.fn(),
+  refreshFilingInsightSummary: vi.fn(),
 }))
+
+const insightSummary = {
+  status: 'ready' as const,
+  signal: 'negative' as const,
+  confidence: 'high' as const,
+  headline: 'Supply constraints became more immediate',
+  explanation: 'The filing now describes constraints as current.',
+  key_positives: [], key_negatives: [], key_neutral: [], key_facts: [],
+  coverage: { status: 'complete' as const, included: [], excluded: [], notices: [] },
+  generated_at: '2026-09-07T12:00:00Z', stale: false,
+  analysis_version: 'filing-insight-v1', usage: null,
+}
 
 const okCoverage = { status: 'ok' as const, reason: null, notes: [] }
 
@@ -112,12 +128,43 @@ function renderPanel(ticker = 'NVDA') {
   )
 }
 
+async function expandEvidence() {
+  const summary = screen.getByText('Evidence & All Changes')
+  if (!summary.closest('details')?.hasAttribute('open')) {
+    await userEvent.click(summary)
+  }
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(getFilingChanges).mockResolvedValue(null)
   vi.mocked(getFilingChangePage).mockResolvedValue(page())
+  vi.mocked(getFilingInsightSummary).mockResolvedValue(insightSummary)
 })
 afterEach(cleanup)
+
+test('cached insight is first and raw evidence stays lazy until expanded', async () => {
+  vi.mocked(getFilingChanges).mockResolvedValue(comparison({
+    counts: { added: 67, removed: 65, modified: 71 },
+  }))
+  renderPanel()
+  expect(await screen.findByText('Supply constraints became more immediate')).toBeInTheDocument()
+  expect(refreshFilingInsightSummary).not.toHaveBeenCalled()
+  expect(getFilingChangePage).not.toHaveBeenCalled()
+
+  await userEvent.click(screen.getByText('Evidence & All Changes'))
+  await waitFor(() => expect(getFilingChangePage).toHaveBeenCalledTimes(1))
+})
+
+test('refresh analysis is the only top-level action', async () => {
+  vi.mocked(refreshFilingInsightSummary).mockResolvedValue({
+    status: 'ready', reason: null, summary: insightSummary,
+    source: {} as never, ai: null, diagnostics: { comparison_changed: false },
+  } as never)
+  renderPanel()
+  await userEvent.click(await screen.findByRole('button', { name: 'Refresh analysis' }))
+  await waitFor(() => expect(refreshFilingInsightSummary).toHaveBeenCalledWith('NVDA'))
+})
 
 test('a saved-comparison read error is not shown as an empty cache', async () => {
   vi.mocked(getFilingChanges).mockRejectedValue(new Error('Saved comparison unavailable'))
@@ -131,6 +178,7 @@ test('an explanation network error is visible while evidence remains', async () 
   vi.mocked(explainFilingChanges).mockRejectedValue(new Error('Explanation request failed'))
   const user = userEvent.setup()
   renderPanel()
+  await expandEvidence()
   await user.click(await screen.findByRole('button', { name: /explain changes/i }))
   expect(await screen.findByText('Explanation request failed')).toBeInTheDocument()
   expect(screen.getAllByText(/expect a shortfall/).length).toBeGreaterThan(0)
@@ -142,6 +190,7 @@ test('hidden routine updates are not described as no text changes', async () => 
   }))
   vi.mocked(getFilingChangePage).mockResolvedValue(page({ items: [], total: 0 }))
   renderPanel()
+  await expandEvidence()
   expect(await screen.findByText(/only routine date updates were detected/i)).toBeInTheDocument()
   expect(screen.queryByText(/no text changes detected/i)).not.toBeInTheDocument()
 })
@@ -204,6 +253,7 @@ test('word-level changes use markup, not colour alone, and never raw HTML', asyn
     }),
   )
   const { container } = renderPanel()
+  await expandEvidence()
 
   await waitFor(() => expect(container.querySelector('del')).not.toBeNull())
   // Source wording is rendered as text, never injected as markup.
@@ -225,6 +275,7 @@ test('a missing side says so explicitly rather than showing an empty column', as
     }),
   )
   renderPanel()
+  await expandEvidence()
 
   await screen.findByText('No matched passage in this section')
 })
@@ -235,6 +286,7 @@ test('a low-confidence match tells the reader to review the source', async () =>
     page({ items: [change({ alignment_confidence: 'low' })] }),
   )
   renderPanel()
+  await expandEvidence()
 
   await screen.findByText(/possible unmatched passage/i)
 })
@@ -286,6 +338,7 @@ test('no-change copy only appears for sections actually compared', async () => {
   vi.mocked(getFilingChanges).mockResolvedValue(comparison({ counts: { added: 0, removed: 0, modified: 0 }, routine_count: 0 }))
   vi.mocked(getFilingChangePage).mockResolvedValue(page({ items: [], total: 0 }))
   renderPanel()
+  await expandEvidence()
 
   await screen.findByText(/no text changes detected in the compared prose/i)
 })
@@ -304,6 +357,7 @@ test('with nothing comparable the panel refuses to claim no changes', async () =
   )
   vi.mocked(getFilingChangePage).mockResolvedValue(page({ items: [], total: 0 }))
   renderPanel()
+  await expandEvidence()
 
   await screen.findByText(/no conclusion about changes is possible/i)
 })
@@ -363,6 +417,7 @@ test('an AI failure keeps the passages and says explanations are unavailable', a
     comparison({ ai_status: 'unavailable', ai_error: 'no provider' }),
   )
   renderPanel()
+  await expandEvidence()
 
   await screen.findByText(/ai explanations are unavailable/i)
   expect(screen.getByText(/the compared passages below are unaffected/i)).toBeInTheDocument()
@@ -401,6 +456,7 @@ test('an AI explanation is labelled and kept below the quotations', async () => 
     }),
   )
   renderPanel()
+  await expandEvidence()
 
   const label = await screen.findByText('AI explanation')
   expect(label).toBeInTheDocument()
@@ -415,6 +471,7 @@ test('routine updates are hidden with an explicit hidden count', async () => {
   const user = userEvent.setup()
   vi.mocked(getFilingChanges).mockResolvedValue(comparison())
   renderPanel()
+  await expandEvidence()
 
   const toggle = await screen.findByRole('button', {
     name: /show routine updates \(2 hidden\)/i,
@@ -435,6 +492,7 @@ test('a filter with no matches says so distinctly', async () => {
   vi.mocked(getFilingChangePage).mockResolvedValue(page({ items: [], total: 0 }))
   const user = userEvent.setup()
   renderPanel()
+  await expandEvidence()
 
   await screen.findByLabelText('Change type')
   await user.click(screen.getByLabelText('Change type'))
@@ -450,6 +508,7 @@ test('paging requests the next slice and reports the range', async () => {
     page({ items: [change()], total: 60, limit: 25 }),
   )
   renderPanel()
+  await expandEvidence()
 
   await screen.findByText('1–25 of 60')
   await user.click(screen.getByRole('button', { name: 'Next' }))
@@ -470,6 +529,7 @@ test('changing a filter resets the offset', async () => {
     page({ items: [change()], total: 60, limit: 25 }),
   )
   renderPanel()
+  await expandEvidence()
 
   await screen.findByText('1–25 of 60')
   await user.click(screen.getByRole('button', { name: 'Next' }))

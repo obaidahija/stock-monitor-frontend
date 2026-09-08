@@ -1,4 +1,5 @@
 import type { LlmUsageSummaryOut, SourceStatus } from './api'
+import type { InsightSummaryOut } from './insight-summary'
 
 /**
  * Mirrors app/schemas/filing_changes.py. Dates and timestamps arrive as ISO
@@ -140,4 +141,24 @@ export const DEFAULT_FILING_CHANGE_FILTERS: FilingChangeFilters = {
   include_routine: false,
   offset: 0,
   limit: 25,
+}
+
+export interface FilingRefreshDiagnosticsOut {
+  comparison_id: number | null
+  comparison_changed: boolean
+  finding_count: number
+  cluster_count: number
+  selected_count: number
+  omitted_count: number
+  provisional_count: number
+  reason_codes: string[]
+}
+
+export interface FilingSummaryRefreshOut {
+  status: 'ready' | 'partial' | 'unavailable'
+  reason: string | null
+  summary: InsightSummaryOut | null
+  source: SourceStatus
+  ai: SourceStatus | null
+  diagnostics: FilingRefreshDiagnosticsOut
 }

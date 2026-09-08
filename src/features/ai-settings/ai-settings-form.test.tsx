@@ -23,6 +23,8 @@ const settings = {
   summarization: { provider: 'ollama', model: 'qwen3:8b' },
   competitor: { provider: 'ollama', model: 'qwen3:8b', max_tokens: 4000 },
   macro_transmission: { provider: 'ollama', model: 'qwen3:8b', max_tokens: 200 },
+  filing_changes: { provider: 'ollama', model: 'qwen3:8b', max_tokens: 6000 },
+  commitments: { provider: 'ollama', model: 'qwen3:8b', max_tokens: 3000 },
   providers: {
     ollama: { configured: true, default_model: 'gpt-oss:20b' },
     llamacpp: { configured: true, default_model: 'local' },
@@ -81,8 +83,12 @@ test('loads independent profiles, readiness, and OpenRouter model metadata', asy
   expect(screen.getByRole('heading', { name: 'Summarization' })).toBeInTheDocument()
   expect(screen.getByRole('heading', { name: 'Competitor identification' })).toBeInTheDocument()
   expect(screen.getByRole('heading', { name: 'Macro transmission' })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Annual filing changes' })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Management commitments' })).toBeInTheDocument()
   expect(screen.getByLabelText('Competitor max tokens')).toHaveValue(4000)
   expect(screen.getByLabelText('Macro transmission max tokens')).toHaveValue(200)
+  expect(screen.getByLabelText('Filing changes max tokens')).toHaveValue(6000)
+  expect(screen.getByLabelText('Commitments max tokens')).toHaveValue(3000)
   expect(await screen.findByText('Qwen 3.8 27B')).toBeInTheDocument()
   expect(screen.getByText('131,072 context')).toBeInTheDocument()
   expect(screen.getByText('Image input')).toBeInTheDocument()
@@ -114,6 +120,8 @@ test('saves research and summarization settings without sending secrets', async 
     summarization: { provider: 'ollama', model: 'qwen3:14b' },
     competitor: { provider: 'ollama', model: 'qwen3:8b', max_tokens: 4000 },
     macro_transmission: { provider: 'ollama', model: 'qwen3:8b', max_tokens: 200 },
+    filing_changes: { provider: 'ollama', model: 'qwen3:8b', max_tokens: 6000 },
+    commitments: { provider: 'ollama', model: 'qwen3:8b', max_tokens: 3000 },
   })
   expect(JSON.stringify(api.updateAiSettings.mock.calls[0])).not.toContain('api_key')
 })

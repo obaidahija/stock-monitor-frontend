@@ -5,7 +5,9 @@ import type {
   FilingCompareResult,
   FilingComparisonOut,
   FilingExplainResult,
+  FilingSummaryRefreshOut,
 } from '@/types/filing-changes'
+import type { InsightSummaryOut } from '@/types/insight-summary'
 
 function base(ticker: string) {
   return `/v1/stocks/${encodeURIComponent(ticker.toUpperCase())}/filing-changes`
@@ -14,6 +16,16 @@ function base(ticker: string) {
 /** Cache-only. Safe to call on mount: performs no SEC request and no generation. */
 export function getFilingChanges(ticker: string) {
   return apiClient.get<FilingComparisonOut | null>(base(ticker))
+}
+
+/** Cache-only compact business-impact summary. */
+export function getFilingInsightSummary(ticker: string) {
+  return apiClient.get<InsightSummaryOut | null>(`${base(ticker)}/summary`)
+}
+
+/** Explicit one-click compare and impact assessment. */
+export function refreshFilingInsightSummary(ticker: string) {
+  return apiClient.post<FilingSummaryRefreshOut>(`${base(ticker)}/summary/refresh`)
 }
 
 /** Explicit user action: checks EDGAR and computes or reuses the comparison. */

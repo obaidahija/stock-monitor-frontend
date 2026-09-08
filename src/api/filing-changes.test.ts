@@ -5,6 +5,8 @@ import {
   explainFilingChanges,
   getFilingChangePage,
   getFilingChanges,
+  getFilingInsightSummary,
+  refreshFilingInsightSummary,
 } from './filing-changes'
 import { DEFAULT_FILING_CHANGE_FILTERS } from '@/types/filing-changes'
 
@@ -64,4 +66,13 @@ test('escapes a ticker that is not URL safe', async () => {
   const get = vi.spyOn(apiClient, 'get').mockResolvedValue(null as never)
   await getFilingChanges('brk/b')
   expect(get).toHaveBeenCalledWith('/v1/stocks/BRK%2FB/filing-changes')
+})
+
+test('summary read and refresh use fixed uppercase paths', async () => {
+  const get = vi.spyOn(apiClient, 'get').mockResolvedValue(null as never)
+  const post = vi.spyOn(apiClient, 'post').mockResolvedValue({} as never)
+  await getFilingInsightSummary('brk/b')
+  await refreshFilingInsightSummary('brk/b')
+  expect(get).toHaveBeenCalledWith('/v1/stocks/BRK%2FB/filing-changes/summary')
+  expect(post).toHaveBeenCalledWith('/v1/stocks/BRK%2FB/filing-changes/summary/refresh')
 })

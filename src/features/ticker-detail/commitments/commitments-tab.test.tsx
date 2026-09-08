@@ -11,8 +11,10 @@ import {
   getCommitmentCandidates,
   getCommitmentSources,
   getCommitments,
+  getCommitmentSummary,
   loadCommitmentSource,
   reviewCommitmentCandidate,
+  refreshCommitmentSummary,
 } from '@/api/management-commitments'
 import { renderWithProviders } from '@/test/render'
 import type { SourceCoverageOut } from '@/types/management-commitments'
@@ -32,7 +34,26 @@ vi.mock('@/api/management-commitments', () => ({
   reviewCommitmentCandidate: vi.fn(),
   appendCommitmentEvent: vi.fn(),
   archiveCommitment: vi.fn(),
+  getCommitmentSummary: vi.fn(),
+  refreshCommitmentSummary: vi.fn(),
 }))
+
+const insightSummary = {
+  status: 'ready' as const,
+  signal: 'negative' as const,
+  confidence: 'high' as const,
+  headline: 'Revenue guidance moved lower',
+  explanation: 'The latest verified range is below the original range.',
+  key_positives: [],
+  key_negatives: [],
+  key_neutral: [],
+  key_facts: [],
+  coverage: { status: 'complete' as const, included: [], excluded: [], notices: [] },
+  generated_at: '2026-09-07T12:00:00Z',
+  stale: false,
+  analysis_version: 'commitment-insight-v1',
+  usage: null,
+}
 
 const emptyCoverage: SourceCoverageOut = {
   checked_at: null,
@@ -63,6 +84,7 @@ const summary = {
 }
 
 beforeEach(() => {
+  vi.mocked(getCommitmentSummary).mockResolvedValue(insightSummary)
   vi.mocked(getCommitments).mockResolvedValue({
     items: [summary],
     total: 1,
@@ -86,6 +108,38 @@ beforeEach(() => {
     offset: 0,
     limit: 50,
   })
+})
+
+test('summary is first and advanced workflow is collapsed by default', async () => {
+  renderWithProviders(<CommitmentsTab ticker="ACME" />)
+  expect(await screen.findByText('Revenue guidance moved lower')).toBeInTheDocument()
+  expect(refreshCommitmentSummary).not.toHaveBeenCalled()
+  const disclosure = screen.getByText('Evidence & Advanced').closest('details')
+  expect(disclosure).not.toHaveAttribute('open')
+
+  await userEvent.click(screen.getByText('Evidence & Advanced'))
+  expect(disclosure).toHaveAttribute('open')
+  expect(await screen.findByRole('tab', { name: 'Ledger' })).toBeInTheDocument()
+  expect(screen.getByRole('tab', { name: 'Sources' })).toBeInTheDocument()
+})
+
+test('does not offer a Review view', async () => {
+  renderWithProviders(<CommitmentsTab ticker="NVDA" />)
+
+  await userEvent.click(await screen.findByText('Evidence & Advanced'))
+  expect(await screen.findByRole('tab', { name: 'Ledger' })).toBeInTheDocument()
+  expect(screen.getByRole('tab', { name: 'Sources' })).toBeInTheDocument()
+  expect(screen.queryByRole('tab', { name: /Review/ })).not.toBeInTheDocument()
+})
+
+test('one refresh button runs the complete summary workflow', async () => {
+  vi.mocked(refreshCommitmentSummary).mockResolvedValue({
+    status: 'ready', reason: null, summary: insightSummary,
+    source: {} as never, ai: null, diagnostics: { auto_accepted: 0 },
+  } as never)
+  renderWithProviders(<CommitmentsTab ticker="ACME" />)
+  await userEvent.click(await screen.findByRole('button', { name: 'Refresh analysis' }))
+  await waitFor(() => expect(refreshCommitmentSummary).toHaveBeenCalledWith('ACME'))
 })
 
 afterEach(() => {
@@ -142,21 +196,6 @@ test('an empty ledger points at the sources view', async () => {
   expect(checkCommitmentSources).not.toHaveBeenCalled()
 })
 
-test('the pending count is surfaced on the review view', async () => {
-  vi.mocked(getCommitments).mockResolvedValue({
-    items: [summary],
-    total: 1,
-    pending_count: 3,
-    offset: 0,
-    limit: 25,
-    coverage: emptyCoverage,
-  })
-  renderWithProviders(<CommitmentsTab ticker="ACME" />)
-  await screen.findByTestId('commitment-list')
-  const reviewTab = screen.getByRole('tab', { name: /Review/ })
-  expect(reviewTab.textContent).toContain('3')
-})
-
 test('views are reachable by keyboard', async () => {
   renderWithProviders(<CommitmentsTab ticker="ACME" />)
   await screen.findByTestId('commitment-list')
@@ -166,10 +205,6 @@ test('views are reachable by keyboard', async () => {
   // Both the view button and the panel heading read "Sources"; the panel's
   // own description is what proves the view actually switched.
   expect(await screen.findByText(/bounded search, not complete company coverage/i)).toBeInTheDocument()
-
-  screen.getByRole('tab', { name: /Review/ }).focus()
-  await userEvent.keyboard('{Enter}')
-  expect(await screen.findByText('Pending review')).toBeInTheDocument()
 })
 
 test('an archived commitment is hidden from the default ledger', async () => {

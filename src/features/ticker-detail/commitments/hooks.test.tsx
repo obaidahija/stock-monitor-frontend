@@ -8,9 +8,11 @@ import {
   createManualCommitmentCandidate,
   extractCommitmentSource,
   getCommitmentCandidates,
+  getCommitmentSummary,
   getCommitmentSources,
   getCommitments,
   reviewCommitmentCandidate,
+  refreshCommitmentSummary,
 } from '@/api/management-commitments'
 import { DEFAULT_COMMITMENT_FILTERS } from '@/types/management-commitments'
 import {
@@ -21,9 +23,12 @@ import {
   useCheckCommitmentSources,
   useCommitmentCandidates,
   useCommitments,
+  useCommitmentSummary,
   useCreateManualCandidate,
   useExtractCommitmentSource,
   useReviewCommitmentCandidate,
+  useRefreshCommitmentSummary,
+  commitmentSummaryKey,
 } from './hooks'
 
 vi.mock('@/api/management-commitments', () => ({
@@ -39,6 +44,8 @@ vi.mock('@/api/management-commitments', () => ({
   reviewCommitmentCandidate: vi.fn(),
   appendCommitmentEvent: vi.fn(),
   archiveCommitment: vi.fn(),
+  getCommitmentSummary: vi.fn(),
+  refreshCommitmentSummary: vi.fn(),
 }))
 
 let queryClient: QueryClient
@@ -189,4 +196,30 @@ test('two tickers do not share a cache entry', async () => {
   await waitFor(() => expect(getCommitments).toHaveBeenCalledTimes(2))
   expect(vi.mocked(getCommitments).mock.calls.map((call) => call[0])).toEqual(['ACME', 'OTHR'])
   expect(getCommitmentSources).not.toHaveBeenCalled()
+})
+
+test('summary mount is cache-only and uses an uppercase key', async () => {
+  vi.mocked(getCommitmentSummary).mockResolvedValue(null)
+  const { result } = renderHook(() => useCommitmentSummary('acme'), { wrapper })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(commitmentSummaryKey('acme')).toEqual(['commitment-summary', 'ACME'])
+  expect(getCommitmentSummary).toHaveBeenCalledWith('acme')
+  expect(refreshCommitmentSummary).not.toHaveBeenCalled()
+})
+
+test('refresh updates summary and invalidates ledger after automatic acceptance', async () => {
+  const summary = { headline: 'Short result' } as never
+  vi.mocked(refreshCommitmentSummary).mockResolvedValue({
+    status: 'ready',
+    reason: null,
+    summary,
+    source: {} as never,
+    ai: null,
+    diagnostics: { auto_accepted: 2 },
+  } as never)
+  const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
+  const { result } = renderHook(() => useRefreshCommitmentSummary('acme'), { wrapper })
+  await act(async () => { await result.current.mutateAsync() })
+  expect(queryClient.getQueryData(commitmentSummaryKey('ACME'))).toBe(summary)
+  expect(invalidate).toHaveBeenCalledWith({ queryKey: commitmentsKey('ACME') })
 })

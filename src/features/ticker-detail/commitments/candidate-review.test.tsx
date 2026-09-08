@@ -65,6 +65,8 @@ const candidate = (overrides: Partial<CandidateOut> = {}): CandidateOut => ({
   accepted_event_id: null,
   accepted_commitment_id: null,
   review_note: null,
+  review_mode: null,
+  review_version: null,
   created_at: '2026-09-01T12:00:00Z',
   reviewed_at: null,
   ...overrides,
