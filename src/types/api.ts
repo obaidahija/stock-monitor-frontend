@@ -1398,6 +1398,69 @@ export interface MacroSectorImpactDateOut {
   generated_at: string
 }
 
+export type MarketEventCategory =
+  | 'oil_energy'
+  | 'geopolitical_conflict'
+  | 'rates_fed'
+  | 'treasury_debt'
+  | 'banking_credit'
+  | 'trade_tariffs'
+  | 'inflation'
+  | 'other'
+
+export type MarketEventStance = 'hawkish' | 'dovish' | 'neutral_inline' | 'unresolved'
+
+export interface MarketEventSectorImpactOut {
+  sector: string
+  rationale: string
+  predicted_direction: 'positive' | 'negative'
+  via_category: string | null
+  current_trend_pct: number | null
+  graded: boolean
+  actual_direction: 'positive' | 'negative' | 'flat' | null
+  hit: boolean | null
+  trend_pct_before: number | null
+  trend_pct_after: number | null
+}
+
+export interface MarketEventOut {
+  rank: number
+  event_name: string
+  event_date: string
+  category: MarketEventCategory
+  stance: MarketEventStance
+  reason: string
+  sector_impacts: MarketEventSectorImpactOut[]
+}
+
+export interface MarketEventBigEarningsOut {
+  ticker: string
+  sector: string | null
+  event_date: string
+  bmo_amc: string
+  market_cap: number | null
+}
+
+export interface MarketEventsOut {
+  events: MarketEventOut[]
+  big_earnings: MarketEventBigEarningsOut[]
+  generated_at: string | null
+  refresh_active: boolean
+  active_run_id: string | null
+  stale: boolean
+  stale_reason: string | null
+  source_error: string | null
+  parse_warning: string | null
+  disclaimer: string
+  outcome_caveat: string
+}
+
+export interface MarketEventsRefreshOut {
+  run_id: string
+  status: string
+  reused: boolean
+}
+
 export interface TrendingSymbolOut {
   ticker: string
 }

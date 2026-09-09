@@ -6,6 +6,7 @@ import { DiscoverPage } from '@/pages/discover-page'
 import { TwitterPage } from '@/pages/twitter-page'
 import { RedditPage } from '@/pages/reddit-page'
 import { MacroPage } from '@/pages/macro-page'
+import { EventsPage } from '@/pages/events-page'
 import { TrendingPage } from '@/pages/trending-page'
 import { SystemPage } from '@/pages/system-page'
 import { WatchlistsPage } from '@/pages/watchlists-page'
@@ -21,6 +22,7 @@ export function AppRoutes() {
         <Route path="/twitter" element={<TwitterPage />} />
         <Route path="/reddit" element={<RedditPage />} />
         <Route path="/macro" element={<MacroPage />} />
+        <Route path="/events" element={<EventsPage />} />
         <Route path="/trending" element={<TrendingPage />} />
         <Route path="/system" element={<SystemPage />} />
         {/* AI settings now live in the System page's AI tab; keep the old path linkable. */}
