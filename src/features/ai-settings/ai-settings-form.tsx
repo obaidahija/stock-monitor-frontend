@@ -75,22 +75,6 @@ const BACKGROUND_PROFILES: {
     description:
       'Powers macro sector-impact stance/magnitude resolution (GET /macro/sector-impact).',
   },
-  {
-    key: 'filing_changes',
-    noun: 'Filing changes',
-    heading: 'Annual filing changes',
-    description:
-      'Powers 10-K change explanations and the filing insight summary ' +
-      '(GET/POST /stocks/{ticker}/filing-changes). One token budget covers both calls.',
-  },
-  {
-    key: 'commitments',
-    noun: 'Commitments',
-    heading: 'Management commitments',
-    description:
-      'Powers commitment candidate extraction and the commitments summary ' +
-      '(GET/POST /stocks/{ticker}/commitments). One token budget covers both calls.',
-  },
 ]
 
 function slug(noun: string) {
@@ -379,8 +363,6 @@ function SettingsEditor({
     summarization: { ...initial.summarization },
     competitor: { ...initial.competitor },
     macro_transmission: { ...initial.macro_transmission },
-    filing_changes: { ...initial.filing_changes },
-    commitments: { ...initial.commitments },
   }))
   const update = useUpdateAiSettings()
   const researchModel = models.find((model) => model.id === form.research.model)

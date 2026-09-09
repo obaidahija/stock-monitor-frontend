@@ -46,3 +46,14 @@ test('renders the structured report above the Google Finance card', () => {
   expect(screen.getByRole('button', { name: 'Ask Google Finance' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: /Generate AI research/ })).toBeInTheDocument()
 })
+
+test('describes provider and cache dependent generation time without a fixed promise', () => {
+  renderWithProviders(<AiResearchTab ticker="MSTR" />)
+
+  expect(
+    screen.getByText(
+      'Generation time depends on the selected AI provider, available evidence, and whether source caches are warm.',
+    ),
+  ).toBeInTheDocument()
+  expect(screen.queryByText(/takes 20-60s/i)).not.toBeInTheDocument()
+})

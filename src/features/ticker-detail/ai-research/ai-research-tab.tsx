@@ -58,8 +58,8 @@ export function AiResearchTab({ ticker }: { ticker: string }) {
 
         {!data && !isLoading && !isError && (
           <p className="text-muted-foreground text-sm">
-            Click "Generate AI research" to run this — takes 20-60s and calls a local or hosted
-            LLM.
+            Generation time depends on the selected AI provider, available evidence, and whether
+            source caches are warm.
           </p>
         )}
 

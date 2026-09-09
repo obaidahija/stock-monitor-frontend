@@ -559,8 +559,6 @@ export interface AiSettingsOut {
   summarization: SummarizationAiProfile
   competitor: BackgroundAiProfile
   macro_transmission: BackgroundAiProfile
-  filing_changes: BackgroundAiProfile
-  commitments: BackgroundAiProfile
   providers: Record<AiProvider, { configured: boolean; default_model: string }>
   updated_at: string
 }
@@ -570,17 +568,11 @@ export interface AiSettingsUpdate {
   summarization: SummarizationAiProfile
   competitor: BackgroundAiProfile
   macro_transmission: BackgroundAiProfile
-  filing_changes: BackgroundAiProfile
-  commitments: BackgroundAiProfile
 }
 
-// The four profiles that share the provider/model/max_tokens shape, keyed the
+// The three profiles that share the provider/model/max_tokens shape, keyed the
 // same way the API is.
-export type BackgroundAiProfileKey =
-  | 'competitor'
-  | 'macro_transmission'
-  | 'filing_changes'
-  | 'commitments'
+export type BackgroundAiProfileKey = 'competitor' | 'macro_transmission'
 
 export interface OpenRouterModelOut {
   id: string
