@@ -538,6 +538,7 @@ export interface LlmUsageSummaryOut {
 export interface ResearchAiProfile {
   provider: AiProvider
   model: string
+  context_window_tokens: number
   reasoning_enabled: boolean
   streaming_enabled: boolean
   include_chart: boolean
@@ -546,12 +547,14 @@ export interface ResearchAiProfile {
 export interface SummarizationAiProfile {
   provider: AiProvider
   model: string
+  context_window_tokens: number
 }
 
 export interface BackgroundAiProfile {
   provider: AiProvider
   model: string
   max_tokens: number
+  context_window_tokens: number
 }
 
 export interface AiSettingsOut {
@@ -559,7 +562,10 @@ export interface AiSettingsOut {
   summarization: SummarizationAiProfile
   competitor: BackgroundAiProfile
   macro_transmission: BackgroundAiProfile
-  providers: Record<AiProvider, { configured: boolean; default_model: string }>
+  providers: Record<
+    AiProvider,
+    { configured: boolean; default_model: string; default_context_window_tokens: number }
+  >
   updated_at: string
 }
 
