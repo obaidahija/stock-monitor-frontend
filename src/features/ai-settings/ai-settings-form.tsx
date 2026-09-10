@@ -51,7 +51,7 @@ const PROVIDERS: { value: AiProvider; label: string }[] = [
   { value: 'openrouter', label: 'OpenRouter' },
 ]
 
-// The four background profiles are structurally identical (provider + model +
+// The two background profiles are structurally identical (provider + model +
 // max_tokens), so they render from one description rather than four hand-copied
 // cards. `noun` drives the field labels and element ids, which are part of the
 // accessible names the settings tests address.
@@ -129,7 +129,7 @@ function ModelCatalogSelect({
   label: string
   models: OpenRouterModelOut[]
   value: string
-  onChange: (model: string) => void
+  onChange: (model: OpenRouterModelOut) => void
 }) {
   const [open, setOpen] = useState(false)
   const [freeOnly, setFreeOnly] = useState(false)
@@ -177,7 +177,7 @@ function ModelCatalogSelect({
                     key={model.id}
                     value={`${model.name} ${model.id}`}
                     onSelect={() => {
-                      onChange(model.id)
+                      onChange(model)
                       setOpen(false)
                     }}
                   >
@@ -272,6 +272,37 @@ function MaxTokensField({
   )
 }
 
+function ContextWindowField({
+  id,
+  label,
+  value,
+  onChange,
+}: {
+  id: string
+  label: string
+  value: number
+  onChange: (contextWindowTokens: number) => void
+}) {
+  return (
+    <Field>
+      <FieldLabel htmlFor={id}>{label}</FieldLabel>
+      <Input
+        id={id}
+        min={1}
+        type="number"
+        value={value}
+        onChange={(event) => {
+          const parsed = Number.parseInt(event.target.value, 10)
+          if (Number.isFinite(parsed) && parsed > 0) onChange(parsed)
+        }}
+      />
+      <FieldDescription>
+        Total input-plus-output capacity. This differs from maximum generated tokens.
+      </FieldDescription>
+    </Field>
+  )
+}
+
 function BackgroundProfileCard({
   profile,
   value,
@@ -281,6 +312,7 @@ function BackgroundProfileCard({
   onProviderChange,
   onModelChange,
   onMaxTokensChange,
+  onContextWindowChange,
 }: {
   profile: (typeof BACKGROUND_PROFILES)[number]
   value: BackgroundAiProfile
@@ -288,8 +320,9 @@ function BackgroundProfileCard({
   catalogFailed: boolean
   configured: boolean
   onProviderChange: (provider: AiProvider) => void
-  onModelChange: (model: string) => void
+  onModelChange: (model: OpenRouterModelOut | string) => void
   onMaxTokensChange: (maxTokens: number) => void
+  onContextWindowChange: (contextWindowTokens: number) => void
 }) {
   const id = slug(profile.noun)
   return (
@@ -320,7 +353,7 @@ function BackgroundProfileCard({
               id={`${id}-model`}
               label={`${profile.noun} model`}
               value={value.model}
-              onChange={onModelChange}
+              onChange={(model) => onModelChange(model)}
             />
           )}
           {catalogFailed && value.provider === 'openrouter' ? (
@@ -336,6 +369,12 @@ function BackgroundProfileCard({
             label={`${profile.noun} max tokens`}
             value={value.max_tokens}
             onChange={onMaxTokensChange}
+          />
+          <ContextWindowField
+            id={`${id}-context-window`}
+            label={`${profile.noun} context window`}
+            value={value.context_window_tokens}
+            onChange={onContextWindowChange}
           />
         </FieldGroup>
       </CardContent>
@@ -386,13 +425,16 @@ function SettingsEditor({
   // field (an Ollama tag is meaningless to OpenRouter). Fall back to the saved
   // model when switching back to the saved provider, and to that provider's
   // server-configured default otherwise.
-  function modelForProvider(
+  function settingsForProvider(
     provider: AiProvider,
-    saved: { provider: AiProvider; model: string },
+    saved: { provider: AiProvider; model: string; context_window_tokens: number },
   ) {
     return provider === saved.provider
-      ? saved.model
-      : initial.providers[provider].default_model
+      ? { model: saved.model, context_window_tokens: saved.context_window_tokens }
+      : {
+          model: initial.providers[provider].default_model,
+          context_window_tokens: initial.providers[provider].default_context_window_tokens,
+        }
   }
 
   function setResearchProvider(provider: AiProvider) {
@@ -401,7 +443,7 @@ function SettingsEditor({
       research: {
         ...current.research,
         provider,
-        model: modelForProvider(provider, initial.research),
+        ...settingsForProvider(provider, initial.research),
       },
     }))
   }
@@ -412,7 +454,7 @@ function SettingsEditor({
       summarization: {
         ...current.summarization,
         provider,
-        model: modelForProvider(provider, initial.summarization),
+        ...settingsForProvider(provider, initial.summarization),
       },
     }))
   }
@@ -423,14 +465,16 @@ function SettingsEditor({
       [key]: {
         ...current[key],
         provider,
-        model: modelForProvider(provider, initial[key]),
+        ...settingsForProvider(provider, initial[key]),
       },
     }))
   }
 
   function setBackgroundField(
     key: BackgroundAiProfileKey,
-    patch: { model: string } | { max_tokens: number },
+    patch: Partial<
+      Pick<BackgroundAiProfile, 'model' | 'max_tokens' | 'context_window_tokens'>
+    >,
   ) {
     setForm((current) => ({ ...current, [key]: { ...current[key], ...patch } }))
   }
@@ -463,7 +507,12 @@ function SettingsEditor({
                   onChange={(model) =>
                     setForm((current) => ({
                       ...current,
-                      research: { ...current.research, model },
+                      research: {
+                        ...current.research,
+                        model: model.id,
+                        context_window_tokens:
+                          model.context_length ?? current.research.context_window_tokens,
+                      },
                     }))
                   }
                 />
@@ -488,6 +537,17 @@ function SettingsEditor({
                   </AlertDescription>
                 </Alert>
               ) : null}
+              <ContextWindowField
+                id="research-context-window"
+                label="Research context window"
+                value={form.research.context_window_tokens}
+                onChange={(context_window_tokens) =>
+                  setForm((current) => ({
+                    ...current,
+                    research: { ...current.research, context_window_tokens },
+                  }))
+                }
+              />
               <FieldSet>
                 <FieldLegend variant="label">Research capabilities</FieldLegend>
                 <FieldGroup>
@@ -564,7 +624,12 @@ function SettingsEditor({
                   onChange={(model) =>
                     setForm((current) => ({
                       ...current,
-                      summarization: { ...current.summarization, model },
+                      summarization: {
+                        ...current.summarization,
+                        model: model.id,
+                        context_window_tokens:
+                          model.context_length ?? current.summarization.context_window_tokens,
+                      },
                     }))
                   }
                 />
@@ -581,6 +646,17 @@ function SettingsEditor({
                   }
                 />
               )}
+              <ContextWindowField
+                id="summarization-context-window"
+                label="Summarization context window"
+                value={form.summarization.context_window_tokens}
+                onChange={(context_window_tokens) =>
+                  setForm((current) => ({
+                    ...current,
+                    summarization: { ...current.summarization, context_window_tokens },
+                  }))
+                }
+              />
             </FieldGroup>
           </CardContent>
           <CardFooter>
@@ -600,8 +676,22 @@ function SettingsEditor({
             models={models}
             profile={profile}
             value={form[profile.key]}
+            onContextWindowChange={(context_window_tokens) =>
+              setBackgroundField(profile.key, { context_window_tokens })
+            }
             onMaxTokensChange={(max_tokens) => setBackgroundField(profile.key, { max_tokens })}
-            onModelChange={(model) => setBackgroundField(profile.key, { model })}
+            onModelChange={(model) =>
+              setBackgroundField(
+                profile.key,
+                typeof model === 'string'
+                  ? { model }
+                  : {
+                      model: model.id,
+                      context_window_tokens:
+                        model.context_length ?? form[profile.key].context_window_tokens,
+                    },
+              )
+            }
             onProviderChange={(provider) => setBackgroundProvider(profile.key, provider)}
           />
         ))}

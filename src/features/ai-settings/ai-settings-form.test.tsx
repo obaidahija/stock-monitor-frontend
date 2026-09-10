@@ -19,15 +19,42 @@ const settings = {
     reasoning_enabled: true,
     streaming_enabled: true,
     include_chart: true,
+    context_window_tokens: 131072,
   },
-  summarization: { provider: 'ollama', model: 'qwen3:8b' },
-  competitor: { provider: 'ollama', model: 'qwen3:8b', max_tokens: 4000 },
-  macro_transmission: { provider: 'ollama', model: 'qwen3:8b', max_tokens: 200 },
-      providers: {
-    ollama: { configured: true, default_model: 'gpt-oss:20b' },
-    llamacpp: { configured: true, default_model: 'local' },
-    anthropic: { configured: false, default_model: 'claude-sonnet-4-5-20250929' },
-    openrouter: { configured: true, default_model: 'qwen/qwen3.8-27b' },
+  summarization: { provider: 'ollama', model: 'qwen3:8b', context_window_tokens: 4096 },
+  competitor: {
+    provider: 'ollama',
+    model: 'qwen3:8b',
+    max_tokens: 4000,
+    context_window_tokens: 8192,
+  },
+  macro_transmission: {
+    provider: 'ollama',
+    model: 'qwen3:8b',
+    max_tokens: 200,
+    context_window_tokens: 4096,
+  },
+  providers: {
+    ollama: {
+      configured: true,
+      default_model: 'gpt-oss:20b',
+      default_context_window_tokens: 4096,
+    },
+    llamacpp: {
+      configured: true,
+      default_model: 'local',
+      default_context_window_tokens: 4096,
+    },
+    anthropic: {
+      configured: false,
+      default_model: 'claude-sonnet-4-5-20250929',
+      default_context_window_tokens: 32768,
+    },
+    openrouter: {
+      configured: true,
+      default_model: 'qwen/qwen3.8-27b',
+      default_context_window_tokens: 32768,
+    },
   },
   updated_at: '2026-08-29T10:00:00Z',
 }
@@ -83,6 +110,10 @@ test('loads independent profiles, readiness, and OpenRouter model metadata', asy
   expect(screen.getByRole('heading', { name: 'Macro transmission' })).toBeInTheDocument()
   expect(screen.getByLabelText('Competitor max tokens')).toHaveValue(4000)
   expect(screen.getByLabelText('Macro transmission max tokens')).toHaveValue(200)
+  expect(screen.getByLabelText('Research context window')).toHaveValue(131072)
+  expect(screen.getByLabelText('Summarization context window')).toHaveValue(4096)
+  expect(screen.getByLabelText('Competitor context window')).toHaveValue(8192)
+  expect(screen.getByLabelText('Macro transmission context window')).toHaveValue(4096)
   expect(await screen.findByText('Qwen 3.8 27B')).toBeInTheDocument()
   expect(screen.getByText('131,072 context')).toBeInTheDocument()
   expect(screen.getByText('Image input')).toBeInTheDocument()
@@ -110,11 +141,26 @@ test('saves research and summarization settings without sending secrets', async 
       reasoning_enabled: true,
       streaming_enabled: true,
       include_chart: false,
+      context_window_tokens: 131072,
     },
-    summarization: { provider: 'ollama', model: 'qwen3:14b' },
-    competitor: { provider: 'ollama', model: 'qwen3:8b', max_tokens: 4000 },
-    macro_transmission: { provider: 'ollama', model: 'qwen3:8b', max_tokens: 200 },
-          })
+    summarization: {
+      provider: 'ollama',
+      model: 'qwen3:14b',
+      context_window_tokens: 4096,
+    },
+    competitor: {
+      provider: 'ollama',
+      model: 'qwen3:8b',
+      max_tokens: 4000,
+      context_window_tokens: 8192,
+    },
+    macro_transmission: {
+      provider: 'ollama',
+      model: 'qwen3:8b',
+      max_tokens: 200,
+      context_window_tokens: 4096,
+    },
+  })
   expect(JSON.stringify(api.updateAiSettings.mock.calls[0])).not.toContain('api_key')
 })
 
@@ -141,6 +187,7 @@ test("resets the model to the new provider's default when the provider changes",
   expect(screen.getByLabelText('Summarization model')).toHaveValue(
     'claude-sonnet-4-5-20250929',
   )
+  expect(screen.getByLabelText('Summarization context window')).toHaveValue(32768)
 })
 
 test('restores the saved model when switching back to the saved provider', async () => {
@@ -190,4 +237,19 @@ test('shows a Free badge instead of zero prices for a free model', async () => {
   expect(screen.getByText('Free')).toBeInTheDocument()
   expect(screen.queryByText('Input $0/token')).not.toBeInTheDocument()
   expect(screen.queryByText('Output $0/token')).not.toBeInTheDocument()
+})
+
+test('selecting a catalog model saves its reported context window', async () => {
+  const user = userEvent.setup()
+  renderWithProviders(<AiSettingsForm />)
+  await openResearchCatalog(user)
+
+  await user.click(screen.getByRole('option', { name: /Lyria 3 Pro Preview/ }))
+  expect(screen.getByLabelText('Research context window')).toHaveValue(1048576)
+  await user.click(screen.getByRole('button', { name: 'Save AI settings' }))
+
+  expect(api.updateAiSettings.mock.calls[0][0].research).toMatchObject({
+    model: 'google/lyria-3-pro-preview',
+    context_window_tokens: 1048576,
+  })
 })
