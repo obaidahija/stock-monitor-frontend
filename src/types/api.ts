@@ -1646,3 +1646,28 @@ export interface EarningsPlaybookOut {
   days_until_next_earnings: number | null
   source: { ok: boolean; error: string | null }
 }
+
+export type SettingValue = boolean | number | string
+
+export interface SettingField {
+  name: string
+  label: string
+  kind: 'bool' | 'int' | 'float' | 'str'
+  description: string
+  value: SettingValue
+  default: SettingValue
+  is_overridden: boolean
+  requires_restart: boolean
+  minimum: number | null
+  maximum: number | null
+}
+
+export interface SettingsCategory {
+  name: string
+  label: string
+  fields: SettingField[]
+}
+
+export interface SettingsOut {
+  categories: SettingsCategory[]
+}

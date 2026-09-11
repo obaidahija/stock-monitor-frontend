@@ -9,6 +9,7 @@ import { MacroPage } from '@/pages/macro-page'
 import { EventsPage } from '@/pages/events-page'
 import { TrendingPage } from '@/pages/trending-page'
 import { SystemPage } from '@/pages/system-page'
+import { SettingsPage } from '@/pages/settings-page'
 import { WatchlistsPage } from '@/pages/watchlists-page'
 
 export function AppRoutes() {
@@ -25,8 +26,9 @@ export function AppRoutes() {
         <Route path="/events" element={<EventsPage />} />
         <Route path="/trending" element={<TrendingPage />} />
         <Route path="/system" element={<SystemPage />} />
-        {/* AI settings now live in the System page's AI tab; keep the old path linkable. */}
-        <Route path="/ai-settings" element={<Navigate to="/system?tab=ai" replace />} />
+        <Route path="/settings" element={<SettingsPage />} />
+        {/* AI settings moved from the System page's AI tab to /settings; keep both old paths linkable. */}
+        <Route path="/ai-settings" element={<Navigate to="/settings" replace />} />
       </Route>
     </Routes>
   )

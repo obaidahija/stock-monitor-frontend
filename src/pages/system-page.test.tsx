@@ -1,5 +1,4 @@
 import { cleanup, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { beforeEach, expect, test, vi } from 'vitest'
 import { renderWithProviders } from '@/test/render'
 import { SystemPage } from './system-page'
@@ -26,21 +25,22 @@ test('shows health by default and keeps the tab out of the url', () => {
   expect(screen.queryByText('ai settings form')).not.toBeInTheDocument()
 })
 
-test('switches to the ai tab and reflects it in the url', async () => {
-  const user = userEvent.setup()
+test('no longer offers an ai tab -- settings moved to their own page', () => {
   renderWithProviders(<SystemPage />, ['/system'])
 
-  await user.click(screen.getByRole('tab', { name: 'AI' }))
-
-  expect(screen.getByText('ai settings form')).toBeInTheDocument()
-  expect(screen.queryByText('health panel')).not.toBeInTheDocument()
+  expect(screen.queryByRole('tab', { name: 'AI' })).not.toBeInTheDocument()
+  expect(screen.queryByText('ai settings form')).not.toBeInTheDocument()
 })
 
-test('opens directly on the ai tab when the url requests it', () => {
+test('redirects the old ?tab=ai deep link away instead of rendering ai settings', () => {
   renderWithProviders(<SystemPage />, ['/system?tab=ai'])
 
-  expect(screen.getByText('ai settings form')).toBeInTheDocument()
-  expect(screen.queryByText('health panel')).not.toBeInTheDocument()
+  // This harness renders SystemPage directly rather than under <Routes>, so
+  // the <Navigate> updates the location and the page then re-renders on its
+  // health default. What matters here is that ?tab=ai never shows AI
+  // settings again; the redirect target itself is the router's contract.
+  expect(screen.queryByText('ai settings form')).not.toBeInTheDocument()
+  expect(screen.queryByRole('tab', { name: 'AI' })).not.toBeInTheDocument()
 })
 
 test('opens the jobs tab from the url', () => {

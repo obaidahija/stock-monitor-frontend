@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { to: '/events', label: 'Events' },
   { to: '/trending', label: 'Trending', accent: true },
   { to: '/system', label: 'System' },
+  { to: '/settings', label: 'Settings' },
 ]
 
 export function AppLayout() {
