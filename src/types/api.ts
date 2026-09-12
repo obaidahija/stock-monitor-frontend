@@ -43,6 +43,7 @@ export interface InsiderTransactionOut {
   shares_owned_after: number | null
   security_title: string | null
   is_derivative: boolean
+  is_10b5_1: boolean
   filed_at: string | null
   source_url: string | null
 }
@@ -59,6 +60,10 @@ export interface InsiderSummaryOut {
   cluster_buy: boolean
   officer_buying: boolean
   latest_transaction_date: string | null
+  // Declared for fidelity with the API and deliberately not rendered: the
+  // analysis tab already shows the insider factor with a plain-language
+  // reason, and a second number invites "which one is right?".
+  signal_score: number | null
 }
 
 export interface InsiderOut {

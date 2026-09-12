@@ -24,6 +24,7 @@ const EMPTY: InsiderOut = {
     cluster_buy: false,
     officer_buying: false,
     latest_transaction_date: null,
+    signal_score: null,
   },
   transactions: [],
 }
@@ -42,6 +43,7 @@ const BUY: InsiderTransactionOut = {
   shares_owned_after: 5000,
   security_title: 'Common Stock',
   is_derivative: false,
+  is_10b5_1: false,
   filed_at: '2026-08-21T00:00:00Z',
   source_url: 'https://www.sec.gov/x.xml',
 }
@@ -78,4 +80,19 @@ test('labels a compensation code distinctly from an open-market buy', () => {
   }
   render(<InsiderTab ticker="ABNB" />)
   expect(screen.getByText('Grant')).toBeInTheDocument()
+})
+
+test('marks a pre-scheduled 10b5-1 sale so it reads differently from a discretionary one', () => {
+  mockData = {
+    summary: { ...EMPTY.summary, sell_count: 2, sell_value_usd: 1000000 },
+    transactions: [
+      { ...BUY, insider_name: 'Planned Pat', transaction_code: 'S', is_10b5_1: true },
+      { ...BUY, insider_name: 'Discretionary Dee', transaction_code: 'S', is_10b5_1: false },
+    ],
+  }
+  render(<InsiderTab ticker="ABNB" />)
+
+  expect(screen.getByText('Planned Pat')).toBeInTheDocument()
+  expect(screen.getByText('Discretionary Dee')).toBeInTheDocument()
+  expect(screen.getAllByText(/10b5-1 plan/i)).toHaveLength(1)
 })

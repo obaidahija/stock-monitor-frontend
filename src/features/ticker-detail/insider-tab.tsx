@@ -3,6 +3,7 @@ import {
   Card,
   CardAction,
   CardContent,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
@@ -70,6 +71,12 @@ export function InsiderTab({ ticker }: { ticker: string }) {
             <p className="tabular-nums">{summary.latest_transaction_date ?? '—'}</p>
           </div>
         </CardContent>
+        {transactions.some((transaction) => transaction.is_10b5_1) ? (
+          <CardFooter className="text-xs text-muted-foreground">
+            Sales marked 10b5-1 were made under a plan adopted months in advance, so they
+            carry less of a view on the stock than a discretionary sale.
+          </CardFooter>
+        ) : null}
       </Card>
 
       {transactions.length === 0 ? (
@@ -121,6 +128,9 @@ export function InsiderTab({ ticker }: { ticker: string }) {
                           : '—'}
                         {transaction.is_derivative ? (
                           <span className="text-xs text-muted-foreground"> (derivative)</span>
+                        ) : null}
+                        {transaction.is_10b5_1 ? (
+                          <span className="text-xs text-muted-foreground"> (10b5-1 plan)</span>
                         ) : null}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
