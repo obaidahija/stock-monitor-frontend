@@ -1,4 +1,5 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, expect, test, vi } from 'vitest'
 import type { InsiderOut, InsiderTransactionOut } from '@/types/api'
 import { InsiderTab } from './insider-tab'
@@ -82,17 +83,212 @@ test('labels a compensation code distinctly from an open-market buy', () => {
   expect(screen.getByText('Grant')).toBeInTheDocument()
 })
 
-test('marks a pre-scheduled 10b5-1 sale so it reads differently from a discretionary one', () => {
+test('renders a response with none of the provenance fields', () => {
+  // A generation-1 backend omits every additive field, and its is_10b5_1 was
+  // the filing's checkbox copied onto every row -- which is precisely the
+  // weaker "unclear" claim, so it must not be shown as a known plan.
   mockData = {
-    summary: { ...EMPTY.summary, sell_count: 2, sell_value_usd: 1000000 },
+    summary: EMPTY.summary,
+    transactions: [{ ...BUY, transaction_code: 'S', is_10b5_1: true }],
+  }
+  render(<InsiderTab ticker="ABNB" />)
+
+  expect(screen.getByText('Alice')).toBeInTheDocument()
+  expect(screen.getAllByText(/plan association unclear/i).length).toBeGreaterThan(0)
+})
+
+test('distinguishes a known plan from a filing that never said which row it covered', () => {
+  mockData = {
+    summary: { ...EMPTY.summary, sell_count: 2, planned_event_count: 2 },
     transactions: [
-      { ...BUY, insider_name: 'Planned Pat', transaction_code: 'S', is_10b5_1: true },
-      { ...BUY, insider_name: 'Discretionary Dee', transaction_code: 'S', is_10b5_1: false },
+      {
+        ...BUY,
+        insider_name: 'Planned Pat',
+        transaction_code: 'S',
+        is_10b5_1: true,
+        transaction_intent: 'ten_b5_1',
+        intent_basis: 'linked_footnote',
+        plan_adoption_date: '2026-05-14',
+      },
+      {
+        ...BUY,
+        insider_name: 'Unclear Uma',
+        transaction_code: 'S',
+        is_10b5_1: true,
+        transaction_intent: 'plan_unspecified',
+        intent_basis: 'document_checkbox',
+      },
     ],
   }
   render(<InsiderTab ticker="ABNB" />)
 
-  expect(screen.getByText('Planned Pat')).toBeInTheDocument()
-  expect(screen.getByText('Discretionary Dee')).toBeInTheDocument()
-  expect(screen.getAllByText(/10b5-1 plan/i)).toHaveLength(1)
+  const table = screen.getByRole('table')
+  expect(within(table).getByText(/^10b5-1 plan$/i)).toBeInTheDocument()
+  expect(within(table).getByText(/^plan association unclear$/i)).toBeInTheDocument()
+})
+
+test('labels tax withholding and unclassified intent with visible text', () => {
+  mockData = {
+    summary: { ...EMPTY.summary, sell_count: 2, tax_withholding_event_count: 1 },
+    transactions: [
+      {
+        ...BUY,
+        insider_name: 'Taxed Tess',
+        transaction_code: 'S',
+        transaction_intent: 'tax_withholding',
+        intent_basis: 'linked_footnote',
+      },
+      {
+        ...BUY,
+        insider_name: 'Plain Pam',
+        transaction_code: 'S',
+        transaction_intent: 'unclassified',
+        intent_basis: 'none',
+      },
+    ],
+  }
+  render(<InsiderTab ticker="ABNB" />)
+
+  // Visible text, not colour alone: a badge that only differs by hue says
+  // nothing to a screen reader or to anyone who cannot distinguish it.
+  expect(screen.getByText(/tax withholding/i)).toBeInTheDocument()
+  expect(screen.getByText(/intent unclassified/i)).toBeInTheDocument()
+})
+
+test('describes a plan as intended to satisfy Rule 10b5-1 rather than adopted months ahead', () => {
+  mockData = {
+    summary: { ...EMPTY.summary, sell_count: 1, planned_event_count: 1 },
+    transactions: [
+      {
+        ...BUY,
+        transaction_code: 'S',
+        is_10b5_1: true,
+        transaction_intent: 'ten_b5_1',
+      },
+    ],
+  }
+  render(<InsiderTab ticker="ABNB" />)
+
+  expect(
+    screen.getByText(/reported under a plan intended to satisfy Rule 10b5-1/i),
+  ).toBeInTheDocument()
+})
+
+test('reveals co-owners from a keyboard-accessible control', async () => {
+  mockData = {
+    summary: { ...EMPTY.summary, buy_count: 1, buy_value_usd: 500000 },
+    transactions: [
+      {
+        ...BUY,
+        insider_name: 'Doe Jane',
+        reporting_owners: [
+          {
+            name: 'Doe Jane',
+            cik: '0000111111',
+            title: 'CFO',
+            is_officer: true,
+            is_director: false,
+            is_ten_percent_owner: false,
+          },
+          {
+            name: 'Roe Richard',
+            cik: '0000222222',
+            title: null,
+            is_officer: false,
+            is_director: true,
+            is_ten_percent_owner: false,
+          },
+          {
+            name: 'Fund GP LLC',
+            cik: '0000333333',
+            title: null,
+            is_officer: false,
+            is_director: false,
+            is_ten_percent_owner: true,
+          },
+        ],
+      },
+    ],
+  }
+  render(<InsiderTab ticker="ABNB" />)
+
+  const toggle = screen.getByRole('button', { name: /\+2 co-owners/i })
+  expect(screen.queryByText('Roe Richard')).not.toBeInTheDocument()
+
+  toggle.focus()
+  await userEvent.keyboard('{Enter}')
+
+  expect(screen.getByText('Roe Richard')).toBeInTheDocument()
+  expect(screen.getByText('Fund GP LLC')).toBeInTheDocument()
+})
+
+test('marks a superseded row without removing it', () => {
+  mockData = {
+    summary: { ...EMPTY.summary, sell_count: 1 },
+    transactions: [
+      {
+        ...BUY,
+        insider_name: 'Original Olive',
+        transaction_code: 'S',
+        accession_number: 'ORIG',
+        is_superseded: true,
+      },
+      {
+        ...BUY,
+        insider_name: 'Amended Amy',
+        transaction_code: 'S',
+        accession_number: 'AMD',
+        is_amendment: true,
+        amends_accession: 'ORIG',
+      },
+    ],
+  }
+  render(<InsiderTab ticker="ABNB" />)
+
+  expect(screen.getByText('Original Olive')).toBeInTheDocument()
+  expect(screen.getByText(/superseded/i)).toBeInTheDocument()
+  expect(screen.getByText(/^amendment$/i)).toBeInTheDocument()
+})
+
+test('warns that ambiguous transactions were excluded from the score', () => {
+  mockData = {
+    summary: {
+      ...EMPTY.summary,
+      excluded_ambiguous_event_count: 2,
+      scoreable_event_count: 0,
+      data_quality_warnings: [
+        {
+          code: 'unresolved_duplicate',
+          message:
+            'Separate filings report an identical trade with no evidence that the filers are related.',
+          affected_accessions: ['ACC-A', 'ACC-B'],
+          excluded_event_count: 2,
+        },
+      ],
+    },
+    transactions: [BUY],
+  }
+  render(<InsiderTab ticker="ABNB" />)
+
+  const warning = screen.getByRole('status')
+  expect(warning).toHaveTextContent(/excluded from the insider score/i)
+  expect(warning).toHaveTextContent(/ACC-A/)
+})
+
+test('links a transaction to its SEC filing', () => {
+  mockData = { summary: EMPTY.summary, transactions: [BUY] }
+  render(<InsiderTab ticker="ABNB" />)
+
+  const link = screen.getByRole('link', { name: /filing/i })
+  expect(link).toHaveAttribute('href', 'https://www.sec.gov/x.xml')
+})
+
+test('does not render the raw signal score as a second unexplained number', () => {
+  mockData = {
+    summary: { ...EMPTY.summary, buy_count: 1, signal_score: -0.7162978701990244 },
+    transactions: [BUY],
+  }
+  render(<InsiderTab ticker="ABNB" />)
+
+  expect(screen.queryByText(/-0\.71/)).not.toBeInTheDocument()
 })

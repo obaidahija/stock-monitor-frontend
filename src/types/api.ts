@@ -29,6 +29,38 @@ export interface ScoreHistoryPointOut {
   lean: string | null
 }
 
+// What the filing says about why a transaction happened. `plan_unspecified`
+// is deliberately distinct from `ten_b5_1`: the filing's checkbox was set but
+// it never said which of its transactions the plan covered.
+export type InsiderTransactionIntent =
+  | 'ten_b5_1'
+  | 'plan_unspecified'
+  | 'tax_withholding'
+  | 'other_non_discretionary'
+  | 'unclassified'
+
+export type InsiderIntentBasis =
+  | 'linked_footnote'
+  | 'single_transaction_remarks'
+  | 'document_checkbox'
+  | 'none'
+
+export interface ReportingOwnerOut {
+  name: string
+  cik: string | null
+  title: string | null
+  is_officer: boolean
+  is_director: boolean
+  is_ten_percent_owner: boolean
+}
+
+export interface InsiderDataQualityWarningOut {
+  code: string
+  message: string
+  affected_accessions: string[]
+  excluded_event_count: number
+}
+
 export interface InsiderTransactionOut {
   insider_name: string
   insider_title: string | null
@@ -46,6 +78,18 @@ export interface InsiderTransactionOut {
   is_10b5_1: boolean
   filed_at: string | null
   source_url: string | null
+  // Additive provenance. Optional throughout: a generation-1 response omits
+  // all of it and the table still renders.
+  accession_number?: string | null
+  issuer_trading_symbol?: string | null
+  ticker_resolution_method?: string | null
+  reporting_owners?: ReportingOwnerOut[] | null
+  transaction_intent?: InsiderTransactionIntent | null
+  intent_basis?: InsiderIntentBasis | null
+  plan_adoption_date?: string | null
+  is_amendment?: boolean
+  amends_accession?: string | null
+  is_superseded?: boolean
 }
 
 export interface InsiderSummaryOut {
@@ -64,6 +108,14 @@ export interface InsiderSummaryOut {
   // analysis tab already shows the insider factor with a plain-language
   // reason, and a second number invites "which one is right?".
   signal_score: number | null
+  // Zero means the insider factor carries no weight at all, which is a
+  // different statement from a score of zero.
+  scoreable_event_count?: number
+  planned_event_count?: number
+  tax_withholding_event_count?: number
+  unclassified_event_count?: number
+  excluded_ambiguous_event_count?: number
+  data_quality_warnings?: InsiderDataQualityWarningOut[]
 }
 
 export interface InsiderOut {
