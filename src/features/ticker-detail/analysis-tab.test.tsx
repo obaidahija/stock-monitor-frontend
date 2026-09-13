@@ -132,3 +132,20 @@ test('omits both sections when the API returns null', async () => {
   expect(screen.queryByText('Short interest & ownership')).not.toBeInTheDocument()
   expect(screen.queryByText(/ in Technology/)).not.toBeInTheDocument()
 })
+
+test('labels a zero-weight factor as not scored instead of neutral', async () => {
+  renderAnalysisTab({
+    ...baseAnalysis,
+    components: [
+      {
+        name: 'insider',
+        score: 0,
+        weight: 0,
+        explanation: 'No scoreable insider decisions in the selected window.',
+      },
+    ],
+  })
+
+  expect(await screen.findByText('Insider')).toBeInTheDocument()
+  expect(screen.getByText('Not scored')).toBeInTheDocument()
+})

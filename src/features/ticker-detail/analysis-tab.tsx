@@ -31,7 +31,13 @@ import { PeerRankLine } from './peer-rank-line'
 import { ShortInterestCard } from './short-interest-card'
 import { useAnalysis, useRefreshUniverseScore, useUniverseScore } from './hooks'
 import { SentimentTrendChart } from './sentiment-trend-chart'
-import type { AnalystDetailOut, AnalysisLean, PriceLevelPosition, PriceLevelsOut } from '@/types/api'
+import type {
+  AnalystDetailOut,
+  AnalysisLean,
+  ComponentScoreOut,
+  PriceLevelPosition,
+  PriceLevelsOut,
+} from '@/types/api'
 
 const FACTOR_META: Record<string, { label: string; icon: LucideIcon }> = {
   fundamentals: { label: 'Fundamentals', icon: Building2 },
@@ -98,11 +104,12 @@ function ScoreGauge({ score, tone }: { score: number; tone: ScoreTone }) {
   )
 }
 
-function FactorCard({ component }: { component: { name: string; score: number; explanation: string } }) {
+function FactorCard({ component }: { component: ComponentScoreOut }) {
   const meta = FACTOR_META[component.name]
   const Icon = meta?.icon ?? Activity
   const label = meta?.label ?? humanizeFactorName(component.name)
   const tone = toneFromScore(component.score)
+  const isNotScored = component.weight === 0
 
   // extension_risk is a mean-reversion caution, not a routine stat — give it
   // an alert treatment when it's actually flagging pullback risk, but let it
@@ -125,12 +132,19 @@ function FactorCard({ component }: { component: { name: string; score: number; e
             </span>
           )}
         </CardTitle>
-        <span className={cn('text-sm font-semibold tabular-nums', TONE_TEXT_CLASSES[tone])}>
-          {formatScore(component.score)}
+        <span
+          className={cn(
+            'text-sm font-semibold tabular-nums',
+            isNotScored ? 'text-muted-foreground' : TONE_TEXT_CLASSES[tone],
+          )}
+        >
+          {isNotScored ? 'Not scored' : formatScore(component.score)}
         </span>
       </CardHeader>
       <CardContent className="space-y-2">
-        <ScoreGauge score={component.score} tone={isRiskAlert ? 'negative' : tone} />
+        {!isNotScored && (
+          <ScoreGauge score={component.score} tone={isRiskAlert ? 'negative' : tone} />
+        )}
         <p className={cn('text-sm', isRiskAlert ? 'text-amber-900 dark:text-amber-200' : 'text-muted-foreground')}>
           {component.explanation}
         </p>
@@ -423,7 +437,9 @@ export function AnalysisTab({ ticker }: { ticker: string }) {
         </h3>
         <div className="grid gap-3 sm:grid-cols-2">
           {[...data.components]
-            .sort((a, b) => Math.abs(b.score) - Math.abs(a.score))
+            .sort(
+              (a, b) => Math.abs(b.score * b.weight) - Math.abs(a.score * a.weight),
+            )
             .map((component) => (
               <FactorCard key={component.name} component={component} />
             ))}

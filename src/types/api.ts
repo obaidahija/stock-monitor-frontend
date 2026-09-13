@@ -359,6 +359,7 @@ export interface CatalystOut {
 export interface ComponentScoreOut {
   name: string
   score: number
+  weight: number
   explanation: string
 }
 
