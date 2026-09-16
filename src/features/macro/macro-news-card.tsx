@@ -1,4 +1,5 @@
 import { useTheme } from 'next-themes'
+import { SentimentBadge } from '@/components/shared/sentiment-badge'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { formatRelativeTime } from '@/lib/format'
@@ -39,7 +40,7 @@ export function MacroNewsCard({ item }: { item: MacroNewsItemOut }) {
               {macroCategoryLabel(category)}
             </Badge>
           ))}
-          {item.sentiment_label && <Badge variant="secondary">{item.sentiment_label}</Badge>}
+          {item.sentiment_label && <SentimentBadge label={item.sentiment_label} />}
         </div>
       </CardContent>
     </Card>
