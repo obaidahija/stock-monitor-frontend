@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ScoreHistoryChart } from './score-history-chart'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { ErrorState } from '@/components/shared/error-state'
 import { ApiError } from '@/lib/api-client'
 import { formatCurrency, formatDate, formatDateTime, formatRelativeTime, formatScore } from '@/lib/format'
@@ -28,6 +29,7 @@ import { LEAN_COLOR_CLASSES } from '@/lib/lean-colors'
 import { cn } from '@/lib/utils'
 import { ChartPatternCard } from './chart-pattern-card'
 import { PeerRankLine } from './peer-rank-line'
+import { WindowRiskChip } from './window-risk-chip'
 import { ShortInterestCard } from './short-interest-card'
 import { useAnalysis, useRefreshUniverseScore, useUniverseScore } from './hooks'
 import { SentimentTrendChart } from './sentiment-trend-chart'
@@ -37,6 +39,7 @@ import type {
   ComponentScoreOut,
   PriceLevelPosition,
   PriceLevelsOut,
+  ResistanceReachability,
 } from '@/types/api'
 
 const FACTOR_META: Record<string, { label: string; icon: LucideIcon }> = {
@@ -236,6 +239,27 @@ const POSITION_META: Record<PriceLevelPosition, { label: string; className: stri
   above_resistance: { label: 'Above usual resistance', className: 'bg-amber-500/15 text-amber-600 dark:text-amber-400' },
 }
 
+const REACHABILITY_META: Record<
+  ResistanceReachability,
+  { label: string; className: string; explanation: string }
+> = {
+  reachable: {
+    label: 'Reachable',
+    className: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
+    explanation: 'Resistance is within the typical move over 5 trading sessions, based on recent volatility.',
+  },
+  stretch: {
+    label: 'Stretch',
+    className: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
+    explanation: 'Resistance is beyond the typical move over 5 trading sessions, but within 1.6 times that move.',
+  },
+  unlikely: {
+    label: 'Unlikely in 5 sessions',
+    className: 'bg-muted text-muted-foreground',
+    explanation: 'Resistance is more than 1.6 times the typical move over 5 trading sessions away.',
+  },
+}
+
 function PriceLevelsCard({ priceLevels }: { priceLevels: PriceLevelsOut }) {
   const meta = POSITION_META[priceLevels.position]
   return (
@@ -270,6 +294,68 @@ function PriceLevelsCard({ priceLevels }: { priceLevels: PriceLevelsOut }) {
             </p>
           </div>
         </div>
+        {priceLevels.expected_move_5d_pct !== null && (
+          <div className="border-border rounded-lg border px-3 py-2">
+            <p className="text-muted-foreground text-xs">Typical move</p>
+            <p className="text-sm font-medium">
+              ±{priceLevels.expected_move_1d_pct?.toFixed(1)}% (1 trading session) · ±
+              {priceLevels.expected_move_5d_pct.toFixed(1)}% (5 trading sessions) · ±
+              {priceLevels.expected_move_7d_pct?.toFixed(1)}% (7 trading sessions)
+              {priceLevels.atr_pct !== null && (
+                <span className="text-muted-foreground font-normal">
+                  {' '}
+                  ·{' '}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="About average true range"
+                        className="cursor-help underline decoration-dotted underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                      >
+                        ATR {priceLevels.atr_pct.toFixed(1)}%
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Average true range (ATR) measures the typical daily price range,
+                      including gaps from the previous close, over the last 14 trading
+                      sessions. ATR distance describes how far away a level is, not
+                      how many sessions it will take to reach it.
+                    </TooltipContent>
+                  </Tooltip>
+                </span>
+              )}
+            </p>
+            {priceLevels.distance_to_resistance_pct !== null &&
+              priceLevels.resistance_distance_atr != null &&
+              priceLevels.resistance_reachability !== null && (
+                <p className="text-muted-foreground mt-1 flex flex-wrap items-center gap-2 text-xs">
+                  <span>
+                    Resistance is {priceLevels.distance_to_resistance_pct >= 0 ? '+' : ''}
+                    {priceLevels.distance_to_resistance_pct.toFixed(1)}% away ·{' '}
+                    {priceLevels.resistance_distance_atr.toFixed(1)} ATR away
+                  </span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className={cn(
+                          'inline-flex cursor-help items-center rounded-full px-2 py-0.5 text-xs font-medium underline decoration-dotted underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+                          REACHABILITY_META[priceLevels.resistance_reachability].className,
+                        )}
+                      >
+                        {REACHABILITY_META[priceLevels.resistance_reachability].label}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {REACHABILITY_META[priceLevels.resistance_reachability].explanation}{' '}
+                      These labels describe distance relative to volatility; they do
+                      not predict that price will reach resistance.
+                    </TooltipContent>
+                  </Tooltip>
+                </p>
+              )}
+          </div>
+        )}
         <p className="text-muted-foreground text-sm">{priceLevels.note}</p>
         <p className="text-muted-foreground text-xs">
           Reference levels only, not a recommendation to buy or sell.
@@ -427,6 +513,7 @@ export function AnalysisTab({ ticker }: { ticker: string }) {
         </span>
         <UniverseScoreBadge ticker={ticker} />
         <PeerRankLine peerRank={data.peer_rank} />
+        <WindowRiskChip windowRisk={data.window_risk} />
       </div>
 
       <ScoreHistoryChart ticker={ticker} />

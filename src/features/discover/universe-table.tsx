@@ -102,19 +102,52 @@ function EarningsCell({ item }: { item: UniverseTickerOut }) {
           </span>
         )
       )}
-      {item.next_earnings_date && (
-        <p className="text-muted-foreground text-xs whitespace-normal">
-          Next {formatDate(item.next_earnings_date)}
-          {item.next_earnings_bmo_amc &&
-            item.next_earnings_bmo_amc !== 'unknown' &&
-            ` (${item.next_earnings_bmo_amc.toUpperCase()})`}
-        </p>
-      )}
+      {item.next_earnings_date &&
+        (() => {
+          const until = daysUntil(item.next_earnings_date)
+          const soon = until >= 0 && until <= EARNINGS_WINDOW_DAYS
+          return (
+            <p
+              title={soon ? 'Calendar days until earnings, using New York dates.' : undefined}
+              className={cn(
+                'text-xs whitespace-normal',
+                soon ? 'font-medium text-amber-600 dark:text-amber-400' : 'text-muted-foreground',
+              )}
+            >
+              Next {formatDate(item.next_earnings_date)}
+              {item.next_earnings_bmo_amc &&
+                item.next_earnings_bmo_amc !== 'unknown' &&
+                ` (${item.next_earnings_bmo_amc.toUpperCase()})`}
+              {soon && ` · ${until} calendar ${until === 1 ? 'day' : 'days'}`}
+            </p>
+          )
+        })()}
       {!item.is_reit && !item.last_earnings_result && !item.next_earnings_date && (
         <span className="text-muted-foreground text-xs">—</span>
       )}
     </div>
   )
+}
+
+// A print inside this many days lands inside a 1-7 day hold, so the date is
+// marked rather than left reading like one three months out.
+const EARNINGS_WINDOW_DAYS = 7
+
+const EASTERN_DATE_FORMAT = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'America/New_York',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+})
+
+function daysUntil(dateString: string): number {
+  const parts = EASTERN_DATE_FORMAT.formatToParts(new Date())
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find((entry) => entry.type === type)?.value)
+  // Compare calendar dates on a UTC axis so DST cannot add or remove an hour.
+  const today = Date.UTC(part('year'), part('month') - 1, part('day'))
+  const [year, month, day] = dateString.split('-').map(Number)
+  return (Date.UTC(year, month - 1, day) - today) / 86_400_000
 }
 
 const DEFAULT_SORT: NonNullable<UniverseParams['sort']> = 'score'

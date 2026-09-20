@@ -149,3 +149,52 @@ test('labels a zero-weight factor as not scored instead of neutral', async () =>
   expect(await screen.findByText('Insider')).toBeInTheDocument()
   expect(screen.getByText('Not scored')).toBeInTheDocument()
 })
+
+test('shows the expected move and reachability beside the reference levels', async () => {
+  renderAnalysisTab({
+    ...baseAnalysis,
+    price_levels: {
+      support: 165.2,
+      support_label: '20-day low',
+      resistance: 188.37,
+      resistance_label: '20-day high',
+      position: 'mid_range',
+      note: 'Currently $173.72.',
+      atr_pct: 4.1,
+      expected_move_1d_pct: 4.7,
+      expected_move_5d_pct: 10.4,
+      expected_move_7d_pct: 12.3,
+      distance_to_resistance_pct: 8.4,
+      resistance_distance_atr: 2.1,
+      resistance_reachability: 'reachable',
+    },
+  })
+
+  expect(await screen.findByText(/10\.4% \(5 trading sessions\)/)).toBeInTheDocument()
+  expect(await screen.findByText(/2\.1 ATR away/)).toBeInTheDocument()
+  expect(await screen.findByText('Reachable')).toBeInTheDocument()
+})
+
+test('omits the volatility rows when the backend reported none', async () => {
+  renderAnalysisTab({
+    ...baseAnalysis,
+    price_levels: {
+      support: 90,
+      support_label: '20-day low',
+      resistance: 120,
+      resistance_label: '52-week high',
+      position: 'mid_range',
+      note: 'Currently $100.00.',
+      atr_pct: null,
+      expected_move_1d_pct: null,
+      expected_move_5d_pct: null,
+      expected_move_7d_pct: null,
+      distance_to_resistance_pct: null,
+      resistance_distance_atr: null,
+      resistance_reachability: null,
+    },
+  })
+
+  expect(await screen.findByText('Reference price levels')).toBeInTheDocument()
+  expect(screen.queryByText('Typical move')).not.toBeInTheDocument()
+})

@@ -447,12 +447,31 @@ export type PriceLevelPosition =
   | 'below_support'
   | 'above_resistance'
 
+export type ResistanceReachability = 'reachable' | 'stretch' | 'unlikely'
+
 export interface PriceLevelsOut {
   support: number | null
   support_label: string
   resistance: number | null
   resistance_label: string
   position: PriceLevelPosition
+  note: string
+  atr_pct: number | null
+  expected_move_1d_pct: number | null
+  expected_move_5d_pct: number | null
+  expected_move_7d_pct: number | null
+  distance_to_resistance_pct: number | null
+  resistance_distance_atr: number | null
+  resistance_reachability: ResistanceReachability | null
+}
+
+export interface WindowRiskOut {
+  level: 'high' | 'medium'
+  days: number
+  earnings_date: string | null
+  earnings_bmo_amc: string | null
+  days_until_earnings: number | null
+  macro_events: string[]
   note: string
 }
 
@@ -484,6 +503,7 @@ export interface AnalysisOut {
   overall_score: number
   components: ComponentScoreOut[]
   price_levels: PriceLevelsOut | null
+  window_risk: WindowRiskOut | null
   analyst_detail: AnalystDetailOut | null
   chart_pattern: ChartPatternOut | null
   short_interest: ShortInterestOut | null

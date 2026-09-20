@@ -11,7 +11,10 @@ vi.mock('./hooks', async (importOriginal) => ({
   useUniverse: () => mockUniverse(),
 }))
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.useRealTimers()
+})
 
 function renderTable(items: ReturnType<typeof universeRow>[]) {
   mockUniverse.mockReturnValue({
@@ -119,3 +122,30 @@ test('exposes a sortable sector percentile header', () => {
 
   expect(screen.getByRole('button', { name: /Sector %ile/ })).toBeInTheDocument()
 })
+
+// UTC is already Sunday, but New York is still Saturday until 04:00 UTC.
+test.each([
+  ['2026-09-20T02:00:00Z', '2026-09-24', 5],
+  ['2026-09-20T02:00:00Z', '2026-09-19', 0],
+  ['2026-09-20T02:00:00Z', '2026-09-26', 7],
+  ['2026-09-20T04:00:00Z', '2026-09-24', 4],
+  // Crossing the spring/fall DST transitions still counts calendar days.
+  ['2026-03-08T04:30:00Z', '2026-03-10', 3],
+  ['2026-11-01T03:30:00Z', '2026-11-03', 3],
+])('counts earnings from the New York date at %s', (now, earnings, days) => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(now))
+  renderTable([universeRow({ ticker: 'SNX', next_earnings_date: earnings })])
+
+  expect(screen.getByText(new RegExp(`· ${days} calendar days`))).toBeInTheDocument()
+})
+
+test.each(['2026-09-18', '2026-09-27', '2026-11-18'])(
+  'leaves earnings outside the New York seven-day window unmarked: %s', (earnings) => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-09-20T02:00:00Z'))
+    renderTable([universeRow({ ticker: 'COST', next_earnings_date: earnings })])
+
+    expect(screen.queryByText(/· \d+ calendar days/)).not.toBeInTheDocument()
+  },
+)
