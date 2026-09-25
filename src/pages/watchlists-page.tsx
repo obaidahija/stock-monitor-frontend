@@ -6,6 +6,8 @@ import {
   Trash2,
 } from 'lucide-react'
 import { Fragment, useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { getSetupEventWindow } from '@/api/watchlists'
 import { Link } from 'react-router'
 import { toast } from 'sonner'
 import { EmptyState } from '@/components/shared/empty-state'
@@ -31,8 +33,12 @@ import {
 } from '@/features/watchlists/hooks'
 import { SetupFormDialog } from '@/features/watchlists/setup-form-dialog'
 import { SetupHistoryDialog } from '@/features/watchlists/setup-history-dialog'
+import { FollowThroughControl } from '@/features/watchlists/follow-through-control'
+import { setupExpiryLabel, setupHorizonLabel } from '@/features/watchlists/research-window'
 import { WatchlistEventsDialog } from '@/features/watchlists/watchlist-events-dialog'
 import { ScoreGauge } from '@/features/ticker-detail/ai-research/score-gauge'
+import { EventWindowCard } from '@/features/ticker-detail/event-window'
+import { useResearchCapabilities } from '@/features/research/hooks'
 import {
   formatCurrency,
   formatEasternDateTime,
@@ -294,6 +300,12 @@ function formatSignedPriceChange(value: number) {
 
 function ExpandedWatchlistDetails({ item }: { item: WatchlistItemOut }) {
   const setup = item.current_setup
+  const capabilities = useResearchCapabilities()
+  const eventWindow = useQuery({
+    queryKey: ['setup-event-window', setup?.id, setup?.updated_at],
+    queryFn: () => getSetupEventWindow(setup!.id),
+    enabled: setup?.horizon === 'swing' && capabilities.data?.event_window_v2_enabled === true,
+  })
 
   if (!setup) {
     return (
@@ -337,6 +349,8 @@ function ExpandedWatchlistDetails({ item }: { item: WatchlistItemOut }) {
         {setup.needs_review && (
           <Badge variant="destructive"><AlertTriangle /> Needs review</Badge>
         )}
+        <FollowThroughControl ticker={item.ticker} origin={{ kind: 'setup', setup }}
+          enabled={capabilities.data?.follow_through_enabled === true} />
       </div>
 
       <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
@@ -346,17 +360,20 @@ function ExpandedWatchlistDetails({ item }: { item: WatchlistItemOut }) {
         </div>
         <div>
           <p className="text-muted-foreground text-xs">Horizon</p>
-          <p className="mt-0.5 capitalize">{setup.horizon.replace('_', ' ')}</p>
+          <p className="mt-0.5">{setupHorizonLabel(setup)}</p>
         </div>
         <div>
           <p className="text-muted-foreground text-xs">Expires</p>
-          <p className="mt-0.5">{setup.expires_on}</p>
+          <p className="mt-0.5">{setupExpiryLabel(setup)}</p>
         </div>
         <div>
           <p className="text-muted-foreground text-xs">Latest quote</p>
           <p className="mt-0.5">{formatRelativeTime(item.quote_updated_at)}</p>
         </div>
       </div>
+
+      {eventWindow.data && <EventWindowCard data={eventWindow.data} title="Events in saved setup window" />}
+      {eventWindow.isError && <p className="text-muted-foreground text-xs">Saved-window calendar unavailable.</p>}
 
       {(setup.research || setup.note || setup.sync_error) && (
         <div className="bg-background flex max-w-5xl flex-col gap-4 rounded-lg border p-4 whitespace-normal break-words sm:flex-row sm:items-start">

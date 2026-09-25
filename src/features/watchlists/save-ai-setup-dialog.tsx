@@ -13,8 +13,11 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useResearchCapabilities, useSetupWindowPreview } from '@/features/research/hooks'
 import type { AiResearchOut, WatchlistSetupHorizon, WatchlistSetupSide } from '@/types/api'
 import { useCreateAiSetups, useWatchlists } from './hooks'
+import { DEFAULT_RESEARCH_WINDOW, isSwingDisabledError } from './research-window'
+import { ResearchWindowControl, WindowExpiryLine } from './research-window-control'
 
 function inferSide(data: AiResearchOut): WatchlistSetupSide | null {
   const levels = data.price_reference
@@ -41,9 +44,13 @@ export function SaveAiSetupDialog({ data }: { data: AiResearchOut }) {
   const [open, setOpen] = useState(false)
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [horizon, setHorizon] = useState<WatchlistSetupHorizon>('short_term')
+  const [sessions, setSessions] = useState(DEFAULT_RESEARCH_WINDOW)
   const [expiresOn, setExpiresOn] = useState('')
   const lists = useWatchlists(data.ticker)
   const save = useCreateAiSetups()
+  const capabilities = useResearchCapabilities()
+  const swingEnabled = capabilities.data?.swing_research_enabled === true
+  const preview = useSetupWindowPreview(sessions, open && horizon === 'swing' && swingEnabled)
 
   useEffect(() => {
     if (!open || !lists.data) return
@@ -63,11 +70,17 @@ export function SaveAiSetupDialog({ data }: { data: AiResearchOut }) {
         watchlist_ids: [...selected],
         horizon,
         expires_on: horizon === 'custom' ? expiresOn : undefined,
+        // One request, so every selected list gets the same server-resolved window.
+        ...(horizon === 'swing' ? { horizon_sessions: sessions } : {}),
       })
       toast.success(`${data.ticker} AI setup saved`)
       setOpen(false)
-    } catch {
-      toast.error('Could not save this AI setup')
+    } catch (error) {
+      toast.error(
+        isSwingDisabledError(error)
+          ? 'Swing research windows are turned off'
+          : 'Could not save this AI setup',
+      )
     }
   }
 
@@ -104,12 +117,23 @@ export function SaveAiSetupDialog({ data }: { data: AiResearchOut }) {
               <option value="short_term">Short term · 20 days</option>
               <option value="long_term">Long term · 60 days</option>
               <option value="custom">Custom date</option>
+              {swingEnabled && <option value="swing">Swing · 1–7 trading sessions</option>}
             </select>
           </div>
           {horizon === 'custom' && (
             <div className="col-span-2 space-y-1.5">
               <Label htmlFor="setup-expiry">Expires on</Label>
               <Input id="setup-expiry" type="date" value={expiresOn} onChange={(event) => setExpiresOn(event.target.value)} />
+            </div>
+          )}
+          {horizon === 'swing' && (
+            <div className="col-span-2 space-y-1.5">
+              <ResearchWindowControl value={sessions} onChange={setSessions} />
+              <WindowExpiryLine
+                window={preview.data?.window}
+                isPending={preview.isPending}
+                error={preview.error}
+              />
             </div>
           )}
         </div>

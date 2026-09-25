@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
 import type { SignalPerformanceOut } from '@/types/api'
 import { SignalPerformanceTab } from './signal-performance-tab'
@@ -7,6 +7,10 @@ let mockData: SignalPerformanceOut | undefined
 
 vi.mock('./hooks', () => ({
   useSignalPerformance: () => ({ data: mockData, isLoading: false }),
+}))
+
+vi.mock('./research-performance-panel', () => ({
+  ResearchPerformancePanel: () => <div>prospective research panel</div>,
 }))
 
 afterEach(cleanup)
@@ -80,4 +84,23 @@ test('shows an em dash for a factor that has only fired one way', () => {
   }
   render(<SignalPerformanceTab />)
   expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+})
+
+test('the legacy dataset stays the default and prospective research is a separate view', () => {
+  mockData = {
+    horizon_days: 5,
+    evaluated_count: 0,
+    by_lean: [],
+    by_score_bucket: [],
+    by_factor: [],
+  }
+  render(<SignalPerformanceTab />)
+  expect(screen.getByRole('tab', { name: 'Legacy composite observations', selected: true }))
+    .toBeInTheDocument()
+  expect(screen.queryByText('prospective research panel')).not.toBeInTheDocument()
+
+  fireEvent.mouseDown(screen.getByRole('tab', { name: 'Prospective research observations' }))
+  fireEvent.click(screen.getByRole('tab', { name: 'Prospective research observations' }))
+
+  expect(screen.getByText('prospective research panel')).toBeInTheDocument()
 })

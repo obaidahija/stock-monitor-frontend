@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { getUniverse } from './discover'
+import { getFreshCatalysts, getUniverse } from './discover'
 import { apiClient } from '@/lib/api-client'
 
 describe('getUniverse short-interest and peer params', () => {
@@ -38,5 +38,19 @@ describe('getUniverse short-interest and peer params', () => {
 
     const url = vi.mocked(apiClient.getWithResponse).mock.calls[0][0] as string
     expect(url).toContain('sort=sector_score_percentile')
+  })
+})
+
+describe('getFreshCatalysts', () => {
+  it('keeps its filters on a separate cached endpoint', async () => {
+    const get = vi.spyOn(apiClient, 'get').mockResolvedValue({ items: [] } as never)
+    await getFreshCatalysts({
+      ageHours: 48, category: 'legal_action', direction: 'down', sort: 'volume',
+      page: 2, pageSize: 10,
+    })
+    expect(get).toHaveBeenCalledWith(
+      '/v1/discover/catalysts?age_hours=48&direction=down&sort=volume&page=2&page_size=10&category=legal_action',
+    )
+    get.mockRestore()
   })
 })

@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SettingsCategoryForm } from './category-form'
 import * as api from '@/api/settings'
 import type { SettingsCategory } from '@/types/api'
+import { ApiError } from '@/lib/api-client'
 
 vi.mock('@/api/settings')
 
@@ -39,10 +40,9 @@ const category: SettingsCategory = {
   ],
 }
 
-function renderForm() {
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  })
+function renderForm(client = new QueryClient({
+  defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+})) {
   return render(
     <QueryClientProvider client={client}>
       <SettingsCategoryForm category={category} />
@@ -106,5 +106,49 @@ describe('SettingsCategoryForm', () => {
 
     await waitFor(() => expect(screen.getByText(/Input should be >= 1/)).toBeInTheDocument())
     expect(screen.getByLabelText('Mention spike min count')).toHaveValue(9)
+  })
+
+  it('names the rule a rejected combination broke', async () => {
+    vi.mocked(api.updateSettingsCategory).mockRejectedValue(
+      new ApiError(422, [
+        {
+          type: 'value_error',
+          loc: [],
+          msg: 'Value error, research_outcomes_v2_enabled requires swing_research_enabled',
+        },
+      ]),
+    )
+    renderForm()
+    fireEvent.change(screen.getByLabelText('Mention spike min count'), {
+      target: { value: '9' },
+    })
+    await userEvent.click(screen.getByRole('button', { name: /save/i }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'research_outcomes_v2_enabled requires swing_research_enabled',
+      ),
+    )
+    expect(screen.getByRole('alert')).not.toHaveTextContent('Value error')
+  })
+
+  it('refreshes feature switches after a save or reset', async () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    })
+    const invalidate = vi.spyOn(client, 'invalidateQueries')
+    renderForm(client)
+    fireEvent.change(screen.getByLabelText('Mention spike min count'), {
+      target: { value: '9' },
+    })
+    await userEvent.click(screen.getByRole('button', { name: /save/i }))
+    await waitFor(() =>
+      expect(invalidate).toHaveBeenCalledWith({ queryKey: ['research-capabilities'] }),
+    )
+    invalidate.mockClear()
+    await userEvent.click(screen.getByRole('button', { name: /reset/i }))
+    await waitFor(() =>
+      expect(invalidate).toHaveBeenCalledWith({ queryKey: ['research-capabilities'] }),
+    )
   })
 })

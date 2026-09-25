@@ -1,6 +1,7 @@
 import { apiClient } from '@/lib/api-client'
 import type {
   EarningsResult,
+  FreshCatalystsPage,
   FilingOut,
   InsiderSummaryOut,
   SectorHeatmapOut,
@@ -10,6 +11,27 @@ import type {
   TwitterBestStocksRefreshOut,
   UniverseTickerOut,
 } from '@/types/api'
+
+export interface FreshCatalystParams {
+  ageHours: 24 | 48 | 72
+  category?: string
+  direction: 'up' | 'down' | 'all'
+  sort: 'newest' | 'volume'
+  page: number
+  pageSize: number
+}
+
+export function getFreshCatalysts(params: FreshCatalystParams) {
+  const qs = new URLSearchParams({
+    age_hours: String(params.ageHours),
+    direction: params.direction,
+    sort: params.sort,
+    page: String(params.page),
+    page_size: String(params.pageSize),
+  })
+  if (params.category) qs.set('category', params.category)
+  return apiClient.get<FreshCatalystsPage>(`/v1/discover/catalysts?${qs.toString()}`)
+}
 
 export function getNotableFilings() {
   return apiClient.get<FilingOut[]>('/v1/discover/filings')

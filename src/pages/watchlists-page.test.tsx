@@ -1,7 +1,7 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { MemoryRouter } from 'react-router'
+import { cleanup, fireEvent, screen } from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
 import type { WatchlistItemOut } from '@/types/api'
+import { renderWithProviders } from '@/test/render'
 import { WatchlistsPage } from './watchlists-page'
 
 const items: WatchlistItemOut[] = [
@@ -77,9 +77,33 @@ const items: WatchlistItemOut[] = [
   },
 ]
 
+const itemState = vi.hoisted(() => ({ override: null as unknown }))
+
+vi.mock('@/features/research/hooks', () => ({
+  useResearchCapabilities: () => ({
+    data: {
+      swing_research_enabled: true,
+      research_outcomes_v2_enabled: false,
+      catalyst_scanner_enabled: false,
+      follow_through_enabled: false,
+      event_window_v2_enabled: false,
+      research_intraday_enabled: false,
+    },
+    isPending: false,
+    isError: false,
+    refetch: vi.fn(),
+  }),
+  useSetupWindowPreview: () => ({ data: undefined, isPending: false, isError: false }),
+}))
+
 vi.mock('@/features/watchlists/hooks', () => ({
   useWatchlists: () => ({ data: [{ id: 1, name: 'Watchlist', item_count: 2 }], isPending: false }),
-  useWatchlistItems: () => ({ data: items, isPending: false, isError: false, refetch: vi.fn() }),
+  useWatchlistItems: () => ({
+    data: itemState.override ?? items,
+    isPending: false,
+    isError: false,
+    refetch: vi.fn(),
+  }),
   useCreateWatchlist: () => ({ mutateAsync: vi.fn() }),
   useRenameWatchlist: () => ({ mutateAsync: vi.fn() }),
   useDeleteWatchlist: () => ({ mutateAsync: vi.fn() }),
@@ -98,10 +122,13 @@ vi.mock('@/features/watchlists/hooks', () => ({
   useSendTelegramTest: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  itemState.override = null
+})
 
 test('keeps expired and favorite-only tickers visible and surfaces review state', () => {
-  render(<MemoryRouter><WatchlistsPage /></MemoryRouter>)
+  renderWithProviders(<WatchlistsPage />)
   fireEvent.click(screen.getByRole('button', { name: 'Expand NVDA details' }))
   fireEvent.click(screen.getByRole('button', { name: 'Expand AAPL details' }))
   expect(screen.getByText(/expired/i)).toBeTruthy()
@@ -111,7 +138,7 @@ test('keeps expired and favorite-only tickers visible and surfaces review state'
 })
 
 test('renders the price-level table with setup actions', () => {
-  render(<MemoryRouter><WatchlistsPage /></MemoryRouter>)
+  renderWithProviders(<WatchlistsPage />)
 
   expect(screen.getByRole('columnheader', { name: 'Ticker' })).toBeTruthy()
   expect(screen.getByRole('columnheader', { name: 'Price' })).toBeTruthy()
@@ -134,7 +161,7 @@ test('renders the price-level table with setup actions', () => {
 })
 
 test('expands a table row to show setup details', () => {
-  render(<MemoryRouter><WatchlistsPage /></MemoryRouter>)
+  renderWithProviders(<WatchlistsPage />)
 
   fireEvent.click(screen.getByRole('button', { name: 'Expand NVDA details' }))
 
@@ -150,4 +177,42 @@ test('expands a table row to show setup details', () => {
 
   fireEvent.click(collapseButton)
   expect(screen.queryByText('Stop loss')).toBeNull()
+})
+
+test('shows a swing setup as a session window with its exact exchange expiry', () => {
+  const swingItem: WatchlistItemOut = {
+    ...items[1],
+    id: 12,
+    ticker: 'AMD',
+    company_name: 'Advanced Micro Devices',
+    distance_pct: null,
+    current_setup: {
+      ...items[0].current_setup!,
+      id: 21,
+      watchlist_item_id: 12,
+      ticker: 'AMD',
+      horizon: 'swing',
+      horizon_sessions: 3,
+      window: {
+        starts_at: '2026-09-21T12:00:00Z',
+        anchor_session: '2026-09-21',
+        horizon_sessions: 3,
+        expires_at: '2026-09-23T20:00:00Z',
+        expires_on: '2026-09-23',
+        calendar: 'XNYS',
+        window_version: 'swing-window-v1',
+      },
+      expires_on: '2026-09-23',
+      status: 'active',
+      needs_review: false,
+      sync_error: null,
+      research: null,
+    },
+  }
+  itemState.override = [swingItem]
+  renderWithProviders(<WatchlistsPage />)
+  fireEvent.click(screen.getByRole('button', { name: 'Expand AMD details' }))
+
+  expect(screen.getByText('Swing · 3 trading sessions')).toBeTruthy()
+  expect(screen.getByText('Wed, Sep 23, 4:00 PM ET')).toBeTruthy()
 })

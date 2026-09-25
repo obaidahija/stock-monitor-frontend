@@ -3,6 +3,7 @@ import { RotateCcw, Save } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { SettingFieldControl } from './setting-field'
+import { settingsErrorMessage } from './errors'
 import { useResetSettingsCategory, useUpdateSettingsCategory } from './hooks'
 import type { SettingValue, SettingsCategory } from '@/types/api'
 
@@ -58,7 +59,7 @@ export function SettingsCategoryForm({ category }: { category: SettingsCategory 
       <CardContent>
         {error ? (
           <p role="alert" className="text-destructive mb-3 text-sm">
-            {error instanceof Error ? error.message : String(error)}
+            {settingsErrorMessage(error)}
           </p>
         ) : null}
 

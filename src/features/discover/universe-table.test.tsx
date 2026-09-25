@@ -138,6 +138,9 @@ test.each([
   renderTable([universeRow({ ticker: 'SNX', next_earnings_date: earnings })])
 
   expect(screen.getByText(new RegExp(`· ${days} calendar days`))).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Check selected window' })).toHaveAttribute(
+    'href', '/stocks/SNX?tab=analysis&horizon_sessions=5',
+  )
 })
 
 test.each(['2026-09-18', '2026-09-27', '2026-11-18'])(

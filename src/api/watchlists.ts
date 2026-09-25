@@ -8,6 +8,8 @@ import type {
   WatchlistSetupHorizon,
   WatchlistSetupOut,
   WatchlistSetupSide,
+  SetupWindowPreviewOut,
+  EventWindowOut,
   WatchlistRuleType,
   WatchlistSetupLevel,
   TelegramStatusOut,
@@ -38,6 +40,8 @@ export interface SetupTimingInput {
   side: WatchlistSetupSide
   horizon: WatchlistSetupHorizon
   expires_on?: string
+  /** Swing only; the server resolves the exact expiry from it. */
+  horizon_sessions?: number
 }
 
 export interface ManualSetupInput extends SetupTimingInput {
@@ -57,12 +61,15 @@ export interface AiSetupInput {
   watchlist_ids: number[]
   horizon: WatchlistSetupHorizon
   expires_on?: string
+  horizon_sessions?: number
 }
 
 export interface SetupUpdateInput {
   side?: WatchlistSetupSide
   horizon?: WatchlistSetupHorizon
   expires_on?: string
+  /** Sent only when a swing window's session count actually changes. */
+  horizon_sessions?: number
   entry_primary?: number
   entry_secondary?: number
   clear_entry_secondary?: boolean
@@ -86,6 +93,22 @@ export function renameWatchlist(id: number, name: string) {
 
 export function deleteWatchlist(id: number) {
   return apiClient.delete<void>(`/v1/watchlists/${id}`)
+}
+
+export function getSetupWindowPreview(horizonSessions: number) {
+  return apiClient.get<SetupWindowPreviewOut>(
+    `/v1/watchlists/setup-window?horizon_sessions=${horizonSessions}`,
+  )
+}
+
+export function getSetupEventWindow(setupId: number) {
+  return apiClient.get<EventWindowOut>(`/v1/watchlists/setups/${setupId}/event-window`)
+}
+
+export function captureSetupRevision(setupId: number) {
+  return apiClient.post<{ current_revision_id: number }>(
+    `/v1/watchlists/setups/${setupId}/capture-revision`,
+  )
 }
 
 export function getWatchlistItems(id: number) {

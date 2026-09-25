@@ -1,6 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { getHealth, getSignalPerformance, listJobs, runJob } from '@/api/system'
-import type { JobRunResult } from '@/types/api'
+import {
+  getHealth,
+  getResearchObservations,
+  getResearchPerformance,
+  getSignalPerformance,
+  listJobs,
+  runJob,
+} from '@/api/system'
+import type { JobRunResult, ResearchPerformanceFilters } from '@/types/api'
 
 export function useHealth() {
   return useQuery({ queryKey: ['system', 'health'], queryFn: getHealth, refetchInterval: 30_000 })
@@ -53,5 +60,26 @@ export function useSignalPerformance(horizon: 5 | 20) {
   return useQuery({
     queryKey: ['system', 'signal-performance', horizon],
     queryFn: () => getSignalPerformance(horizon),
+  })
+}
+
+/** Every filter is part of the key, so each cohort caches separately. */
+export function useResearchPerformance(filters: ResearchPerformanceFilters) {
+  return useQuery({
+    queryKey: ['system', 'research-performance', filters],
+    queryFn: () => getResearchPerformance(filters),
+  })
+}
+
+export function useResearchObservations(
+  filters: ResearchPerformanceFilters,
+  page: number,
+  pageSize: number,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: ['system', 'research-observations', filters, page, pageSize],
+    queryFn: () => getResearchObservations(filters, page, pageSize),
+    enabled,
   })
 }

@@ -29,7 +29,14 @@ import type { GoogleFinanceChatTurnIn, SentimentBucketGranularity } from '@/type
 
 export function useAnalysis(ticker: string, extras: AnalysisExtras = {}, enabled = true) {
   return useQuery({
-    queryKey: ['analysis', ticker, extras.includeChartPattern ?? false],
+    // The research window is part of the identity: each selection caches
+    // separately, and choosing one never mutates a saved setup.
+    queryKey: [
+      'analysis',
+      ticker,
+      extras.includeChartPattern ?? false,
+      extras.horizonSessions ?? null,
+    ],
     queryFn: () => getAnalysis(ticker, extras),
     enabled,
   })

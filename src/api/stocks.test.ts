@@ -1,6 +1,6 @@
 import { beforeEach, expect, test, vi } from 'vitest'
 import { apiClient } from '@/lib/api-client'
-import { askGoogleFinanceResearch, getInsider, getScoreHistory } from './stocks'
+import { askGoogleFinanceResearch, getAnalysis, getInsider, getScoreHistory } from './stocks'
 
 beforeEach(() => vi.restoreAllMocks())
 
@@ -49,4 +49,24 @@ test('submits a Google Finance follow-up question with prior turns as history', 
     question: 'What about its competitor?',
     history,
   })
+})
+
+test('omits the research window from a plain analysis request', async () => {
+  const get = vi.spyOn(apiClient, 'get').mockResolvedValue({} as never)
+  await getAnalysis('NVDA')
+  expect(get).toHaveBeenCalledWith('/v1/stocks/NVDA/analysis')
+})
+
+test('sends the selected research window only when one is chosen', async () => {
+  const get = vi.spyOn(apiClient, 'get').mockResolvedValue({} as never)
+  await getAnalysis('NVDA', { horizonSessions: 3 })
+  expect(get).toHaveBeenCalledWith('/v1/stocks/NVDA/analysis?horizon_sessions=3')
+})
+
+test('combines the research window with the chart pattern opt-in', async () => {
+  const get = vi.spyOn(apiClient, 'get').mockResolvedValue({} as never)
+  await getAnalysis('NVDA', { includeChartPattern: true, horizonSessions: 7 })
+  expect(get).toHaveBeenCalledWith(
+    '/v1/stocks/NVDA/analysis?include_chart_pattern=true&horizon_sessions=7',
+  )
 })

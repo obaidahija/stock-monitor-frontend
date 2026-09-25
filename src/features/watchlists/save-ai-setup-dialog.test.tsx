@@ -5,6 +5,42 @@ import type { AiResearchOut } from '@/types/api'
 import { SaveAiSetupDialog } from './save-ai-setup-dialog'
 
 const mutateAsync = vi.fn()
+const capabilities = vi.hoisted(() => ({ swing: false }))
+
+vi.mock('@/features/research/hooks', () => ({
+  useResearchCapabilities: () => ({
+    data: {
+      swing_research_enabled: capabilities.swing,
+      research_outcomes_v2_enabled: false,
+      catalyst_scanner_enabled: false,
+      follow_through_enabled: false,
+      event_window_v2_enabled: false,
+      research_intraday_enabled: false,
+    },
+    isPending: false,
+    isError: false,
+    refetch: vi.fn(),
+  }),
+  useSetupWindowPreview: (horizonSessions: number, enabled: boolean) => ({
+    data: enabled
+      ? {
+          window: {
+            starts_at: '2026-09-21T12:00:00Z',
+            anchor_session: '2026-09-21',
+            horizon_sessions: horizonSessions,
+            expires_at: horizonSessions === 5 ? '2026-09-25T20:00:00Z' : '2026-09-23T20:00:00Z',
+            expires_on: horizonSessions === 5 ? '2026-09-25' : '2026-09-23',
+            calendar: 'XNYS',
+            window_version: 'swing-window-v1',
+          },
+          server_time: '2026-09-21T12:00:00Z',
+        }
+      : undefined,
+    isPending: false,
+    isError: false,
+    error: null,
+  }),
+}))
 
 vi.mock('./hooks', () => {
   const data = [
@@ -31,7 +67,11 @@ vi.mock('./hooks', () => {
   }
 })
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  mutateAsync.mockClear()
+  capabilities.swing = false
+})
 
 const research: AiResearchOut = {
   snapshot_id: 10,
@@ -108,4 +148,38 @@ test('disables saving when AI levels are incomplete', async () => {
   await user.click(screen.getByRole('button', { name: /save ai setup/i }))
   expect(screen.getByText(/do not form a valid long or short setup/i)).toBeTruthy()
   expect((screen.getByRole('button', { name: /^save setup$/i }) as HTMLButtonElement).disabled).toBe(true)
+})
+
+test('hides the swing window while the capability is off', async () => {
+  const user = userEvent.setup()
+  render(<SaveAiSetupDialog data={research} />)
+  await user.click(screen.getByRole('button', { name: /save ai setup/i }))
+  expect(screen.queryByRole('option', { name: /swing/i })).toBeNull()
+  expect(screen.queryByLabelText('Research window')).toBeNull()
+})
+
+test('saves a swing window with a default of five sessions and the server expiry', async () => {
+  capabilities.swing = true
+  const user = userEvent.setup()
+  render(<SaveAiSetupDialog data={research} />)
+  await user.click(screen.getByRole('button', { name: /save ai setup/i }))
+  await user.selectOptions(screen.getByLabelText('Horizon'), 'swing')
+
+  expect((screen.getByLabelText('Research window') as HTMLSelectElement).value).toBe('5')
+  expect(screen.getByText('Expires Fri, Sep 25, 4:00 PM ET')).toBeTruthy()
+
+  await user.selectOptions(screen.getByLabelText('Research window'), '3')
+  expect(screen.getByText('Expires Wed, Sep 23, 4:00 PM ET')).toBeTruthy()
+  // Choosing a window is not a save.
+  expect(mutateAsync).not.toHaveBeenCalled()
+
+  await user.click(screen.getByRole('button', { name: /^save setup$/i }))
+  expect(mutateAsync).toHaveBeenCalledWith({
+    ticker: 'NVDA',
+    snapshot_id: 10,
+    watchlist_ids: [1],
+    horizon: 'swing',
+    horizon_sessions: 3,
+    expires_on: undefined,
+  })
 })
