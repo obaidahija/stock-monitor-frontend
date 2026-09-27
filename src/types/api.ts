@@ -1960,6 +1960,59 @@ export interface SettingsOut {
 // --- Prospective research outcomes (/v1/research-performance) ---
 
 export type ResearchSourceKind = 'composite_daily' | 'catalyst' | 'follow_through'
+
+export interface ResearchMonitoringOut {
+  generated_at: string
+  current_catalyst_rule_version: string
+  horizon_sessions: 1 | 3 | 5 | 7
+  latest_finalized_session: string | null
+  bar_sessions: {
+    session_date: string
+    expected_symbols: number | null
+    complete_symbols: number
+    checkpoint_status: string | null
+    checkpoint_synced: number | null
+    checkpoint_coverage_pct: number | null
+    attempts: number | null
+    last_attempt_at: string | null
+  }[]
+  baseline_sessions: {
+    baseline_session: string | null
+    rule_version: string
+    complete: number
+    partial: number
+  }[]
+  catalyst_cohorts: {
+    rule_version: string
+    baseline_status: 'full' | 'partial'
+    candidates: number
+    daily_measured: number
+    reaction_pct_n: number
+    mean_reaction_pct: number | null
+    reaction_atr_n: number
+    mean_reaction_atr: number | null
+    volume_ratio_n: number
+    mean_volume_ratio: number | null
+    outcomes_recorded: number
+    outcomes_matured: number
+    outcomes_evaluated: number
+    outcomes_missing: number
+    excess_return_n: number
+    mean_excess_return_pct: number | null
+  }[]
+  usage: {
+    follow_through: { total: number; active: number; started_30d: number }
+    subscriptions: { total: number; enabled: number; created_30d: number; ever_succeeded: number }
+    setup_revisions: {
+      total: number
+      created_30d: number
+      manual_total: number
+      manual_created_30d: number
+      automated_total: number
+      manual_edits: number
+    }
+  }
+}
 export type ResearchSide = 'long' | 'short' | 'unassigned'
 export type ResearchOrigin = 'setup' | 'catalyst'
 export type ResearchOutcomeStatus =
@@ -2015,6 +2068,25 @@ export interface ResearchGroupOut {
   path_order_counts?: Record<string, number>
 }
 
+export interface ResearchFactorPerformanceOut {
+  factor: string
+  positive: ResearchGroupOut
+  zero: ResearchGroupOut
+  negative: ResearchGroupOut
+  missing: ResearchGroupOut
+  positive_minus_negative_excess_pct: number | null
+}
+
+export interface ResearchScoreSpreadOut {
+  total_sessions: number
+  eligible_sessions: number
+  paired_sessions: number
+  top: ResearchGroupOut
+  bottom: ResearchGroupOut
+  mean_daily_spread_pct: number | null
+  median_daily_spread_pct: number | null
+}
+
 export interface ResearchCohortOut {
   horizon_sessions: number
   source_kind: ResearchSourceKind
@@ -2045,6 +2117,9 @@ export interface ResearchPerformanceOut {
   overall: ResearchGroupOut
   by_rule: ResearchGroupOut[]
   by_side: ResearchGroupOut[]
+  by_score_bucket: ResearchGroupOut[]
+  by_factor: ResearchFactorPerformanceOut[]
+  score_spread: ResearchScoreSpreadOut | null
   by_calendar_month: ResearchGroupOut[]
   collection_enabled: boolean
   generated_at: string
@@ -2080,6 +2155,9 @@ export interface ResearchObservationRowOut {
   path_coverage?: { expected_bars: number; usable_bars: number; status: string } | null
   extends_beyond_setup_expiry: boolean | null
   headline: string | null
+  score: number | null
+  overall_score: number | null
+  lean: string | null
 }
 
 export interface ResearchObservationPageOut {

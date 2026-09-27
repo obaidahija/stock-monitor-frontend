@@ -26,6 +26,7 @@ import type {
 } from '@/types/api'
 import { useResearchPerformance } from './hooks'
 import { ResearchObservationsTable } from './research-observations-table'
+import { ResearchScoreGrading } from './research-score-grading'
 
 const HORIZONS = [1, 3, 5, 7] as const
 const SOURCES: { value: ResearchSourceKind; label: string }[] = [
@@ -288,6 +289,11 @@ export function ResearchPerformancePanel() {
               </CardContent>
             </Card>
           )}
+
+          {filters.source_kind === 'composite_daily' && data.cohort.source_kind === 'composite_daily' &&
+            Array.isArray(data.by_score_bucket) && Array.isArray(data.by_factor) &&
+            data.score_spread !== undefined &&
+            <ResearchScoreGrading data={data} />}
 
           {drillStatus && (
             <Card>

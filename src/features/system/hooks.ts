@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   getHealth,
   getResearchObservations,
+  getResearchMonitoring,
   getResearchPerformance,
   getSignalPerformance,
   listJobs,
@@ -68,6 +69,14 @@ export function useResearchPerformance(filters: ResearchPerformanceFilters) {
   return useQuery({
     queryKey: ['system', 'research-performance', filters],
     queryFn: () => getResearchPerformance(filters),
+  })
+}
+
+export function useResearchMonitoring(horizon: 1 | 3 | 5 | 7) {
+  return useQuery({
+    queryKey: ['system', 'research-monitoring', horizon],
+    queryFn: () => getResearchMonitoring(horizon),
+    refetchInterval: 60_000,
   })
 }
 

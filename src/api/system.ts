@@ -4,6 +4,7 @@ import type {
   JobInfo,
   JobRunResult,
   ResearchObservationPageOut,
+  ResearchMonitoringOut,
   ResearchPerformanceFilters,
   ResearchPerformanceOut,
   SignalPerformanceOut,
@@ -37,6 +38,12 @@ export function researchQuery(filters: ResearchPerformanceFilters, extra: Record
 
 export function getResearchPerformance(filters: ResearchPerformanceFilters) {
   return apiClient.get<ResearchPerformanceOut>(`/v1/research-performance?${researchQuery(filters)}`)
+}
+
+export function getResearchMonitoring(horizon: 1 | 3 | 5 | 7) {
+  return apiClient.get<ResearchMonitoringOut>(
+    `/v1/research-performance/monitoring?horizon_sessions=${horizon}&sessions=10`,
+  )
 }
 
 export function getResearchObservations(

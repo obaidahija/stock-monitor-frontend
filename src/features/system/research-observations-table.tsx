@@ -43,6 +43,9 @@ export function ResearchObservationsTable({ filters }: { filters: ResearchPerfor
           <TableHeader>
             <TableRow>
               <TableHead>Ticker</TableHead>
+              {filters.source_kind === 'composite_daily' && <>
+                <TableHead className="text-right">Score</TableHead><TableHead>Lean</TableHead>
+              </>}
               <TableHead>Decision session</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Baseline → exit</TableHead>
@@ -56,6 +59,10 @@ export function ResearchObservationsTable({ filters }: { filters: ResearchPerfor
             {items.map((row) => (
               <TableRow key={`${row.observation_id}-${row.revision}`}>
                 <TableCell className="font-medium">{row.ticker}</TableCell>
+                {filters.source_kind === 'composite_daily' && <>
+                  <TableCell className="text-right tabular-nums">{row.score ?? '—'}</TableCell>
+                  <TableCell>{row.lean ?? '—'}</TableCell>
+                </>}
                 <TableCell>{row.decision_session}</TableCell>
                 <TableCell>
                   {STATUS_LABELS[row.status] ?? row.status}

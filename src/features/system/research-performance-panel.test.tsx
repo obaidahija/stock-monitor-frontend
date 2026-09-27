@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, screen } from '@testing-library/react'
+import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { renderWithProviders } from '@/test/render'
 import type { ResearchMetricOut, ResearchPerformanceOut } from '@/types/api'
@@ -72,6 +72,9 @@ const report: ResearchPerformanceOut = {
   overall: group,
   by_rule: [{ ...group, key: 'composite-observed-v1' }],
   by_side: [{ ...group, key: 'unassigned' }],
+  by_score_bucket: [],
+  by_factor: [],
+  score_spread: null,
   by_calendar_month: [{ ...group, key: '2026-09' }],
   collection_enabled: false,
   generated_at: '2026-10-30T12:00:00Z',
@@ -190,4 +193,84 @@ test('an empty cohort explains what will accrue', () => {
   })
   renderWithProviders(<ResearchPerformancePanel />)
   expect(screen.getByText(/no prospective observations recorded/i)).toBeInTheDocument()
+})
+
+test('composite observation drilldown shows the recorded score and lean', () => {
+  mockReport({ data: report })
+  vi.mocked(useResearchObservations).mockReturnValue({
+    data: { items: [{
+      observation_id: 1, revision: 1, ticker: 'AAA', score: 72, lean: 'bullish',
+      decision_session: '2026-09-21', status: 'missing_data', status_reason: 'missing_exit_bar',
+      baseline_session: '2026-09-21', exit_session: '2026-09-22', raw_return_pct: null,
+      excess_return_pct: null, headline: null, path_status: null,
+    }], total: 1, page: 1, page_size: 50 },
+    isPending: false, isError: false,
+  } as never)
+  renderWithProviders(<ResearchPerformancePanel />)
+  fireEvent.click(screen.getByRole('button', { name: /show missing rows/i }))
+  expect(screen.getByRole('columnheader', { name: 'Score' })).toBeInTheDocument()
+  expect(screen.getByRole('row', { name: /AAA/ })).toHaveTextContent('72')
+  expect(screen.getByRole('row', { name: /AAA/ })).toHaveTextContent('bullish')
+})
+
+test('composite grading shows paired dates, score buckets, factor signs and raw SPY meaning', () => {
+  mockReport({
+    data: {
+      ...report,
+      by_score_bucket: [{ ...group, key: '70-100' }],
+      by_factor: [{
+        factor: 'momentum',
+        positive: { ...group, key: 'positive' },
+        zero: { ...group, key: 'zero', coverage: { recorded: 3, matured: 3, evaluated: 3, missing: 0 } },
+        negative: { ...group, key: 'negative' },
+        missing: { ...group, key: 'missing' },
+        positive_minus_negative_excess_pct: 0.8,
+      }],
+      score_spread: {
+        total_sessions: 4,
+        eligible_sessions: 3,
+        paired_sessions: 2,
+        top: { ...group, key: 'top' },
+        bottom: { ...group, key: 'bottom' },
+        mean_daily_spread_pct: 1.25,
+        median_daily_spread_pct: 1.0,
+      },
+    },
+  })
+  renderWithProviders(<ResearchPerformancePanel />)
+
+  const grading = screen.getByRole('region', { name: 'Score grading' })
+  expect(within(grading).getByText(/2 paired sessions/)).toBeInTheDocument()
+  expect(within(grading).getByText(/\+1\.25%/)).toBeInTheDocument()
+  const band = within(grading).getByRole('row', { name: /70-100/ })
+  expect(band).toHaveTextContent('100')
+  expect(band).toHaveTextContent('+0.42%')
+  expect(band).toHaveTextContent('+0.20%')
+  const top = within(grading).getByRole('row', { name: /Top/ })
+  expect(top).toHaveTextContent('80')
+  expect(top).toHaveTextContent('8')
+  expect(top).toHaveTextContent('70')
+  expect(within(grading).getByText(/pooled side counts include unpaired sessions/i)).toBeInTheDocument()
+  expect(within(grading).getByText('momentum')).toBeInTheDocument()
+  expect(within(grading).getByText(/\+0\.80%/)).toBeInTheDocument()
+  expect(within(grading).getByText(/before costs/i)).toBeInTheDocument()
+})
+
+test('non-composite source hides score grading even while the previous report is cached', () => {
+  mockReport({ data: report })
+  renderWithProviders(<ResearchPerformancePanel />)
+  fireEvent.change(screen.getByLabelText('Source'), { target: { value: 'catalyst' } })
+  expect(screen.queryByRole('region', { name: 'Score grading' })).not.toBeInTheDocument()
+})
+
+test('older backend responses still show the overall report during a staggered rollout', () => {
+  const olderResponse = { ...report } as Partial<ResearchPerformanceOut>
+  delete olderResponse.by_score_bucket
+  delete olderResponse.by_factor
+  delete olderResponse.score_spread
+  mockReport({ data: olderResponse as ResearchPerformanceOut })
+
+  renderWithProviders(<ResearchPerformancePanel />)
+  expect(screen.getByText('100 recorded')).toBeInTheDocument()
+  expect(screen.queryByRole('region', { name: 'Score grading' })).not.toBeInTheDocument()
 })

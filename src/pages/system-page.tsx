@@ -3,9 +3,10 @@ import { PageHeader } from '@/components/shared/page-header'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { HealthPanel } from '@/features/system/health-panel'
 import { JobsTable } from '@/features/system/jobs-table'
+import { ResearchHealthPanel } from '@/features/system/research-health-panel'
 import { SignalPerformanceTab } from '@/features/system/signal-performance-tab'
 
-const SYSTEM_TABS = ['health', 'jobs', 'signals'] as const
+const SYSTEM_TABS = ['health', 'jobs', 'signals', 'research'] as const
 
 export function SystemPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -41,13 +42,14 @@ export function SystemPage() {
     <div className="space-y-6">
       <PageHeader
         title="System"
-        description="Scheduler health, upstream sources, job runs, and signal performance."
+        description="Scheduler health, jobs, signal performance, and research evidence quality."
       />
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList>
           <TabsTrigger value="health">Health</TabsTrigger>
           <TabsTrigger value="jobs">Jobs</TabsTrigger>
           <TabsTrigger value="signals">Signals</TabsTrigger>
+          <TabsTrigger value="research">Research health</TabsTrigger>
         </TabsList>
         <TabsContent value="health">
           <HealthPanel />
@@ -57,6 +59,9 @@ export function SystemPage() {
         </TabsContent>
         <TabsContent value="signals">
           <SignalPerformanceTab />
+        </TabsContent>
+        <TabsContent value="research">
+          <ResearchHealthPanel />
         </TabsContent>
       </Tabs>
     </div>
