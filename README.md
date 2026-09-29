@@ -5,6 +5,11 @@ feed, explicit ticker searches, trusted subreddit and author sources, and bounde
 threads. Each ticker also has an independent Reddit tab and monitoring control; Twitter and
 Reddit evidence remain separate in AI research.
 
+Discover starts with **Research first**, a ten-stock research shortlist for the selected
+1–7-session window. Each card explains its placement, links to source and analysis,
+and shows data limits and timing risks. The Morning Digest displays the snapshots saved
+when it was built; changing the window there selects another saved snapshot.
+
 ## Summary-first SEC tabs
 
 The ticker's Commitments and Filings tabs open with a compact business-impact card: explicit

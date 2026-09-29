@@ -1226,6 +1226,7 @@ export interface DigestPayload {
   digest_date: string
   generated_at: string
   items: DigestItem[]
+  research_first?: Record<string, import('@/features/research-first/types').ResearchFirstReport>
 }
 
 export interface DigestOut {

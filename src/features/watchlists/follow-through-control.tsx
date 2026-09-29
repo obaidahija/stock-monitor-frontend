@@ -18,12 +18,12 @@ import { FollowThroughTimeline } from './follow-through-timeline'
 type Origin = { kind: 'setup'; setup: WatchlistSetupOut } | { kind: 'catalyst'; candidateId: number }
 
 export function FollowThroughControl({
-  ticker, origin, enabled,
-}: { ticker: string; origin: Origin; enabled: boolean }) {
+  ticker, origin, enabled, initialHorizon = 5,
+}: { ticker: string; origin: Origin; enabled: boolean; initialHorizon?: number }) {
   const [open, setOpen] = useState(false)
   const [page, setPage] = useState(1)
   const [selectedId, setSelectedId] = useState<number | null>(null)
-  const [horizon, setHorizon] = useState(5)
+  const [horizon, setHorizon] = useState(initialHorizon)
   const queryClient = useQueryClient()
   const requestKey = useRef<string | null>(null)
   const list = useFollowThroughTracks(ticker, open, page)
@@ -92,7 +92,7 @@ export function FollowThroughControl({
                 <select aria-label="Tracking window" value={horizon}
                   onChange={(event) => setHorizon(Number(event.target.value))}
                   className="border-input bg-background rounded-md border p-1">
-                  {[1, 3, 5, 7].map((value) => <option key={value} value={value}>{value} sessions</option>)}
+                  {[1, 2, 3, 4, 5, 6, 7].map((value) => <option key={value} value={value}>{value} sessions</option>)}
                 </select>
               </label>
             )}
