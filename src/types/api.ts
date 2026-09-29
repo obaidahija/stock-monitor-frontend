@@ -497,6 +497,128 @@ export interface AnalystDetailOut {
   recent_actions: AnalystActionOut[]
 }
 
+/** A fixed 1-7 exchange-session research window, resolved by the server. */
+export interface SwingWindow {
+  starts_at: string
+  anchor_session: string
+  horizon_sessions: number
+  /** Close of the last session in the window -- the exact expiry instant. */
+  expires_at: string
+  expires_on: string
+  calendar: 'XNYS'
+  window_version: string
+}
+
+export type DataQualityStatus = 'ok' | 'partial' | 'stale' | 'unavailable'
+
+export interface DataQualitySourceOut {
+  name: string
+  source_url?: string | null
+  status: string
+  observed_at?: string | null
+  fetched_at?: string | null
+}
+
+export interface DataQuality {
+  status: DataQualityStatus
+  /** Market observation time; null when there is no observation. */
+  as_of: string | null
+  /** Retrieval time -- never a substitute for as_of. */
+  fetched_at: string | null
+  sources: DataQualitySourceOut[]
+  reasons: string[]
+  price_basis: 'raw' | 'split_adjusted' | 'unknown'
+  market_session: 'regular' | 'pre_market' | 'post_market' | 'closed' | null
+}
+
+export interface SelectedVolatilityOut {
+  horizon_sessions: number
+  move_pct: number | null
+  sample_count: number
+  reason: string | null
+  quality: DataQuality
+}
+
+export interface WindowEventOut {
+  canonical_key: string
+  event_type: string
+  title: string
+  local_date: string
+  start_at: string
+  end_at: string
+  precision: 'exact' | 'bmo' | 'amc' | 'date_only'
+  overlap: 'inside' | 'possible_overlap' | 'after_expiry'
+  severity: 'high' | 'elevated' | 'informational'
+  status: 'scheduled' | 'awaiting_confirmation' | 'occurred'
+  verification: string
+  source_name: string
+  source_url: string | null
+  timing_reasons: string[]
+}
+
+export interface EventWindowOut {
+  window: SwingWindow
+  events: WindowEventOut[]
+  near_after_expiry: WindowEventOut[]
+  highest_severity: WindowEventOut['severity'] | null
+  coverage_status: 'complete' | 'partial' | 'stale' | 'unavailable'
+  coverage_sources: Array<{
+    source_key: string
+    status: string
+    coverage_start: string | null
+    coverage_end: string | null
+    last_success_at: string | null
+    reason: string | null
+  }>
+  conflicts: Record<string, unknown>[]
+  evaluated_at: string
+  collection_enabled: boolean
+  historical_knowledge: boolean
+}
+
+export interface CatalystReactionOut {
+  observed_at: string
+  price_basis: 'quote' | 'completed_close'
+  observed_price: number | null
+  reaction_pct: number | null
+  reaction_atr: number | null
+  volume_ratio: number | null
+  extension: 'small' | 'moderate' | 'extended' | null
+  direction: 'up' | 'down' | 'flat' | null
+  elevated_volume: boolean | null
+  reasons: Record<string, string>
+}
+
+export interface FreshCatalystOut {
+  candidate_id: number
+  ticker: string
+  event: {
+    headline: string
+    source_url: string | null
+    source_name: string | null
+    category: string
+    published_at: string | null
+    first_seen_at: string
+    time_status: 'eligible' | 'expired' | 'time_uncertain' | 'future_timestamp'
+  }
+  pre_event_close: number | null
+  daily_reaction: CatalystReactionOut | null
+  latest_quote_reaction: CatalystReactionOut | null
+  quality: { status: string; reasons: string[] }
+  observation_id: number | null
+  /** Optional intraday extension; null while it is switched off. */
+  intraday?: CatalystIntradayOut | null
+}
+
+export interface FreshCatalystsPage {
+  items: FreshCatalystOut[]
+  total: number
+  generated_at: string | null
+  coverage: { status: string; reason?: string }
+  rule_version: string
+  collection_enabled: boolean
+}
+
 export interface AnalysisOut {
   ticker: string
   lean: AnalysisLean
@@ -508,8 +630,84 @@ export interface AnalysisOut {
   chart_pattern: ChartPatternOut | null
   short_interest: ShortInterestOut | null
   peer_rank: PeerRankOut | null
+  /** Present only when a research window was requested. */
+  research_window?: SwingWindow | null
+  selected_volatility?: SelectedVolatilityOut | null
+  event_window?: EventWindowOut | null
   caveats: string[]
   generated_at: string
+}
+
+export interface ResearchCapabilitiesOut {
+  swing_research_enabled: boolean
+  research_outcomes_v2_enabled: boolean
+  catalyst_scanner_enabled: boolean
+  follow_through_enabled: boolean
+  event_window_v2_enabled: boolean
+  research_intraday_enabled: boolean
+}
+
+export type FollowThroughCreate =
+  | { origin: 'setup'; setup_revision_id: number }
+  | { origin: 'catalyst'; candidate_id: number; horizon_sessions: number }
+
+export interface FollowThroughTrackOut {
+  id: number
+  origin: 'setup' | 'catalyst'
+  ticker: string
+  setup_id: number | null
+  side: ResearchSide
+  setup_revision_id: number | null
+  source_candidate_id: number | null
+  observation_id: number | null
+  started_at: string
+  expected_baseline_at: string
+  baseline_session: string
+  baseline_status: 'pending' | 'available' | 'missing'
+  baseline_price: number | null
+  benchmark_symbol: string
+  benchmark_label: string
+  benchmark_baseline_price: number | null
+  window: Record<string, unknown>
+  levels: Record<string, number | null>
+  evidence: Record<string, unknown>
+  lifecycle: 'active' | 'completed' | 'stopped' | 'superseded'
+  ended_at: string | null
+  end_reason: string | null
+  rule_version: string
+}
+
+export interface FollowThroughSessionOut {
+  session_date: string
+  observed_at: string
+  recorded_at: string
+  close: number | null
+  benchmark_close: number | null
+  metrics: {
+    status: string
+    stock_return_pct: number | null
+    benchmark_return_pct: number | null
+    raw_excess_pct: number | null
+    side_aligned_excess_pct: number | null
+    reference_distance_atr: number | null
+    volume_ratio: number | null
+    reasons: string[]
+  }
+  quality: { status: string; reasons: string[]; stock?: string; benchmark?: string }
+  evidence: Record<string, unknown>
+  rule_version: string
+  revision: number
+}
+
+export interface FollowThroughDetailOut {
+  track: FollowThroughTrackOut
+  rows: FollowThroughSessionOut[]
+  quality: { status: string }
+}
+
+export interface FollowThroughListOut {
+  items: FollowThroughTrackOut[]
+  total: number
 }
 
 export type ChartPatternBias = 'bullish' | 'bearish' | 'neutral'
@@ -770,7 +968,7 @@ export interface CompetitorAnalysisOut {
 }
 
 export type WatchlistSetupSide = 'long' | 'short'
-export type WatchlistSetupHorizon = 'short_term' | 'long_term' | 'custom'
+export type WatchlistSetupHorizon = 'short_term' | 'long_term' | 'custom' | 'swing'
 export type WatchlistSetupSource = 'ai_managed' | 'manual'
 export type WatchlistSetupStatus = 'active' | 'expired' | 'superseded'
 
@@ -819,6 +1017,10 @@ export interface WatchlistSetupOut {
   side: WatchlistSetupSide
   horizon: WatchlistSetupHorizon
   expires_on: string
+  /** Swing setups only; null for the calendar-day horizons. */
+  horizon_sessions?: number | null
+  window?: SwingWindow | null
+  current_revision_id?: number | null
   source_mode: WatchlistSetupSource
   status: WatchlistSetupStatus
   is_current: boolean
@@ -835,6 +1037,11 @@ export interface WatchlistSetupOut {
   created_at: string
   updated_at: string
   superseded_at: string | null
+}
+
+export interface SetupWindowPreviewOut {
+  window: SwingWindow
+  server_time: string
 }
 
 export interface WatchlistItemOut {
@@ -1019,6 +1226,7 @@ export interface DigestPayload {
   digest_date: string
   generated_at: string
   items: DigestItem[]
+  research_first?: Record<string, import('@/features/research-first/types').ResearchFirstReport>
 }
 
 export interface DigestOut {
@@ -1748,4 +1956,263 @@ export interface SettingsCategory {
 
 export interface SettingsOut {
   categories: SettingsCategory[]
+}
+
+// --- Prospective research outcomes (/v1/research-performance) ---
+
+export type ResearchSourceKind = 'composite_daily' | 'catalyst' | 'follow_through'
+
+export interface ResearchMonitoringOut {
+  generated_at: string
+  current_catalyst_rule_version: string
+  horizon_sessions: 1 | 3 | 5 | 7
+  latest_finalized_session: string | null
+  bar_sessions: {
+    session_date: string
+    expected_symbols: number | null
+    complete_symbols: number
+    checkpoint_status: string | null
+    checkpoint_synced: number | null
+    checkpoint_coverage_pct: number | null
+    attempts: number | null
+    last_attempt_at: string | null
+  }[]
+  baseline_sessions: {
+    baseline_session: string | null
+    rule_version: string
+    complete: number
+    partial: number
+  }[]
+  catalyst_cohorts: {
+    rule_version: string
+    baseline_status: 'full' | 'partial'
+    candidates: number
+    daily_measured: number
+    reaction_pct_n: number
+    mean_reaction_pct: number | null
+    reaction_atr_n: number
+    mean_reaction_atr: number | null
+    volume_ratio_n: number
+    mean_volume_ratio: number | null
+    outcomes_recorded: number
+    outcomes_matured: number
+    outcomes_evaluated: number
+    outcomes_missing: number
+    excess_return_n: number
+    mean_excess_return_pct: number | null
+  }[]
+  usage: {
+    follow_through: { total: number; active: number; started_30d: number }
+    subscriptions: { total: number; enabled: number; created_30d: number; ever_succeeded: number }
+    setup_revisions: {
+      total: number
+      created_30d: number
+      manual_total: number
+      manual_created_30d: number
+      automated_total: number
+      manual_edits: number
+    }
+  }
+}
+export type ResearchSide = 'long' | 'short' | 'unassigned'
+export type ResearchOrigin = 'setup' | 'catalyst'
+export type ResearchOutcomeStatus =
+  | 'pending'
+  | 'evaluated'
+  | 'missing_data'
+  | 'corporate_action_unresolved'
+export type ResearchMetricName =
+  | 'raw_return_pct'
+  | 'side_return_pct'
+  | 'cost_adjusted_return_pct'
+  | 'excess_return_pct'
+  | 'favorable_move_pct'
+  | 'adverse_move_pct'
+
+export interface ResearchPerformanceFilters {
+  horizon_sessions: 1 | 3 | 5 | 7
+  source_kind: ResearchSourceKind
+  rule_version?: string
+  side?: ResearchSide
+  origin?: ResearchOrigin
+  from?: string
+  to?: string
+  status?: ResearchOutcomeStatus
+  extends_beyond_setup_expiry?: boolean
+}
+
+export interface ResearchCoverageOut {
+  recorded: number
+  matured: number
+  evaluated: number
+  missing: number
+}
+
+/** One metric over evaluated rows; `n` is its own denominator. */
+export interface ResearchMetricOut {
+  n: number
+  unavailable: number
+  mean: number | null
+  equal_date_mean: number | null
+  median: number | null
+  positive: number
+  zero: number
+  negative: number
+  positive_rate: number | null
+}
+
+export interface ResearchGroupOut {
+  key: string
+  coverage: ResearchCoverageOut
+  decision_sessions: number
+  metrics: Record<ResearchMetricName, ResearchMetricOut>
+  path_order_counts?: Record<string, number>
+}
+
+export interface ResearchFactorPerformanceOut {
+  factor: string
+  positive: ResearchGroupOut
+  zero: ResearchGroupOut
+  negative: ResearchGroupOut
+  missing: ResearchGroupOut
+  positive_minus_negative_excess_pct: number | null
+}
+
+export interface ResearchScoreSpreadOut {
+  total_sessions: number
+  eligible_sessions: number
+  paired_sessions: number
+  top: ResearchGroupOut
+  bottom: ResearchGroupOut
+  mean_daily_spread_pct: number | null
+  median_daily_spread_pct: number | null
+}
+
+export interface ResearchCohortOut {
+  horizon_sessions: number
+  source_kind: ResearchSourceKind
+  rule_version: string | null
+  side: ResearchSide | null
+  origin: ResearchOrigin | null
+  status: ResearchOutcomeStatus | null
+  extends_beyond_setup_expiry: boolean | null
+  from: string
+  to: string
+}
+
+export interface ResearchCostProfileOut {
+  name: string
+  per_side_bps: number
+  round_trip_bps: number
+  excludes: string[]
+}
+
+export interface ResearchPerformanceOut {
+  cohort: ResearchCohortOut
+  measurement_definition: Record<string, string>
+  costs: ResearchCostProfileOut
+  coverage: ResearchCoverageOut
+  corrections: number
+  date_counts: { decision_sessions: number; first: string | null; last: string | null }
+  provisional: boolean
+  overall: ResearchGroupOut
+  by_rule: ResearchGroupOut[]
+  by_side: ResearchGroupOut[]
+  by_score_bucket: ResearchGroupOut[]
+  by_factor: ResearchFactorPerformanceOut[]
+  score_spread: ResearchScoreSpreadOut | null
+  by_calendar_month: ResearchGroupOut[]
+  collection_enabled: boolean
+  generated_at: string
+}
+
+export interface ResearchObservationRowOut {
+  observation_id: number
+  ticker: string
+  side: ResearchSide
+  origin: ResearchOrigin | null
+  source_key: string
+  rule_version: string
+  decision_at: string
+  decision_session: string
+  horizon_sessions: number
+  mature: boolean
+  status: ResearchOutcomeStatus
+  status_reason: string | null
+  revision: number
+  baseline_session: string
+  exit_session: string
+  baseline_price: number | null
+  exit_price: number | null
+  raw_return_pct: number | null
+  side_return_pct: number | null
+  cost_adjusted_return_pct: number | null
+  benchmark_return_pct: number | null
+  excess_return_pct: number | null
+  favorable_move_pct?: number | null
+  adverse_move_pct?: number | null
+  path_status?: string | null
+  target_stop_order?: string | null
+  path_coverage?: { expected_bars: number; usable_bars: number; status: string } | null
+  extends_beyond_setup_expiry: boolean | null
+  headline: string | null
+  score: number | null
+  overall_score: number | null
+  lean: string | null
+}
+
+export interface ResearchObservationPageOut {
+  items: ResearchObservationRowOut[]
+  total: number
+  page: number
+  page_size: number
+}
+
+/** Same-elapsed-time 5-minute volume ratio; never a daily volume ratio. */
+export interface SameTimeVolumeOut {
+  value: number | null
+  status: 'ok' | 'unavailable' | 'stale'
+  reason: string | null
+  session?: string | null
+  cutoff_at?: string | null
+  lag_minutes?: number | null
+  sample_sessions: number
+  minimum_sessions: number
+  interval: string
+}
+
+export interface CatalystIntradayOut {
+  subscription_id: number | null
+  collecting: boolean
+  coverage: Record<string, unknown> | null
+  same_time_volume: SameTimeVolumeOut | null
+  pre_publication_reference: { close: number; bar_end_at: string; basis: 'reference_only' } | null
+}
+
+export type ResearchSubscriptionOrigin =
+  | { follow_through_track_id: number }
+  | { catalyst_candidate_id: number }
+
+export interface ResearchSubscriptionOut {
+  id: number
+  origin_type: 'follow_through' | 'catalyst'
+  origin_id: number
+  ticker: string
+  enabled: boolean
+  created_at: string
+  disabled_at: string | null
+  last_attempt_at: string | null
+  last_success_at: string | null
+  coverage: {
+    status?: string
+    error?: string | null
+    last_bar_end?: string | null
+    sessions_with_gaps?: string[]
+  }
+}
+
+export interface ResearchSubscriptionListOut {
+  items: ResearchSubscriptionOut[]
+  collection_enabled: boolean
+  symbol_limit: number
 }

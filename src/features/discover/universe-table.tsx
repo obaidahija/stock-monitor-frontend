@@ -107,6 +107,7 @@ function EarningsCell({ item }: { item: UniverseTickerOut }) {
           const until = daysUntil(item.next_earnings_date)
           const soon = until >= 0 && until <= EARNINGS_WINDOW_DAYS
           return (
+            <>
             <p
               title={soon ? 'Calendar days until earnings, using New York dates.' : undefined}
               className={cn(
@@ -120,6 +121,8 @@ function EarningsCell({ item }: { item: UniverseTickerOut }) {
                 ` (${item.next_earnings_bmo_amc.toUpperCase()})`}
               {soon && ` · ${until} calendar ${until === 1 ? 'day' : 'days'}`}
             </p>
+            {soon && <Link className="text-muted-foreground text-xs underline-offset-2 hover:underline" to={`/stocks/${encodeURIComponent(item.ticker)}?tab=analysis&horizon_sessions=5`}>Check selected window</Link>}
+            </>
           )
         })()}
       {!item.is_reit && !item.last_earnings_result && !item.next_earnings_date && (

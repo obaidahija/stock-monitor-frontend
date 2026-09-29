@@ -20,12 +20,12 @@ export function AppLayout() {
   return (
     <div className="bg-background text-foreground min-h-svh">
       <header className="border-border bg-background/95 sticky top-0 z-10 border-b backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center gap-6 px-4 py-3">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-2 px-4 py-3 md:flex-nowrap md:gap-6">
           <NavLink to="/" className="flex items-center gap-2 font-semibold tracking-tight">
             <LineChart className="text-primary size-5" />
             MarketScout
           </NavLink>
-          <nav className="flex items-center gap-1">
+          <nav aria-label="Main navigation" className="order-3 flex w-full min-w-0 items-center gap-1 overflow-x-auto md:order-2 md:w-auto md:gap-0.5">
             {NAV_ITEMS.map((item) => (
               <NavLink
                 key={item.to}
@@ -33,7 +33,7 @@ export function AppLayout() {
                 end={item.end}
                 className={({ isActive }) =>
                   cn(
-                    'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                    'flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm font-medium transition-colors',
                     item.accent
                       ? isActive
                         ? 'bg-orange-500/15 text-orange-500'
@@ -49,7 +49,7 @@ export function AppLayout() {
               </NavLink>
             ))}
           </nav>
-          <div className="ml-auto">
+          <div className="order-2 ml-auto md:order-3">
             <TickerSearch />
           </div>
         </div>

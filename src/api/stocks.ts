@@ -9,6 +9,7 @@ import type {
   EarningsReactionOut,
   EarningsRefreshResult,
   EarningsSummary,
+  EventWindowOut,
   FilingOut,
   GoogleFinanceChatTurnIn,
   GoogleFinanceResearchOut,
@@ -27,6 +28,8 @@ import type {
 
 export interface AnalysisExtras {
   includeChartPattern?: boolean
+  /** Adds the selected 1-7 session research window; omitted keeps the legacy response. */
+  horizonSessions?: number
 }
 
 export function getFilings(ticker: string, opts?: { form?: string; days?: number }) {
@@ -119,9 +122,18 @@ export function getCatalysts(ticker: string) {
 export function getAnalysis(ticker: string, extras: AnalysisExtras = {}) {
   const params = new URLSearchParams()
   if (extras.includeChartPattern) params.set('include_chart_pattern', 'true')
+  if (extras.horizonSessions !== undefined) {
+    params.set('horizon_sessions', String(extras.horizonSessions))
+  }
   const qs = params.toString()
   return apiClient.get<AnalysisOut>(
     `/v1/stocks/${encodeURIComponent(ticker)}/analysis${qs ? `?${qs}` : ''}`,
+  )
+}
+
+export function getEventWindow(ticker: string, horizonSessions: number) {
+  return apiClient.get<EventWindowOut>(
+    `/v1/stocks/${encodeURIComponent(ticker)}/event-window?horizon_sessions=${horizonSessions}`,
   )
 }
 

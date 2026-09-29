@@ -4,6 +4,7 @@ import {
   addCustomTicker,
   archiveTicker,
   getNotableFilings,
+  getFreshCatalysts,
   getSectorHeatmap,
   getTwitterBestStocks,
   getUniverse,
@@ -12,7 +13,17 @@ import {
   unarchiveTicker,
   refreshTwitterBestStocks,
   type UniverseParams,
+  type FreshCatalystParams,
 } from '@/api/discover'
+
+export function useFreshCatalysts(params: FreshCatalystParams, enabled = true) {
+  return useQuery({
+    queryKey: ['discover', 'fresh-catalysts', params],
+    queryFn: () => getFreshCatalysts(params),
+    enabled,
+    placeholderData: keepPreviousData,
+  })
+}
 
 export function useNotableFilings() {
   return useQuery({ queryKey: ['discover', 'filings'], queryFn: getNotableFilings })

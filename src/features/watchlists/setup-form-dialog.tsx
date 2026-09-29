@@ -1,5 +1,5 @@
 import { Loader2, Pencil, Plus } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
@@ -14,12 +14,15 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { SetupUpdateInput } from '@/api/watchlists'
+import { useResearchCapabilities, useSetupWindowPreview } from '@/features/research/hooks'
 import type {
   WatchlistSetupHorizon,
   WatchlistSetupOut,
   WatchlistSetupSide,
 } from '@/types/api'
 import { useCreateManualSetup, useUpdateWatchlistSetup } from './hooks'
+import { DEFAULT_RESEARCH_WINDOW, isSwingDisabledError } from './research-window'
+import { ResearchWindowControl, WindowExpiryLine } from './research-window-control'
 
 export function SetupFormDialog({
   watchlistId,
@@ -33,8 +36,10 @@ export function SetupFormDialog({
   compact?: boolean
 }) {
   const [open, setOpen] = useState(false)
+  const idPrefix = useId()
   const [side, setSide] = useState<WatchlistSetupSide>('long')
   const [horizon, setHorizon] = useState<WatchlistSetupHorizon>('short_term')
+  const [sessions, setSessions] = useState(DEFAULT_RESEARCH_WINDOW)
   const [expiresOn, setExpiresOn] = useState('')
   const [primary, setPrimary] = useState('')
   const [secondary, setSecondary] = useState('')
@@ -43,12 +48,23 @@ export function SetupFormDialog({
   const [note, setNote] = useState('')
   const create = useCreateManualSetup()
   const update = useUpdateWatchlistSetup()
+  const capabilities = useResearchCapabilities()
+  const swingEnabled = capabilities.data?.swing_research_enabled === true
   const isPending = create.isPending || update.isPending
+
+  // A saved swing setup keeps its own window until the timing really changes.
+  const showsSavedWindow =
+    setup?.horizon === 'swing' && horizon === 'swing' && sessions === setup.horizon_sessions
+  const preview = useSetupWindowPreview(
+    sessions,
+    open && horizon === 'swing' && swingEnabled && !showsSavedWindow,
+  )
 
   useEffect(() => {
     if (!open) return
     setSide(setup?.side ?? 'long')
     setHorizon(setup?.horizon ?? 'short_term')
+    setSessions(setup?.horizon_sessions ?? DEFAULT_RESEARCH_WINDOW)
     setExpiresOn(setup?.horizon === 'custom' ? setup.expires_on : '')
     setPrimary(setup ? String(setup.entry_primary) : '')
     setSecondary(setup?.entry_secondary !== null && setup?.entry_secondary !== undefined ? String(setup.entry_secondary) : '')
@@ -62,6 +78,8 @@ export function SetupFormDialog({
       side,
       horizon,
       expires_on: horizon === 'custom' ? expiresOn : undefined,
+      // Only a swing window has a session count; the server resolves its expiry.
+      ...(horizon === 'swing' ? { horizon_sessions: sessions } : {}),
       entry_primary: Number(primary),
       entry_secondary: secondary ? Number(secondary) : undefined,
       stop_loss: Number(stop),
@@ -75,8 +93,11 @@ export function SetupFormDialog({
         if (horizon !== setup.horizon) {
           body.horizon = horizon
           if (horizon === 'custom') body.expires_on = expiresOn
+          if (horizon === 'swing') body.horizon_sessions = sessions
         } else if (horizon === 'custom' && expiresOn !== setup.expires_on) {
           body.expires_on = expiresOn
+        } else if (horizon === 'swing' && sessions !== setup.horizon_sessions) {
+          body.horizon_sessions = sessions
         }
         if (Number(primary) !== setup.entry_primary) body.entry_primary = Number(primary)
         if (Number(stop) !== setup.stop_loss) body.stop_loss = Number(stop)
@@ -96,8 +117,12 @@ export function SetupFormDialog({
       }
       toast.success(`${ticker} setup ${setup ? 'updated' : 'created'}`)
       setOpen(false)
-    } catch {
-      toast.error('Check the long/short level order and try again')
+    } catch (error) {
+      toast.error(
+        isSwingDisabledError(error)
+          ? 'Swing research windows are turned off'
+          : 'Check the long/short level order and try again',
+      )
     }
   }
 
@@ -106,6 +131,7 @@ export function SetupFormDialog({
     Number(stop) > 0 &&
     Number(target) > 0 &&
     (horizon !== 'custom' || Boolean(expiresOn))
+  const offerSwing = swingEnabled || setup?.horizon === 'swing'
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -129,27 +155,38 @@ export function SetupFormDialog({
         </DialogHeader>
 
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Side">
-            <select value={side} onChange={(event) => setSide(event.target.value as WatchlistSetupSide)} className="border-input bg-background h-8 w-full rounded-lg border px-2 text-sm">
+          <Field label="Side" htmlFor={`${idPrefix}-side`}>
+            <select id={`${idPrefix}-side`} value={side} onChange={(event) => setSide(event.target.value as WatchlistSetupSide)} className="border-input bg-background h-8 w-full rounded-lg border px-2 text-sm">
               <option value="long">Long</option>
               <option value="short">Short</option>
             </select>
           </Field>
-          <Field label="Horizon">
-            <select value={horizon} onChange={(event) => setHorizon(event.target.value as WatchlistSetupHorizon)} className="border-input bg-background h-8 w-full rounded-lg border px-2 text-sm">
+          <Field label="Horizon" htmlFor={`${idPrefix}-horizon`}>
+            <select id={`${idPrefix}-horizon`} value={horizon} onChange={(event) => setHorizon(event.target.value as WatchlistSetupHorizon)} className="border-input bg-background h-8 w-full rounded-lg border px-2 text-sm">
               <option value="short_term">Short term · 20 days</option>
               <option value="long_term">Long term · 60 days</option>
               <option value="custom">Custom date</option>
+              {offerSwing && <option value="swing">Swing · 1–7 trading sessions</option>}
             </select>
           </Field>
           {horizon === 'custom' && (
-            <Field label="Expires on" full><Input type="date" value={expiresOn} onChange={(event) => setExpiresOn(event.target.value)} /></Field>
+            <Field label="Expires on" htmlFor={`${idPrefix}-expires-on`} full><Input id={`${idPrefix}-expires-on`} type="date" value={expiresOn} onChange={(event) => setExpiresOn(event.target.value)} /></Field>
           )}
-          <Field label="Primary entry"><Input type="number" min="0" step="any" value={primary} onChange={(event) => setPrimary(event.target.value)} /></Field>
-          <Field label="Secondary entry"><Input type="number" min="0" step="any" value={secondary} onChange={(event) => setSecondary(event.target.value)} placeholder="Optional" /></Field>
-          <Field label="Stop loss"><Input type="number" min="0" step="any" value={stop} onChange={(event) => setStop(event.target.value)} /></Field>
-          <Field label="Take profit"><Input type="number" min="0" step="any" value={target} onChange={(event) => setTarget(event.target.value)} /></Field>
-          <Field label="Note" full><Input value={note} onChange={(event) => setNote(event.target.value)} placeholder="Optional context" /></Field>
+          {horizon === 'swing' && (
+            <div className="col-span-2 space-y-1.5">
+              <ResearchWindowControl value={sessions} onChange={setSessions} disabled={!swingEnabled} />
+              <WindowExpiryLine
+                window={showsSavedWindow ? setup?.window : preview.data?.window}
+                isPending={!showsSavedWindow && swingEnabled && preview.isPending}
+                error={showsSavedWindow ? null : preview.error}
+              />
+            </div>
+          )}
+          <Field label="Primary entry" htmlFor={`${idPrefix}-primary`}><Input id={`${idPrefix}-primary`} type="number" min="0" step="any" value={primary} onChange={(event) => setPrimary(event.target.value)} /></Field>
+          <Field label="Secondary entry" htmlFor={`${idPrefix}-secondary`}><Input id={`${idPrefix}-secondary`} type="number" min="0" step="any" value={secondary} onChange={(event) => setSecondary(event.target.value)} placeholder="Optional" /></Field>
+          <Field label="Stop loss" htmlFor={`${idPrefix}-stop`}><Input id={`${idPrefix}-stop`} type="number" min="0" step="any" value={stop} onChange={(event) => setStop(event.target.value)} /></Field>
+          <Field label="Take profit" htmlFor={`${idPrefix}-target`}><Input id={`${idPrefix}-target`} type="number" min="0" step="any" value={target} onChange={(event) => setTarget(event.target.value)} /></Field>
+          <Field label="Note" htmlFor={`${idPrefix}-note`} full><Input id={`${idPrefix}-note`} value={note} onChange={(event) => setNote(event.target.value)} placeholder="Optional context" /></Field>
         </div>
 
         <p className="text-muted-foreground text-xs">
@@ -166,10 +203,20 @@ export function SetupFormDialog({
   )
 }
 
-function Field({ label, full, children }: { label: string; full?: boolean; children: React.ReactNode }) {
+function Field({
+  label,
+  htmlFor,
+  full,
+  children,
+}: {
+  label: string
+  htmlFor: string
+  full?: boolean
+  children: React.ReactNode
+}) {
   return (
     <div className={full ? 'col-span-2 space-y-1.5' : 'space-y-1.5'}>
-      <Label>{label}</Label>
+      <Label htmlFor={htmlFor}>{label}</Label>
       {children}
     </div>
   )

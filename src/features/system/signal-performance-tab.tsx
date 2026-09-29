@@ -11,12 +11,36 @@ import {
 } from '@/components/ui/table'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useSignalPerformance } from './hooks'
+import { ResearchPerformancePanel } from './research-performance-panel'
 
 const pct = (value: number | null) => (value === null ? '—' : `${(value * 100).toFixed(1)}%`)
 const signed = (value: number | null) =>
   value === null ? '—' : `${value >= 0 ? '+' : ''}${value.toFixed(2)}`
 
+type Dataset = 'legacy' | 'prospective'
+
 export function SignalPerformanceTab() {
+  const [dataset, setDataset] = useState<Dataset>('legacy')
+  return (
+    <div className="space-y-4">
+      <Tabs value={dataset} onValueChange={(value) => setDataset(value as Dataset)}>
+        <TabsList>
+          {/* Short labels on phones; the accessible name stays complete. */}
+          <TabsTrigger value="legacy" aria-label="Legacy composite observations">
+            Legacy<span className="hidden sm:inline">&nbsp;composite observations</span>
+          </TabsTrigger>
+          <TabsTrigger value="prospective" aria-label="Prospective research observations">
+            Prospective<span className="hidden sm:inline">&nbsp;research observations</span>
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+      {dataset === 'legacy' ? <LegacySignalPerformance /> : <ResearchPerformancePanel />}
+    </div>
+  )
+}
+
+/** The original 5/20-session composite report, unchanged. */
+function LegacySignalPerformance() {
   const [horizon, setHorizon] = useState<5 | 20>(5)
   const { data, isLoading } = useSignalPerformance(horizon)
 

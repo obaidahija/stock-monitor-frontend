@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { STAGE_META } from '@/components/shared/stage-badge'
 import { DIGEST_TIER_ORDER, TIER_META } from '@/components/shared/tier-badge'
 import { DigestItemCard } from '@/features/digest/digest-item-card'
+import { DigestResearchFirst } from '@/features/research-first/research-first-panel'
 import { useBuildDigest, useMorningDigest, useSendMorningDigest } from '@/features/digest/hooks'
 import { useTelegramStatus } from '@/features/watchlists/hooks'
 import { formatDateTime } from '@/lib/format'
@@ -173,7 +174,9 @@ export function DigestPage() {
         />
       )}
 
-      {digest && items.length === 0 && (
+      {digest && <DigestResearchFirst snapshots={digest.payload.research_first} />}
+
+      {digest && items.length === 0 && !Object.values(digest.payload.research_first ?? {}).some((report) => report.items.length > 0) && (
         <EmptyState
           title="No tracked tickers yet"
           description="Scores populate daily once universe_score has run, or add a custom ticker on Discover."

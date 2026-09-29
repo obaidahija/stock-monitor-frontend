@@ -16,6 +16,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -27,9 +28,18 @@ import { ApiError } from '@/lib/api-client'
 import { formatCurrency, formatDate, formatDateTime, formatRelativeTime, formatScore } from '@/lib/format'
 import { LEAN_COLOR_CLASSES } from '@/lib/lean-colors'
 import { cn } from '@/lib/utils'
+import { CapabilityNotice } from '@/features/research/capability-notice'
+import { useResearchCapabilities } from '@/features/research/hooks'
+import {
+  formatWindowExpiry,
+  parseHorizonSessions,
+  sessionsLabel,
+} from '@/features/watchlists/research-window'
+import { ResearchWindowControl } from '@/features/watchlists/research-window-control'
 import { ChartPatternCard } from './chart-pattern-card'
 import { PeerRankLine } from './peer-rank-line'
 import { WindowRiskChip } from './window-risk-chip'
+import { EventWindowCard } from './event-window'
 import { ShortInterestCard } from './short-interest-card'
 import { useAnalysis, useRefreshUniverseScore, useUniverseScore } from './hooks'
 import { SentimentTrendChart } from './sentiment-trend-chart'
@@ -40,6 +50,8 @@ import type {
   PriceLevelPosition,
   PriceLevelsOut,
   ResistanceReachability,
+  SelectedVolatilityOut,
+  SwingWindow,
 } from '@/types/api'
 
 const FACTOR_META: Record<string, { label: string; icon: LucideIcon }> = {
@@ -473,14 +485,104 @@ function AnalystDetailCard({ detail }: { detail: AnalystDetailOut }) {
   )
 }
 
+const VOLATILITY_REASON_LABELS: Record<string, string> = {
+  unknown_price_basis: 'price adjustment basis unknown',
+  insufficient_complete_history: 'fewer than 61 complete daily closes',
+  zero_variance: 'no price variation in the sample',
+  no_cached_history: 'no cached daily history yet',
+  source_unavailable: 'price source unavailable',
+  invalid_price_values: 'invalid prices in the history',
+  daily_history_stale: 'daily history is behind the latest session',
+  misaligned_series: 'daily history is misaligned',
+  duplicate_or_unordered_dates: 'daily history has duplicate dates',
+  non_session_date: 'daily history has a non-trading date',
+}
+
+function volatilityReasonLabel(reason: string): string {
+  return VOLATILITY_REASON_LABELS[reason] ?? reason.replaceAll('_', ' ')
+}
+
+function SelectedVolatilityLine({ volatility }: { volatility: SelectedVolatilityOut }) {
+  const sessions = volatility.horizon_sessions
+  if (volatility.move_pct === null) {
+    return (
+      <p className="text-muted-foreground text-sm">
+        {sessions}-session volatility reference unavailable:{' '}
+        {volatilityReasonLabel(volatility.reason ?? 'unavailable')}
+      </p>
+    )
+  }
+  return (
+    <div className="flex flex-wrap items-baseline gap-x-2 text-sm">
+      <span className="font-medium">
+        Typical {sessions}-session move ±{volatility.move_pct.toFixed(2)}%
+      </span>
+      <span className="text-muted-foreground text-xs">
+        one standard deviation · {volatility.sample_count} daily returns
+        {volatility.quality.status === 'stale' ? ' · stale history' : ''}
+      </span>
+    </div>
+  )
+}
+
+function ResearchWindowCard({
+  value,
+  onChange,
+  window,
+  volatility,
+}: {
+  value: number
+  onChange: (sessions: number) => void
+  window: SwingWindow | null | undefined
+  volatility: SelectedVolatilityOut | null | undefined
+}) {
+  return (
+    <Card>
+      <CardContent className="space-y-3">
+        <div className="flex flex-wrap items-end gap-4">
+          <ResearchWindowControl value={value} onChange={onChange} className="w-56" />
+          {window && (
+            <div className="space-y-0.5">
+              <p className="text-sm font-medium">Expires {formatWindowExpiry(window.expires_at)}</p>
+              <p className="text-muted-foreground text-xs">{sessionsLabel(window.horizon_sessions)}</p>
+            </div>
+          )}
+        </div>
+        {volatility && <SelectedVolatilityLine volatility={volatility} />}
+        <p className="text-muted-foreground text-xs">
+          The window only changes this volatility reference; it does not change the composite
+          score or suggest a level is reachable within it.
+        </p>
+      </CardContent>
+    </Card>
+  )
+}
+
 export function AnalysisTab({ ticker }: { ticker: string }) {
   const [extras, setExtras] = useState({ chartPattern: false })
-  const base = useAnalysis(ticker)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const capabilities = useResearchCapabilities()
+  const swingEnabled = capabilities.data?.swing_research_enabled === true
+  const horizonSessions = swingEnabled
+    ? parseHorizonSessions(searchParams.get('horizon_sessions'))
+    : undefined
+  const selection = horizonSessions === undefined ? {} : { horizonSessions }
+  // Waits for the capability check so a swing-enabled page fetches once, with
+  // its window; a failed check falls back to the legacy request.
+  const base = useAnalysis(ticker, selection, !capabilities.isPending)
   const extrasQuery = useAnalysis(
     ticker,
-    { includeChartPattern: extras.chartPattern },
+    { includeChartPattern: extras.chartPattern, ...selection },
     extras.chartPattern,
   )
+
+  function handleWindowChange(sessions: number) {
+    setSearchParams((previous) => {
+      const next = new URLSearchParams(previous)
+      next.set('horizon_sessions', String(sessions))
+      return next
+    })
+  }
 
   if (base.isPending) return <Skeleton className="h-72 rounded-xl" />
   if (base.isError) return <ErrorState error={base.error} onRetry={() => base.refetch()} />
@@ -515,6 +617,17 @@ export function AnalysisTab({ ticker }: { ticker: string }) {
         <PeerRankLine peerRank={data.peer_rank} />
         <WindowRiskChip windowRisk={data.window_risk} />
       </div>
+
+      <CapabilityNotice isError={capabilities.isError} onRetry={() => void capabilities.refetch()} />
+      {horizonSessions !== undefined && (
+        <ResearchWindowCard
+          value={horizonSessions}
+          onChange={handleWindowChange}
+          window={data.research_window}
+          volatility={data.selected_volatility}
+        />
+      )}
+      {horizonSessions !== undefined && data.event_window && <EventWindowCard data={data.event_window} />}
 
       <ScoreHistoryChart ticker={ticker} />
 
