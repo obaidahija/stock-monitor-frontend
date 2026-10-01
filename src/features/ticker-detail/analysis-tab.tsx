@@ -49,6 +49,7 @@ import type {
   ComponentScoreOut,
   PriceLevelPosition,
   PriceLevelsOut,
+  PriceTargetChangeOut,
   ResistanceReachability,
   SelectedVolatilityOut,
   SwingWindow,
@@ -390,6 +391,36 @@ const RATING_BAR_META: {
   { key: 'strong_sell', label: 'Strong sell', barClassName: 'bg-red-600', dotClassName: 'bg-red-600' },
 ]
 
+function PriceTargetChangeCallout({ change }: { change: PriceTargetChangeOut }) {
+  const isCut =
+    change.current_price_target !== null &&
+    change.prior_price_target !== null &&
+    change.current_price_target < change.prior_price_target
+  const verb = change.price_target_action === 'Lowers' || isCut ? 'cut' : 'raised'
+
+  return (
+    <div
+      className={cn(
+        'flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border px-3 py-2 text-sm',
+        isCut
+          ? 'border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-400'
+          : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+      )}
+    >
+      <span className="font-medium">
+        {change.firm} {verb} price target
+        {change.pct_change !== null && ` ${change.pct_change > 0 ? '+' : ''}${change.pct_change.toFixed(1)}%`}
+      </span>
+      {change.prior_price_target !== null && change.current_price_target !== null && (
+        <span className="tabular-nums">
+          {formatCurrency(change.prior_price_target)} → {formatCurrency(change.current_price_target)}
+        </span>
+      )}
+      <span className="text-muted-foreground">{formatRelativeTime(change.action_at)}</span>
+    </div>
+  )
+}
+
 function AnalystDetailCard({ detail }: { detail: AnalystDetailOut }) {
   const ratingCounts = RATING_BAR_META.map((meta) => ({ ...meta, count: detail[meta.key] ?? 0 }))
   const totalRatings = ratingCounts.reduce((sum, r) => sum + r.count, 0)
@@ -400,7 +431,7 @@ function AnalystDetailCard({ detail }: { detail: AnalystDetailOut }) {
     detail.price_target_high !== null
 
   return (
-    <Card>
+    <Card id="analyst-detail-card" className="scroll-mt-20">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Analyst detail</CardTitle>
         {detail.num_analysts !== null && (
@@ -408,6 +439,10 @@ function AnalystDetailCard({ detail }: { detail: AnalystDetailOut }) {
         )}
       </CardHeader>
       <CardContent className="space-y-4">
+        {detail.recent_price_target_change && (
+          <PriceTargetChangeCallout change={detail.recent_price_target_change} />
+        )}
+
         {totalRatings > 0 && (
           <div className="space-y-2">
             <div className="border-border flex h-2.5 overflow-hidden rounded-full border">
@@ -472,6 +507,15 @@ function AnalystDetailCard({ detail }: { detail: AnalystDetailOut }) {
                     {action.from_grade && action.to_grade
                       ? `${action.from_grade} → ${action.to_grade}`
                       : action.to_grade ?? action.action ?? '—'}
+                    {action.prior_price_target !== null && action.current_price_target !== null && (
+                      <>
+                        {' · '}
+                        <span className="tabular-nums">
+                          {formatCurrency(action.prior_price_target)} →{' '}
+                          {formatCurrency(action.current_price_target)}
+                        </span>
+                      </>
+                    )}
                     {' · '}
                     {formatDate(action.date)}
                   </span>

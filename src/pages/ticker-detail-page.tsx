@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { Badge } from '@/components/ui/badge'
 import { PageHeader } from '@/components/shared/page-header'
@@ -5,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AddTrackedTickerButton } from '@/features/discover/add-tracked-ticker-button'
 import { RemoveTickerDialog } from '@/features/discover/remove-ticker-dialog'
 import { PriceChart } from '@/features/ticker-detail/price-chart'
+import { PriceTargetChangeBanner } from '@/features/ticker-detail/price-target-change-banner'
 import { TickerPriceHeader } from '@/features/ticker-detail/ticker-price-header'
 import { AiResearchTab } from '@/features/ticker-detail/ai-research/ai-research-tab'
 import { AnalysisTab } from '@/features/ticker-detail/analysis-tab'
@@ -66,6 +68,31 @@ export function TickerDetailPage() {
     )
   }
 
+  // The Analyst Detail card only exists in the DOM while the Analysis tab is
+  // mounted (Radix unmounts inactive TabsContent) -- if we're on another tab,
+  // switch first and defer the scroll to the effect below, which fires once
+  // activeTab actually becomes 'analysis' and the card has had a chance to mount.
+  const pendingScrollRef = useRef(false)
+
+  function scrollToAnalystDetail() {
+    const target = document.getElementById('analyst-detail-card')
+    if (activeTab === 'analysis' && target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    } else {
+      pendingScrollRef.current = true
+      handleTabChange('analysis')
+    }
+  }
+
+  useEffect(() => {
+    if (activeTab !== 'analysis' || !pendingScrollRef.current) return
+    pendingScrollRef.current = false
+    const frame = requestAnimationFrame(() => {
+      document.getElementById('analyst-detail-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [activeTab])
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -96,6 +123,8 @@ export function TickerDetailPage() {
           </>
         }
       />
+
+      <PriceTargetChangeBanner ticker={symbol} onNavigate={scrollToAnalystDetail} />
 
       <PriceChart ticker={symbol} />
 

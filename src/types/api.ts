@@ -481,6 +481,18 @@ export interface AnalystActionOut {
   from_grade: string | null
   to_grade: string | null
   date: string
+  price_target_action: string | null
+  current_price_target: number | null
+  prior_price_target: number | null
+}
+
+export interface PriceTargetChangeOut {
+  firm: string
+  action_at: string
+  price_target_action: string | null
+  current_price_target: number | null
+  prior_price_target: number | null
+  pct_change: number | null
 }
 
 export interface AnalystDetailOut {
@@ -495,6 +507,19 @@ export interface AnalystDetailOut {
   price_target_median: number | null
   num_analysts: number | null
   recent_actions: AnalystActionOut[]
+  recent_price_target_change: PriceTargetChangeOut | null
+}
+
+export interface PriceTargetChangeSummaryOut {
+  ticker: string
+  firm: string
+  action_at: string
+  price_target_action: string | null
+  current_price_target: number | null
+  prior_price_target: number | null
+  pct_change: number | null
+  current_price: number | null
+  upside_to_target_pct: number | null
 }
 
 /** A fixed 1-7 exchange-session research window, resolved by the server. */

@@ -12,6 +12,9 @@ vi.mock('@/features/discover/add-tracked-ticker-button', () => ({
 vi.mock('@/features/discover/remove-ticker-dialog', () => ({ RemoveTickerDialog: () => null }))
 vi.mock('@/features/watchlists/manage-lists-dialog', () => ({ ManageListsDialog: () => null }))
 vi.mock('@/features/ticker-detail/price-chart', () => ({ PriceChart: () => null }))
+vi.mock('@/features/ticker-detail/price-target-change-banner', () => ({
+  PriceTargetChangeBanner: () => null,
+}))
 vi.mock('@/features/ticker-detail/ticker-price-header', () => ({ TickerPriceHeader: () => null }))
 vi.mock('@/features/ticker-detail/ai-research/ai-research-tab', () => ({
   AiResearchTab: () => <div>AI research content</div>,

@@ -4,6 +4,7 @@ import type {
   FreshCatalystsPage,
   FilingOut,
   InsiderSummaryOut,
+  PriceTargetChangeSummaryOut,
   SectorHeatmapOut,
   TickerSearchResult,
   TrackedTickerOut,
@@ -35,6 +36,12 @@ export function getFreshCatalysts(params: FreshCatalystParams) {
 
 export function getNotableFilings() {
   return apiClient.get<FilingOut[]>('/v1/discover/filings')
+}
+
+export function getAnalystPriceTargetChanges(withinDays = 7) {
+  return apiClient.get<PriceTargetChangeSummaryOut[]>(
+    `/v1/discover/analyst-price-target-changes?within_days=${withinDays}`,
+  )
 }
 
 export interface UniverseParams {
