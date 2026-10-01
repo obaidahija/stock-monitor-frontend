@@ -146,3 +146,24 @@ test('analyst reports do not imply an issuer event date', () => {
   expect(screen.getByText('Publisher date: unverified')).toBeInTheDocument()
   expect(screen.queryByText(/Issuer event date:/)).not.toBeInTheDocument()
 })
+
+test('digest reports the first three cards of the selected horizon, independent of expansion', () => {
+  const onVisible = vi.fn()
+  const five = report(5)
+  five.items = ['AAA', 'BBB', 'CCC', 'DDD'].map((ticker, index) => ({
+    ...report(5, ticker).items[0], rank: index + 1,
+  }))
+  renderWithProviders(
+    <DigestResearchFirst snapshots={{ '5': five, '1': report(1, 'XYZ') }} onVisibleTickersChange={onVisible} />,
+  )
+  expect(onVisible).toHaveBeenLastCalledWith(['AAA', 'BBB', 'CCC'])
+
+  fireEvent.click(screen.getByRole('button', { name: 'Show all 4 priorities' }))
+  expect(onVisible).toHaveBeenLastCalledWith(['AAA', 'BBB', 'CCC'])
+
+  fireEvent.change(screen.getByLabelText('Research horizon'), { target: { value: '1' } })
+  expect(onVisible).toHaveBeenLastCalledWith(['XYZ'])
+
+  fireEvent.change(screen.getByLabelText('Research horizon'), { target: { value: '3' } })
+  expect(onVisible).toHaveBeenLastCalledWith([])
+})

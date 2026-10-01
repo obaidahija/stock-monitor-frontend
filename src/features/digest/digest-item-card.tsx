@@ -6,10 +6,25 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { SentimentBadge } from '@/components/shared/sentiment-badge'
 import { StageBadge } from '@/components/shared/stage-badge'
-import { formatCurrency, formatSignedPct } from '@/lib/format'
+import { formatCurrency, formatEasternDateTime, formatSignedPct } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import type { DigestItem } from '@/types/api'
+import type { DigestItem, DigestTopFiling } from '@/types/api'
 import { useDismissDigestItem } from './hooks'
+
+function safeUrl(url: string | undefined): string | null {
+  return url && /^https?:\/\//i.test(url) ? url : null
+}
+
+function FilingLink({ filing }: { filing: DigestTopFiling }) {
+  const url = safeUrl(filing.url)
+  return url ? (
+    <a href={url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+      {filing.form_type}
+    </a>
+  ) : (
+    <span>{filing.form_type}</span>
+  )
+}
 
 export function DigestItemCard({ item }: { item: DigestItem }) {
   const changePct = item.premarket?.change_pct ?? null
@@ -34,6 +49,14 @@ export function DigestItemCard({ item }: { item: DigestItem }) {
             {item.ticker}
           </Link>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            {item.new_today && (
+              <span
+                className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300"
+                title="New in this list since the last digest"
+              >
+                New
+              </span>
+            )}
             {item.sentiment && (
               <SentimentBadge label={item.sentiment.label} score={item.sentiment.net_score} />
             )}
@@ -81,8 +104,22 @@ export function DigestItemCard({ item }: { item: DigestItem }) {
       </CardHeader>
       <CardContent className="space-y-2">
         {pattern && (
-          <div className="rounded-md border border-teal-500/30 bg-teal-500/5 p-2 text-sm">
-            <p className="font-medium text-teal-700 dark:text-teal-300">
+          <div
+            className={cn(
+              'rounded-md border p-2 text-sm',
+              pattern.bias === 'bearish'
+                ? 'border-rose-500/30 bg-rose-500/5'
+                : 'border-teal-500/30 bg-teal-500/5',
+            )}
+          >
+            <p
+              className={cn(
+                'font-medium',
+                pattern.bias === 'bearish'
+                  ? 'text-rose-700 dark:text-rose-300'
+                  : 'text-teal-700 dark:text-teal-300',
+              )}
+            >
               {pattern.label} pattern detected ({(pattern.confidence * 100).toFixed(0)}% confidence)
             </p>
             {item.pct_from_12wk_avg !== null && (
@@ -108,6 +145,28 @@ export function DigestItemCard({ item }: { item: DigestItem }) {
             {reason}
           </p>
         ))}
+        {item.top_filing?.prominence_reason && (
+          <p className="text-muted-foreground text-xs">
+            <FilingLink filing={item.top_filing} /> topic: {item.top_filing.prominence_reason}.
+            Item codes name the disclosed topic, not its effect.
+          </p>
+        )}
+        {item.supporting_filings && item.supporting_filings.length > 0 && (
+          <details className="text-xs">
+            <summary className="text-muted-foreground cursor-pointer">
+              Other filings ({item.supporting_filings.length})
+            </summary>
+            <ul className="text-muted-foreground mt-1 space-y-1">
+              {item.supporting_filings.map((filing) => (
+                <li key={`${filing.url}-${filing.filed_at}`}>
+                  <FilingLink filing={filing} /> · {formatEasternDateTime(filing.filed_at)}
+                  {filing.item_codes && ` · Item codes: ${filing.item_codes}`}
+                  {filing.prominence_reason && ` · ${filing.prominence_reason}`}
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
         {item.headline_snippets.length > 0 && (
           <ul className="text-muted-foreground space-y-1 text-sm">
             {item.headline_snippets.map((headline, i) => (

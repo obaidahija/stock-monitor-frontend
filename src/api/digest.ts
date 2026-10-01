@@ -1,14 +1,24 @@
 import { apiClient, ApiError } from '@/lib/api-client'
 import type { DigestDeliveryOut, DigestItemOut, DigestOut } from '@/types/api'
 
-export async function getMorningDigest(date?: string): Promise<DigestOut | null> {
+async function getEdition(path: string, date?: string): Promise<DigestOut | null> {
   try {
     const qs = date ? `?date=${date}` : ''
-    return await apiClient.get<DigestOut>(`/v1/digest/morning${qs}`)
+    return await apiClient.get<DigestOut>(`${path}${qs}`)
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) return null
     throw err
   }
+}
+
+/** The morning edition: late, else the preliminary early one, else legacy. */
+export function getMorningDigest(date?: string): Promise<DigestOut | null> {
+  return getEdition('/v1/digest/morning', date)
+}
+
+/** The latest manual or post-open update; never replaces the morning. */
+export function getIntradayDigest(date?: string): Promise<DigestOut | null> {
+  return getEdition('/v1/digest/intraday', date)
 }
 
 export function getTickerDigest(ticker: string) {

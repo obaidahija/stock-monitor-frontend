@@ -1206,6 +1206,12 @@ export interface DigestTopFiling {
   form_type: string
   filed_at: string
   url: string
+  /** Absent on digests stored before filing prominence existed. */
+  item_codes?: string | null
+  prominence?: 'primary' | 'secondary'
+  /** Disclosed-topic rank within prominence (4.02 highest); orders the section. */
+  importance?: number
+  prominence_reason?: string
 }
 
 export interface DigestTopEarnings {
@@ -1232,7 +1238,12 @@ export interface ChartPatternDetail {
 
 export interface DigestItem {
   ticker: string
+  /** Section name; tier only orders sections. Absent on digests stored before sections. */
+  section?: string
   tier: number
+  /** Slow-moving sections only: whether the ticker is new since the last digest. */
+  new_today?: boolean | null
+  score?: number | null
   reasons: string[]
   stages: string[]
   premarket: DigestPremarket | null
@@ -1241,6 +1252,8 @@ export interface DigestItem {
   pct_from_12wk_avg: number | null
   recent_pattern: ChartPatternDetail | null
   top_filing: DigestTopFiling | null
+  /** Other notable filings in the same window, most substantive first. */
+  supporting_filings?: DigestTopFiling[]
   top_earnings: DigestTopEarnings | null
   news_count_24h: number
   headline_snippets: string[]
@@ -1254,10 +1267,18 @@ export interface DigestPayload {
   research_first?: Record<string, import('@/features/research-first/types').ResearchFirstReport>
 }
 
+export type DigestEditionName = 'early' | 'late' | 'intraday' | 'legacy'
+
 export interface DigestOut {
   digest_date: string
   generated_at: string
   payload: DigestPayload
+  /** Edition metadata; absent on responses from older backends. */
+  snapshot_id?: number | null
+  edition?: DigestEditionName | string | null
+  capture_completed_at?: string | null
+  /** An early morning edition the 09:05 build has not replaced. */
+  preliminary?: boolean | null
 }
 
 export type DigestItemOut = DigestItem

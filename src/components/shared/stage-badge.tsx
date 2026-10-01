@@ -5,6 +5,7 @@ import {
   Flame,
   History,
   Star,
+  StarOff,
   Sunrise,
   TrendingDown,
   TrendingUp,
@@ -20,6 +21,11 @@ export const STAGE_META: Record<string, { label: string; icon: LucideIcon; class
   score_leader: {
     label: 'Score leader',
     icon: Star,
+    className: 'bg-muted text-muted-foreground',
+  },
+  score_laggard: {
+    label: 'Score laggard',
+    icon: StarOff,
     className: 'bg-muted text-muted-foreground',
   },
   premarket_gap: {
@@ -52,6 +58,17 @@ export const STAGE_META: Record<string, { label: string; icon: LucideIcon; class
     icon: History,
     className: 'bg-amber-500/20 text-amber-700 dark:text-amber-300 font-semibold',
   },
+  bearish_pattern: {
+    label: 'Bearish pattern',
+    icon: TrendingDown,
+    className: 'bg-rose-500/20 text-rose-700 dark:text-rose-300 font-semibold',
+  },
+  insider_buy: {
+    label: 'Insider buy',
+    icon: Users,
+    className: 'bg-violet-500/20 text-violet-700 dark:text-violet-300 font-semibold',
+  },
+  // Digests stored before insider_buy replaced the 30-day cluster stage.
   insider_cluster_buy: {
     label: 'Insider cluster buy',
     icon: Users,

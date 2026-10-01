@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router'
 import { ArrowUpRight, ListFilter } from 'lucide-react'
@@ -117,14 +117,23 @@ function ResearchCard({ item, horizon, trackingEnabled }: {
   )
 }
 
-function ResearchFirstPanel({ report, horizon, setHorizon, saved = false, pending = false, error, retry }: {
+const COMPACT_COUNT = 3
+
+function ResearchFirstPanel({ report, horizon, setHorizon, saved = false, pending = false, error, retry, onVisibleTickersChange }: {
   report?: ResearchFirstReport; horizon: number; setHorizon: (horizon: number) => void
   saved?: boolean; pending?: boolean; error?: Error | null; retry?: () => void
+  /** The compact view's tickers for the selected horizon. Expansion does not
+   * change them, so a page can budget its own cards around these three. */
+  onVisibleTickersChange?: (tickers: string[]) => void
 }) {
   const [expanded, setExpanded] = useState(false)
   const capabilities = useResearchCapabilities()
   const items = report?.items ?? []
-  const visible = expanded ? items : items.slice(0, 3)
+  const visible = expanded ? items : items.slice(0, COMPACT_COUNT)
+  const compactKey = items.slice(0, COMPACT_COUNT).map((item) => item.ticker).join(',')
+  useEffect(() => {
+    onVisibleTickersChange?.(compactKey ? compactKey.split(',') : [])
+  }, [compactKey, onVisibleTickersChange])
   return (
     <section aria-label="Research first" className="flex flex-col gap-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -160,7 +169,7 @@ function ResearchFirstPanel({ report, horizon, setHorizon, saved = false, pendin
               {visible.map((item) => <ResearchCard key={`${horizon}-${item.ticker}`} item={item} horizon={horizon}
                 trackingEnabled={capabilities.data?.follow_through_enabled === true} />)}
             </div>}
-        {items.length > 3 && <Button variant="ghost" size="sm" className="self-start" onClick={() => setExpanded(!expanded)}>
+        {items.length > COMPACT_COUNT && <Button variant="ghost" size="sm" className="self-start" onClick={() => setExpanded(!expanded)}>
           {expanded ? 'Show top 3' : `Show all ${items.length} priorities`}
         </Button>}
         <p className="text-muted-foreground text-xs">Priority uses feed timing and available evidence. A feed date can reflect republication; check the original event date. Priority is separate from the composite lean and does not predict returns.</p>
@@ -179,7 +188,11 @@ export function DiscoverResearchFirst() {
     pending={query.isPending} error={query.error} retry={() => void query.refetch()} />
 }
 
-export function DigestResearchFirst({ snapshots }: { snapshots?: Record<string, ResearchFirstReport> }) {
+export function DigestResearchFirst({ snapshots, onVisibleTickersChange }: {
+  snapshots?: Record<string, ResearchFirstReport>
+  onVisibleTickersChange?: (tickers: string[]) => void
+}) {
   const [horizon, setHorizon] = useHorizon()
-  return <ResearchFirstPanel report={snapshots?.[String(horizon)]} horizon={horizon} setHorizon={setHorizon} saved />
+  return <ResearchFirstPanel report={snapshots?.[String(horizon)]} horizon={horizon} setHorizon={setHorizon} saved
+    onVisibleTickersChange={onVisibleTickersChange} />
 }
