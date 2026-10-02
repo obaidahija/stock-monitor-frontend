@@ -1,5 +1,7 @@
 import { TrendingDown, TrendingUp } from 'lucide-react'
 import { useAnalysis } from './hooks'
+import { ACTION_BADGE_CLASSES, actionLabel } from './analyst-action-labels'
+import { Badge } from '@/components/ui/badge'
 import { formatCurrency, formatRelativeTime, formatSignedPct } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
@@ -21,12 +23,9 @@ export function PriceTargetChangeBanner({
   const change = data?.analyst_detail?.recent_price_target_change
   if (!change) return null
 
-  const isCut =
-    change.current_price_target !== null &&
-    change.prior_price_target !== null &&
-    change.current_price_target < change.prior_price_target
-  const Icon = change.price_target_action === 'Lowers' || isCut ? TrendingDown : TrendingUp
-  const verb = change.price_target_action === 'Lowers' || isCut ? 'cut' : 'raised'
+  const isDown = (change.pct_change ?? 0) < 0
+  const Icon = isDown ? TrendingDown : TrendingUp
+  const label = actionLabel(change)
 
   return (
     <button
@@ -34,19 +33,18 @@ export function PriceTargetChangeBanner({
       onClick={onNavigate}
       className={cn(
         'flex w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border px-3 py-2 text-left text-sm transition-colors hover:brightness-95',
-        isCut
+        isDown
           ? 'border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-400'
           : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
       )}
     >
       <Icon className="size-4 shrink-0" aria-hidden="true" />
-      <span className="font-medium">
-        {change.firm} {verb} price target
-        {change.pct_change !== null && ` ${formatSignedPct(change.pct_change, 1)}`}
-      </span>
+      <Badge className={cn('border-0', ACTION_BADGE_CLASSES[label])}>{label}</Badge>
+      <span className="font-medium">{change.firm}</span>
       {change.prior_price_target !== null && change.current_price_target !== null && (
         <span className="tabular-nums">
           {formatCurrency(change.prior_price_target)} → {formatCurrency(change.current_price_target)}
+          {change.pct_change !== null && ` (${formatSignedPct(change.pct_change, 1)})`}
         </span>
       )}
       <span className="text-muted-foreground">{formatRelativeTime(change.action_at)}</span>

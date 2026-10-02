@@ -18,14 +18,16 @@ import {
 import { useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { toast } from 'sonner'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ScoreHistoryChart } from './score-history-chart'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { ErrorState } from '@/components/shared/error-state'
 import { ApiError } from '@/lib/api-client'
-import { formatCurrency, formatDate, formatDateTime, formatRelativeTime, formatScore } from '@/lib/format'
+import { formatCurrency, formatDateTime, formatRelativeTime, formatScore, formatSignedPct } from '@/lib/format'
 import { LEAN_COLOR_CLASSES } from '@/lib/lean-colors'
 import { cn } from '@/lib/utils'
 import { CapabilityNotice } from '@/features/research/capability-notice'
@@ -41,7 +43,13 @@ import { PeerRankLine } from './peer-rank-line'
 import { WindowRiskChip } from './window-risk-chip'
 import { EventWindowCard } from './event-window'
 import { ShortInterestCard } from './short-interest-card'
-import { useAnalysis, useRefreshUniverseScore, useUniverseScore } from './hooks'
+import { ACTION_BADGE_CLASSES, actionLabel, gradeText } from './analyst-action-labels'
+import {
+  useAnalysis,
+  useAnalystPriceTargetHistory,
+  useRefreshUniverseScore,
+  useUniverseScore,
+} from './hooks'
 import { SentimentTrendChart } from './sentiment-trend-chart'
 import type {
   AnalystDetailOut,
@@ -392,28 +400,24 @@ const RATING_BAR_META: {
 ]
 
 function PriceTargetChangeCallout({ change }: { change: PriceTargetChangeOut }) {
-  const isCut =
-    change.current_price_target !== null &&
-    change.prior_price_target !== null &&
-    change.current_price_target < change.prior_price_target
-  const verb = change.price_target_action === 'Lowers' || isCut ? 'cut' : 'raised'
+  const label = actionLabel(change)
+  const isDown = (change.pct_change ?? 0) < 0
 
   return (
     <div
       className={cn(
         'flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border px-3 py-2 text-sm',
-        isCut
+        isDown
           ? 'border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-400'
           : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
       )}
     >
-      <span className="font-medium">
-        {change.firm} {verb} price target
-        {change.pct_change !== null && ` ${change.pct_change > 0 ? '+' : ''}${change.pct_change.toFixed(1)}%`}
-      </span>
+      <Badge className={cn('border-0', ACTION_BADGE_CLASSES[label])}>{label}</Badge>
+      <span className="font-medium">{change.firm}</span>
       {change.prior_price_target !== null && change.current_price_target !== null && (
         <span className="tabular-nums">
           {formatCurrency(change.prior_price_target)} → {formatCurrency(change.current_price_target)}
+          {change.pct_change !== null && ` (${formatSignedPct(change.pct_change, 1)})`}
         </span>
       )}
       <span className="text-muted-foreground">{formatRelativeTime(change.action_at)}</span>
@@ -421,7 +425,56 @@ function PriceTargetChangeCallout({ change }: { change: PriceTargetChangeOut }) 
   )
 }
 
-function AnalystDetailCard({ detail }: { detail: AnalystDetailOut }) {
+// formatDate/formatDateTime in lib/format don't fit here: formatDate assumes a
+// plain "YYYY-MM-DD" string (mis-parses a full ISO timestamp), and
+// formatDateTime omits the year. The rating-actions table wants both, split
+// across two stacked lines (same pattern insider-tab uses for name/title).
+// Also handles the brief cold-cache fallback, whose action_at is a plain
+// "YYYY-MM-DD" date with no time component at all.
+function actionDate(actionAt: string): string {
+  if (!actionAt.includes('T')) {
+    const [year, month, day] = actionAt.split('-').map(Number)
+    return new Date(year, month - 1, day).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    })
+  }
+  return new Date(actionAt).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  })
+}
+
+function actionTime(actionAt: string): string | null {
+  if (!actionAt.includes('T')) return null
+  return new Date(actionAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+}
+
+function AnalystDetailCard({ ticker, detail }: { ticker: string; detail: AnalystDetailOut }) {
+  // The persisted ledger (analyst_price_target_events, via
+  // analyst_price_target_scan + every ticker-page visit's own force_refresh)
+  // is strictly deeper than detail.recent_actions -- that list is capped at 5
+  // and reflects only the single most recent live yfinance fetch. Falls back
+  // to detail.recent_actions only while the history query hasn't resolved
+  // yet, so the card isn't empty on a cold cache.
+  const history = useAnalystPriceTargetHistory(ticker)
+  const events: PriceTargetChangeOut[] =
+    history.data ??
+    detail.recent_actions.map((a) => ({
+      firm: a.firm,
+      action_at: a.date,
+      price_target_action: a.price_target_action,
+      current_price_target: a.current_price_target,
+      prior_price_target: a.prior_price_target,
+      pct_change: null,
+      action: a.action,
+      from_grade: a.from_grade,
+      to_grade: a.to_grade,
+      is_qualifying_change: null,
+    }))
+
   const ratingCounts = RATING_BAR_META.map((meta) => ({ ...meta, count: detail[meta.key] ?? 0 }))
   const totalRatings = ratingCounts.reduce((sum, r) => sum + r.count, 0)
   const hasTargets =
@@ -493,34 +546,77 @@ function AnalystDetailCard({ detail }: { detail: AnalystDetailOut }) {
           </div>
         )}
 
-        {detail.recent_actions.length > 0 && (
+        {events.length > 0 && (
           <div className="space-y-1.5">
-            <p className="text-muted-foreground text-xs">Recent rating actions</p>
-            <div className="space-y-1">
-              {detail.recent_actions.map((action, i) => (
-                <div
-                  key={i}
-                  className="border-border flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 border-b py-1 text-sm last:border-b-0"
-                >
-                  <span className="font-medium">{action.firm}</span>
-                  <span className="text-muted-foreground text-xs">
-                    {action.from_grade && action.to_grade
-                      ? `${action.from_grade} → ${action.to_grade}`
-                      : action.to_grade ?? action.action ?? '—'}
-                    {action.prior_price_target !== null && action.current_price_target !== null && (
-                      <>
-                        {' · '}
-                        <span className="tabular-nums">
-                          {formatCurrency(action.prior_price_target)} →{' '}
-                          {formatCurrency(action.current_price_target)}
-                        </span>
-                      </>
-                    )}
-                    {' · '}
-                    {formatDate(action.date)}
-                  </span>
-                </div>
-              ))}
+            <p className="text-muted-foreground text-xs">
+              Recent rating actions
+              {history.isFetching && ' · refreshing…'}
+            </p>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Firm</TableHead>
+                    <TableHead>Action</TableHead>
+                    <TableHead>Rating</TableHead>
+                    <TableHead className="text-right">Price target</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {events.map((event, i) => {
+                    const label = actionLabel(event)
+                    const grade = gradeText(event)
+                    const hasTarget =
+                      event.prior_price_target !== null && event.current_price_target !== null
+                    const isDown = (event.pct_change ?? 0) < 0
+                    const time = actionTime(event.action_at)
+                    return (
+                      <TableRow key={`${event.firm}-${event.action_at}-${i}`}>
+                        <TableCell>
+                          <div className="tabular-nums">{actionDate(event.action_at)}</div>
+                          {time && (
+                            <div className="text-muted-foreground text-xs tabular-nums">{time}</div>
+                          )}
+                        </TableCell>
+                        <TableCell className="font-medium">{event.firm}</TableCell>
+                        <TableCell>
+                          <Badge className={cn('border-0', ACTION_BADGE_CLASSES[label])}>
+                            {label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{grade ?? '—'}</TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {hasTarget ? (
+                            <>
+                              <div>
+                                {formatCurrency(event.prior_price_target)} →{' '}
+                                {formatCurrency(event.current_price_target)}
+                              </div>
+                              {event.pct_change !== null && (
+                                <div
+                                  className={cn(
+                                    'text-xs',
+                                    event.is_qualifying_change
+                                      ? isDown
+                                        ? 'font-medium text-red-600 dark:text-red-400'
+                                        : 'font-medium text-emerald-600 dark:text-emerald-400'
+                                      : 'text-muted-foreground',
+                                  )}
+                                >
+                                  {formatSignedPct(event.pct_change, 1)}
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
             </div>
           </div>
         )}
@@ -691,7 +787,7 @@ export function AnalysisTab({ ticker }: { ticker: string }) {
       </div>
 
       {data.price_levels && <PriceLevelsCard priceLevels={data.price_levels} />}
-      {data.analyst_detail && <AnalystDetailCard detail={data.analyst_detail} />}
+      {data.analyst_detail && <AnalystDetailCard ticker={ticker} detail={data.analyst_detail} />}
       <ShortInterestCard shortInterest={data.short_interest} />
       <ChartPatternCard
         ticker={ticker}

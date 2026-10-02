@@ -493,6 +493,13 @@ export interface PriceTargetChangeOut {
   current_price_target: number | null
   prior_price_target: number | null
   pct_change: number | null
+  // Populated on every item from GET .../analyst-price-target-history;
+  // optional because analyst_detail.recent_price_target_change (the single
+  // highlight) predates these fields.
+  action?: string | null
+  from_grade?: string | null
+  to_grade?: string | null
+  is_qualifying_change?: boolean | null
 }
 
 export interface AnalystDetailOut {

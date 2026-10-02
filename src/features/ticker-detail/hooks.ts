@@ -6,6 +6,7 @@ import {
   extractNewsItem,
   getAiResearch,
   getAnalysis,
+  getAnalystPriceTargetHistory,
   getCatalysts,
   getCompetitors,
   getEarnings,
@@ -39,6 +40,13 @@ export function useAnalysis(ticker: string, extras: AnalysisExtras = {}, enabled
     ],
     queryFn: () => getAnalysis(ticker, extras),
     enabled,
+  })
+}
+
+export function useAnalystPriceTargetHistory(ticker: string) {
+  return useQuery({
+    queryKey: ['analyst-price-target-history', ticker],
+    queryFn: () => getAnalystPriceTargetHistory(ticker),
   })
 }
 
@@ -95,6 +103,11 @@ export function useRefreshUniverseScore(ticker: string) {
       // The universe score is rescaled from the same analyze_ticker() composite
       // the factor breakdown below renders — refresh both so they can't drift apart.
       queryClient.invalidateQueries({ queryKey: ['analysis', ticker] })
+      // analyze_ticker's force_refresh also records any brand-new analyst
+      // action into analyst_price_target_events inline -- refetch the history
+      // list too, or a just-recorded revision would be missing until the
+      // next unrelated refetch.
+      queryClient.invalidateQueries({ queryKey: ['analyst-price-target-history', ticker] })
     },
   })
 }

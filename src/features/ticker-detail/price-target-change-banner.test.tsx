@@ -66,20 +66,25 @@ test('renders the cut and calls onNavigate on click', () => {
       current_price_target: 250.0,
       prior_price_target: 315.0,
       pct_change: -20.63,
+      action: 'main',
+      from_grade: 'Buy',
+      to_grade: 'Buy',
+      is_qualifying_change: true,
     },
   })
   const onNavigate = vi.fn()
 
   renderWithProviders(<PriceTargetChangeBanner ticker="NVDA" onNavigate={onNavigate} />)
 
-  expect(screen.getByText(/GLJ Research cut price target/)).toBeInTheDocument()
-  expect(screen.getByText('$315.00 → $250.00')).toBeInTheDocument()
+  expect(screen.getByText('Price target revised')).toBeInTheDocument()
+  expect(screen.getByText('GLJ Research')).toBeInTheDocument()
+  expect(screen.getByText(/\$315\.00 → \$250\.00/)).toBeInTheDocument()
 
   fireEvent.click(screen.getByRole('button'))
   expect(onNavigate).toHaveBeenCalledOnce()
 })
 
-test('renders a raise with the correct wording', () => {
+test('renders an upgrade with the correct wording', () => {
   mockAnalysis({
     strong_buy: null,
     buy: null,
@@ -99,10 +104,15 @@ test('renders a raise with the correct wording', () => {
       current_price_target: 263.0,
       prior_price_target: 237.0,
       pct_change: 10.97,
+      action: 'up',
+      from_grade: 'Market Perform',
+      to_grade: 'Outperform',
+      is_qualifying_change: true,
     },
   })
 
   renderWithProviders(<PriceTargetChangeBanner ticker="NVDA" onNavigate={vi.fn()} />)
 
-  expect(screen.getByText(/BMO Capital raised price target/)).toBeInTheDocument()
+  expect(screen.getByText('Upgraded')).toBeInTheDocument()
+  expect(screen.getByText('BMO Capital')).toBeInTheDocument()
 })

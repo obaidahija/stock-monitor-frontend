@@ -2,10 +2,16 @@ import { cleanup, fireEvent, screen } from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
 import { renderWithProviders } from '@/test/render'
 import { AnalysisTab } from './analysis-tab'
-import { useAnalysis, useRefreshUniverseScore, useUniverseScore } from './hooks'
+import {
+  useAnalysis,
+  useAnalystPriceTargetHistory,
+  useRefreshUniverseScore,
+  useUniverseScore,
+} from './hooks'
 
 vi.mock('./hooks', () => ({
   useAnalysis: vi.fn(),
+  useAnalystPriceTargetHistory: vi.fn(() => ({ data: undefined, isFetching: false })),
   useUniverseScore: vi.fn(),
   useRefreshUniverseScore: vi.fn(),
 }))
@@ -327,4 +333,114 @@ test('shows a computed selected-horizon move with its sample size', async () => 
 
   expect(await screen.findByText(/±1\.72%/)).toBeInTheDocument()
   expect(screen.getByText(/60 daily returns/)).toBeInTheDocument()
+})
+
+const baseAnalystDetail = {
+  strong_buy: null,
+  buy: null,
+  hold: null,
+  sell: null,
+  strong_sell: null,
+  price_target_low: null,
+  price_target_high: null,
+  price_target_mean: null,
+  price_target_median: null,
+  num_analysts: null,
+  recent_actions: [],
+  recent_price_target_change: null,
+}
+
+test('labels a same-grade action as Reiterated, not "Buy → Buy"', () => {
+  vi.mocked(useAnalystPriceTargetHistory).mockReturnValue({
+    data: [
+      {
+        firm: 'Rosenblatt',
+        action_at: '2026-09-17T14:00:00Z',
+        price_target_action: 'Maintains',
+        current_price_target: 525.0,
+        prior_price_target: 525.0,
+        pct_change: 0,
+        action: 'reit',
+        from_grade: 'Buy',
+        to_grade: 'Buy',
+        is_qualifying_change: false,
+      },
+    ],
+    isFetching: false,
+  } as never)
+
+  renderAnalysisTab({ ...baseAnalysis, analyst_detail: baseAnalystDetail })
+
+  expect(screen.getByText('Reiterated')).toBeInTheDocument()
+  expect(screen.queryByText(/Buy → Buy/)).not.toBeInTheDocument()
+  expect(screen.getByText('Buy')).toBeInTheDocument()
+})
+
+test('labels an upgrade/downgrade and a target-only revision distinctly', () => {
+  vi.mocked(useAnalystPriceTargetHistory).mockReturnValue({
+    data: [
+      {
+        firm: 'Keybanc',
+        action_at: '2026-09-28T10:03:05Z',
+        price_target_action: null,
+        current_price_target: null,
+        prior_price_target: null,
+        pct_change: null,
+        action: 'up',
+        from_grade: 'Underweight',
+        to_grade: 'Sector Weight',
+        is_qualifying_change: false,
+      },
+      {
+        firm: 'Piper Sandler',
+        action_at: '2026-09-30T12:04:06Z',
+        price_target_action: 'Lowers',
+        current_price_target: 251.0,
+        prior_price_target: 260.0,
+        pct_change: -3.46,
+        action: 'main',
+        from_grade: 'Overweight',
+        to_grade: 'Overweight',
+        is_qualifying_change: false,
+      },
+    ],
+    isFetching: false,
+  } as never)
+
+  renderAnalysisTab({ ...baseAnalysis, analyst_detail: baseAnalystDetail })
+
+  expect(screen.getByText('Upgraded')).toBeInTheDocument()
+  expect(screen.getByText('Underweight → Sector Weight')).toBeInTheDocument()
+  expect(screen.getByText('Price target revised')).toBeInTheDocument()
+  expect(screen.getByText(/\$260\.00 → \$251\.00/)).toBeInTheDocument()
+})
+
+test('falls back to the capped live list while history has not loaded', () => {
+  vi.mocked(useAnalystPriceTargetHistory).mockReturnValue({
+    data: undefined,
+    isFetching: true,
+  } as never)
+
+  renderAnalysisTab({
+    ...baseAnalysis,
+    analyst_detail: {
+      ...baseAnalystDetail,
+      recent_actions: [
+        {
+          firm: 'BMO Capital',
+          action: 'up',
+          from_grade: 'Market Perform',
+          to_grade: 'Outperform',
+          date: '2026-08-27',
+          price_target_action: 'Raises',
+          current_price_target: 263.0,
+          prior_price_target: 237.0,
+        },
+      ],
+    },
+  })
+
+  expect(screen.getByText('BMO Capital')).toBeInTheDocument()
+  expect(screen.getByText('Upgraded')).toBeInTheDocument()
+  expect(screen.getByText(/refreshing…/)).toBeInTheDocument()
 })

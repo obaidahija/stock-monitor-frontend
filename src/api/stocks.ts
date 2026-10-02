@@ -18,6 +18,7 @@ import type {
   NewsClusterOut,
   NewsItemExtractOut,
   NewsRefreshResult,
+  PriceTargetChangeOut,
   QuoteOut,
   ScoreHistoryPointOut,
   SentimentBucketGranularity,
@@ -139,6 +140,12 @@ export function getEventWindow(ticker: string, horizonSessions: number) {
 
 export function getChartPattern(ticker: string) {
   return apiClient.get<ChartPatternOut>(`/v1/stocks/${encodeURIComponent(ticker)}/chart-pattern`)
+}
+
+export function getAnalystPriceTargetHistory(ticker: string, limit = 20) {
+  return apiClient.get<PriceTargetChangeOut[]>(
+    `/v1/stocks/${encodeURIComponent(ticker)}/analyst-price-target-history?limit=${limit}`,
+  )
 }
 
 export function getAiResearch(ticker: string) {
