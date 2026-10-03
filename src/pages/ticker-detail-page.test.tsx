@@ -25,6 +25,9 @@ vi.mock('@/features/ticker-detail/analysis-tab', () => ({
 vi.mock('@/features/ticker-detail/competitors/competitors-tab', () => ({
   CompetitorsTab: () => null,
 }))
+vi.mock('@/features/ticker-detail/pairs/pairs-tab', () => ({
+  PairsTab: ({ ticker }: { ticker: string }) => <div>Pairs content for {ticker}</div>,
+}))
 vi.mock('@/features/ticker-detail/earnings-tab', () => ({ EarningsTab: () => null }))
 vi.mock('@/features/ticker-detail/news-tab', () => ({ NewsTab: () => null }))
 vi.mock('@/features/ticker-detail/filings-tab', () => ({ FilingsTab: () => null }))
@@ -49,6 +52,15 @@ test('renders every detail tab', () => {
   expect(screen.getByRole('tab', { name: 'News' })).toBeInTheDocument()
   expect(screen.getByRole('tab', { name: 'Filings' })).toBeInTheDocument()
   expect(screen.getByRole('tab', { name: 'Catalysts' })).toBeInTheDocument()
+  expect(screen.getByRole('tab', { name: 'Competitors' })).toBeInTheDocument()
+  expect(screen.getByRole('tab', { name: 'Pairs' })).toBeInTheDocument()
+})
+
+test('opens the Pairs tab from a deep link', () => {
+  renderWithProviders(<TickerDetailPage />, ['/stocks/WDC?tab=pairs'])
+
+  expect(screen.getByRole('tab', { name: 'Pairs' })).toHaveAttribute('aria-selected', 'true')
+  expect(screen.getByText(/Pairs content/)).toBeInTheDocument()
 })
 
 test('opens the Catalysts tab from a deep link', () => {

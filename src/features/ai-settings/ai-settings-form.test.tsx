@@ -22,12 +22,6 @@ const settings = {
     context_window_tokens: 131072,
   },
   summarization: { provider: 'ollama', model: 'qwen3:8b', context_window_tokens: 4096 },
-  competitor: {
-    provider: 'ollama',
-    model: 'qwen3:8b',
-    max_tokens: 4000,
-    context_window_tokens: 8192,
-  },
   macro_transmission: {
     provider: 'ollama',
     model: 'qwen3:8b',
@@ -106,13 +100,13 @@ test('loads independent profiles, readiness, and OpenRouter model metadata', asy
 
   expect(await screen.findByRole('heading', { name: 'Research' })).toBeInTheDocument()
   expect(screen.getByRole('heading', { name: 'Summarization' })).toBeInTheDocument()
-  expect(screen.getByRole('heading', { name: 'Competitor identification' })).toBeInTheDocument()
+  expect(screen.queryByRole('heading', { name: 'Competitor identification' })).not.toBeInTheDocument()
   expect(screen.getByRole('heading', { name: 'Macro transmission' })).toBeInTheDocument()
-  expect(screen.getByLabelText('Competitor max tokens')).toHaveValue(4000)
+  expect(screen.queryByLabelText('Competitor max tokens')).not.toBeInTheDocument()
   expect(screen.getByLabelText('Macro transmission max tokens')).toHaveValue(200)
   expect(screen.getByLabelText('Research context window')).toHaveValue(131072)
   expect(screen.getByLabelText('Summarization context window')).toHaveValue(4096)
-  expect(screen.getByLabelText('Competitor context window')).toHaveValue(8192)
+  expect(screen.queryByLabelText('Competitor context window')).not.toBeInTheDocument()
   expect(screen.getByLabelText('Macro transmission context window')).toHaveValue(4096)
   expect(await screen.findByText('Qwen 3.8 27B')).toBeInTheDocument()
   expect(screen.getByText('131,072 context')).toBeInTheDocument()
@@ -147,12 +141,6 @@ test('saves research and summarization settings without sending secrets', async 
       provider: 'ollama',
       model: 'qwen3:14b',
       context_window_tokens: 4096,
-    },
-    competitor: {
-      provider: 'ollama',
-      model: 'qwen3:8b',
-      max_tokens: 4000,
-      context_window_tokens: 8192,
     },
     macro_transmission: {
       provider: 'ollama',

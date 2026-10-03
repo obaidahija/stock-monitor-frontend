@@ -13,6 +13,7 @@ import { AnalysisTab } from '@/features/ticker-detail/analysis-tab'
 import { CompetitorsTab } from '@/features/ticker-detail/competitors/competitors-tab'
 import { EarningsTab } from '@/features/ticker-detail/earnings-tab'
 import { NewsTab } from '@/features/ticker-detail/news-tab'
+import { PairsTab } from '@/features/ticker-detail/pairs/pairs-tab'
 import { FilingsTab } from '@/features/ticker-detail/filings-tab'
 import { InsiderTab } from '@/features/ticker-detail/insider-tab'
 import { CatalystsTab } from '@/features/ticker-detail/catalysts-tab'
@@ -29,6 +30,7 @@ const DETAIL_TABS = [
   'analysis',
   'ai-research',
   'competitors',
+  'pairs',
   'earnings',
   'news',
   'twitter',
@@ -133,6 +135,7 @@ export function TickerDetailPage() {
           <TabsTrigger value="analysis">Analysis</TabsTrigger>
           <TabsTrigger value="ai-research">AI Research</TabsTrigger>
           <TabsTrigger value="competitors">Competitors</TabsTrigger>
+          <TabsTrigger value="pairs">Pairs</TabsTrigger>
           <TabsTrigger value="earnings">Earnings</TabsTrigger>
           <TabsTrigger value="news">News</TabsTrigger>
           <TabsTrigger value="twitter">Twitter</TabsTrigger>
@@ -149,6 +152,9 @@ export function TickerDetailPage() {
         </TabsContent>
         <TabsContent value="competitors">
           <CompetitorsTab ticker={symbol} />
+        </TabsContent>
+        <TabsContent value="pairs">
+          <PairsTab ticker={symbol} />
         </TabsContent>
         <TabsContent value="earnings">
           <EarningsTab ticker={symbol} />

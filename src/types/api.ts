@@ -868,7 +868,6 @@ export interface BackgroundAiProfile {
 export interface AiSettingsOut {
   research: ResearchAiProfile
   summarization: SummarizationAiProfile
-  competitor: BackgroundAiProfile
   macro_transmission: BackgroundAiProfile
   providers: Record<
     AiProvider,
@@ -880,13 +879,12 @@ export interface AiSettingsOut {
 export interface AiSettingsUpdate {
   research: ResearchAiProfile
   summarization: SummarizationAiProfile
-  competitor: BackgroundAiProfile
   macro_transmission: BackgroundAiProfile
 }
 
 // The three profiles that share the provider/model/max_tokens shape, keyed the
 // same way the API is.
-export type BackgroundAiProfileKey = 'competitor' | 'macro_transmission'
+export type BackgroundAiProfileKey = 'macro_transmission'
 
 export interface OpenRouterModelOut {
   id: string
@@ -897,26 +895,6 @@ export interface OpenRouterModelOut {
   supported_parameters: string[]
   prompt_price: string | null
   completion_price: string | null
-}
-
-export type CompetitorConfidence = 'high' | 'medium' | 'low'
-
-export interface CompetitorRevenueDependenceOut {
-  is_core_business: boolean | null
-  confidence: CompetitorConfidence | null
-  reasoning: string | null
-}
-
-export interface CompetitorOut {
-  name: string
-  ticker: string | null
-  rank: number | null
-  impact_likelihood: CompetitorConfidence | null
-  reasoning: string | null
-  mutual_naming: boolean | null
-  revenue_dependence: CompetitorRevenueDependenceOut | null
-  source: string
-  confidence: CompetitorConfidence
 }
 
 export type GoogleFinanceMarketPicksHorizonKey = '1-2w' | '2-4w'
@@ -969,33 +947,8 @@ export interface GoogleFinanceMarketPicksRefreshOut {
   reused: boolean
 }
 
-export interface SimilarCompanyOut {
-  ticker: string
-  name: string | null
-}
-
-export interface CompetitorAnalysisInputsOut {
-  target_extraction_id: number | null
-  named_competitor_count: number
-  competitors_capped_from: number | null
-  competitor_extraction_ids: number[]
-  reverse_search_candidate_count: number
-}
-
-export interface CompetitorAnalysisSourceOut {
-  ok: boolean
-  error: string | null
-}
-
-export interface CompetitorAnalysisOut {
+export interface GoogleFinanceCompetitorsOut extends GoogleFinanceResearchOut {
   snapshot_id: number | null
-  ticker: string
-  competitors: CompetitorOut[]
-  similar_companies: SimilarCompanyOut[]
-  inputs_used: CompetitorAnalysisInputsOut
-  caveat: string
-  source: CompetitorAnalysisSourceOut
-  generated_at: string
   cached: boolean
 }
 
@@ -2268,4 +2221,67 @@ export interface ResearchSubscriptionListOut {
   items: ResearchSubscriptionOut[]
   collection_enabled: boolean
   symbol_limit: number
+}
+
+export type StockPairStrength = 'strong' | 'moderate' | 'not_confirmed'
+export type StockPairEvidenceStatus =
+  | 'computed'
+  | 'insufficient_data'
+  | 'invalid_security'
+  | 'price_unavailable'
+  | 'price_stale'
+  | 'undefined'
+export type StockPairMarketCheckStatus = 'available' | 'unavailable' | 'undefined'
+
+export interface StockPairMarketCheckOut {
+  status: StockPairMarketCheckStatus
+  correlation: number | null
+  sample_size: number
+  start_date: string | null
+  end_date: string | null
+  reason: string | null
+}
+
+export interface StockPairWindowOut {
+  start_date: string
+  end_date: string
+  sample_size: number
+  correlation: number | null
+  target_up_days: number
+  both_up_days: number
+  candidate_up_days: number
+  up_day_agreement_pct: number | null
+  baseline_up_day_pct: number | null
+  up_day_improvement_pp: number | null
+  market_check: StockPairMarketCheckOut
+}
+
+export interface StockPairItemOut {
+  ticker: string
+  company_name: string | null
+  // Unsupported Google listings are retained on Not confirmed candidates.
+  exchange: string | null
+  explanation: string
+  strength: StockPairStrength
+  evidence_status: StockPairEvidenceStatus
+  reasons: string[]
+  three_month: StockPairWindowOut | null
+  six_month: StockPairWindowOut | null
+}
+
+export interface StockPairsOut {
+  snapshot_id: number
+  ticker: string
+  question: string
+  answer_markdown: string
+  sources: GoogleFinanceResearchSourceOut[]
+  source: SourceStatus
+  generated_at: string
+  verified_at: string
+  data_through: string
+  method_version: string
+  items: StockPairItemOut[]
+  warnings: string[]
+  cached: boolean
+  caveat: string
 }

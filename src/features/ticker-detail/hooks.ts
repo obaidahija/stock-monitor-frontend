@@ -222,19 +222,22 @@ export function useGoogleFinanceResearch(ticker: string) {
 
 export function useCompetitors(ticker: string) {
   return useQuery({
-    queryKey: ['competitors', ticker],
-    // cacheOnly: true -- auto-fetch on tab mount must never silently trigger
-    // the EDGAR+LLM pipeline; only the explicit Refresh action (POST
-    // .../refresh, see useRefreshCompetitors) should ever compute a fresh result.
-    queryFn: () => getCompetitors(ticker, { cacheOnly: true }),
+    queryKey: ['google-finance-competitors', ticker.toUpperCase()],
+    // GET only reads the saved response. The first search requires an explicit POST.
+    queryFn: () => getCompetitors(ticker),
   })
 }
 
 export function useRefreshCompetitors(ticker: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: () => refreshCompetitors(ticker),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['competitors', ticker] }),
+    mutationFn: (forceRefresh: boolean) => refreshCompetitors(ticker, forceRefresh),
+    onSuccess: async (result) => {
+      if (result.source.ok && result.snapshot_id !== null) {
+        await queryClient.cancelQueries({ queryKey: ['google-finance-competitors', result.ticker] })
+        queryClient.setQueryData(['google-finance-competitors', result.ticker], result)
+      }
+    },
   })
 }
 

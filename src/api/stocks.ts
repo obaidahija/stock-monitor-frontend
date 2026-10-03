@@ -4,7 +4,7 @@ import type {
   AnalysisOut,
   CatalystOut,
   ChartPatternOut,
-  CompetitorAnalysisOut,
+  GoogleFinanceCompetitorsOut,
   EarningsPlaybookOut,
   EarningsReactionOut,
   EarningsRefreshResult,
@@ -169,16 +169,15 @@ export function askGoogleFinanceResearch(
   )
 }
 
-export function getCompetitors(ticker: string, opts?: { cacheOnly?: boolean }) {
-  const qs = opts?.cacheOnly ? '?cache_only=true' : ''
-  return apiClient.get<CompetitorAnalysisOut | null>(
-    `/v1/stocks/${encodeURIComponent(ticker)}/competitors${qs}`,
+export function getCompetitors(ticker: string) {
+  return apiClient.get<GoogleFinanceCompetitorsOut | null>(
+    `/v1/stocks/${encodeURIComponent(ticker)}/competitors/research`,
   )
 }
 
-export function refreshCompetitors(ticker: string) {
-  return apiClient.post<CompetitorAnalysisOut>(
-    `/v1/stocks/${encodeURIComponent(ticker)}/competitors/refresh`,
+export function refreshCompetitors(ticker: string, forceRefresh = false) {
+  return apiClient.post<GoogleFinanceCompetitorsOut>(
+    `/v1/stocks/${encodeURIComponent(ticker)}/competitors/research${forceRefresh ? '?force_refresh=true' : ''}`,
   )
 }
 

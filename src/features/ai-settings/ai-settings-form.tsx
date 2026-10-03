@@ -51,7 +51,7 @@ const PROVIDERS: { value: AiProvider; label: string }[] = [
   { value: 'openrouter', label: 'OpenRouter' },
 ]
 
-// The two background profiles are structurally identical (provider + model +
+// Background profiles share the same structure (provider + model +
 // max_tokens), so they render from one description rather than four hand-copied
 // cards. `noun` drives the field labels and element ids, which are part of the
 // accessible names the settings tests address.
@@ -61,13 +61,6 @@ const BACKGROUND_PROFILES: {
   heading: string
   description: string
 }[] = [
-  {
-    key: 'competitor',
-    noun: 'Competitor',
-    heading: 'Competitor identification',
-    description:
-      'Powers 10-K competitor extraction and ranking (GET/POST /stocks/{ticker}/competitors).',
-  },
   {
     key: 'macro_transmission',
     noun: 'Macro transmission',
@@ -400,7 +393,6 @@ function SettingsEditor({
   const [form, setForm] = useState<AiSettingsUpdate>(() => ({
     research: { ...initial.research },
     summarization: { ...initial.summarization },
-    competitor: { ...initial.competitor },
     macro_transmission: { ...initial.macro_transmission },
   }))
   const update = useUpdateAiSettings()
