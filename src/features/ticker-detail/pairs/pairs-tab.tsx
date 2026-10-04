@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { RefreshCw, Search } from 'lucide-react'
 import { pairTicker } from '@/api/stock-pairs'
@@ -18,12 +18,22 @@ import type {
   StockPairStrength,
 } from '@/types/api'
 import { useRefreshStockPairs, useStockPairs } from './hooks'
-import { PairMetrics, type PairWindow } from './pair-metrics'
+import { PairBacktestPanel } from './pair-backtest-panel'
+import { PairBusinessEvidence } from './pair-business-evidence'
+import { PairCorrelations, PairMetrics, type PairWindow } from './pair-metrics'
+import { rankPairItems } from './pair-ranking'
+import { PairScatterPlot } from './pair-scatter-plot'
+import { PairStrategyPanel } from './pair-strategy-panel'
 
 const WINDOWS: { value: PairWindow; label: string }[] = [
   { value: 'six_month', label: '6 months (~126 sessions)' },
   { value: 'three_month', label: '3 months (~63 sessions)' },
 ]
+
+const WINDOW_NAMES: Record<PairWindow, string> = {
+  six_month: '6-month',
+  three_month: '3-month',
+}
 
 const STRENGTH: Record<StockPairStrength, { label: string; variant: 'default' | 'secondary' | 'outline' }> = {
   strong: { label: 'Strong', variant: 'default' },
@@ -58,10 +68,27 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'The pair search failed. Please try again.'
 }
 
-function PairCandidateRow({ item, window }: { item: StockPairItemOut; window: PairWindow }) {
+function PairCandidateRow({
+  item,
+  window,
+  targetTicker,
+}: {
+  item: StockPairItemOut
+  window: PairWindow
+  targetTicker: string
+}) {
+  // Kept per row (rows are keyed by ticker), so an open plot follows its candidate
+  // when the window changes the order.
+  const [plotOpen, setPlotOpen] = useState(false)
+  const plotId = useId()
   const strength = STRENGTH[item.strength]
   const evidence = EVIDENCE[item.evidence_status]
   const measured = item.three_month !== null || item.six_month !== null
+  // A listing already known to be unsupported cannot be analyzed; say why instead.
+  const strategyDisabledReason =
+    item.evidence_status === 'invalid_security'
+      ? (item.reasons[0] ?? `${item.ticker} is not a supported NYSE or Nasdaq stock.`)
+      : undefined
   return (
     <li className="border-border space-y-3 rounded-lg border p-3">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -70,18 +97,57 @@ function PairCandidateRow({ item, window }: { item: StockPairItemOut; window: Pa
         </Link>
         {item.company_name && <span className="text-muted-foreground text-sm">{item.company_name}</span>}
         {item.exchange && <span className="text-muted-foreground text-xs">{item.exchange}</span>}
+        <span className="text-muted-foreground text-xs">Historical co-movement</span>
         <Badge variant={strength.variant}>{strength.label}</Badge>
         {evidence && <Badge variant="outline">{evidence}</Badge>}
       </div>
-      {item.explanation && <p className="text-sm">Google Finance: {item.explanation}</p>}
+      <PairCorrelations item={item} />
+      <PairBusinessEvidence evidence={item.business_evidence ?? null} explanation={item.explanation} />
       {item.reasons.length > 0 && (
         <ul className="text-muted-foreground list-disc space-y-0.5 pl-5 text-xs">
-          {item.reasons.map((reason) => (
-            <li key={reason}>{reason}</li>
+          {/* Reasons and warnings may repeat; the index keeps each key unique. */}
+          {item.reasons.map((reason, index) => (
+            <li key={`${index}-${reason}`}>{reason}</li>
           ))}
         </ul>
       )}
       {measured && <PairMetrics item={item} window={window} />}
+      {measured && (
+        <div className="space-y-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            aria-expanded={plotOpen}
+            aria-controls={plotId}
+            onClick={() => setPlotOpen((open) => !open)}
+          >
+            {plotOpen ? 'Hide daily-return scatter plot' : 'View daily-return scatter plot'}
+          </Button>
+          <div id={plotId}>
+            {/* Mounted only while open, and keyed so each window draws its own sample. */}
+            {plotOpen && (
+              <PairScatterPlot key={window} targetTicker={targetTicker} item={item} window={window} />
+            )}
+          </div>
+        </div>
+      )}
+      {/* Keyed by the ordered pair, so re-sorting or a new report never hands one
+          pair's analysis, pending request or error to another. */}
+      <PairStrategyPanel
+        key={`${targetTicker}:${item.ticker}`}
+        ticker={targetTicker}
+        candidateTicker={item.ticker}
+        disabledReason={strategyDisabledReason}
+      />
+      {/* A sibling, not a child: today's analysis (absent, loading, failed or any
+          finding) never gates the historical backtest, and both stay visible. */}
+      <PairBacktestPanel
+        key={`backtest:${targetTicker}:${item.ticker}`}
+        ticker={targetTicker}
+        candidateTicker={item.ticker}
+        disabledReason={strategyDisabledReason}
+      />
     </li>
   )
 }
@@ -96,6 +162,8 @@ function PairsReport({
   onWindowChange: (window: PairWindow) => void
 }) {
   const hasStrong = report.items.some((item) => item.strength === 'strong')
+  // A sorted copy: the cached report keeps Google's order.
+  const ranked = useMemo(() => rankPairItems(report.items, window), [report.items, window])
   return (
     <Card>
       <CardHeader className="gap-2">
@@ -138,18 +206,37 @@ function PairsReport({
 
         {report.warnings.length > 0 && (
           <ul aria-label="Report warnings" className="text-muted-foreground space-y-1 text-xs">
-            {report.warnings.map((warning) => (
-              <li key={warning}>{warning}</li>
+            {report.warnings.map((warning, index) => (
+              <li key={`${index}-${warning}`}>{warning}</li>
             ))}
           </ul>
         )}
 
         {report.items.length > 0 && (
-          <ul aria-label="Pair candidates" className="space-y-3">
-            {report.items.map((item) => (
-              <PairCandidateRow key={item.ticker} item={item} window={window} />
-            ))}
-          </ul>
+          <div className="space-y-3">
+            <div className="text-muted-foreground space-y-1 text-xs">
+              <p>Sorted by {WINDOW_NAMES[window]} correlation among Google&apos;s suggestions</p>
+              <p>
+                Strength badges describe historical co-movement of daily returns and require both
+                the 3- and 6-month windows. Business evidence is checked separately and never
+                changes them.
+              </p>
+              <p>
+                A checked source passage means the quoted sentence was found on the cited page and
+                names the company; it does not confirm Google&apos;s interpretation.
+              </p>
+            </div>
+            <ul aria-label="Pair candidates" className="space-y-3">
+              {ranked.map((item) => (
+                <PairCandidateRow
+                  key={item.ticker}
+                  item={item}
+                  window={window}
+                  targetTicker={report.ticker}
+                />
+              ))}
+            </ul>
+          </div>
         )}
 
         <details className="text-sm">

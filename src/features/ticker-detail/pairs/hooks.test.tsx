@@ -5,7 +5,7 @@ import { getStockPairs, refreshStockPairs } from '@/api/stock-pairs'
 import { ApiError } from '@/lib/api-client'
 import type { StockPairsOut } from '@/types/api'
 import { useRefreshStockPairs, useStockPairs } from './hooks'
-import { savedReport } from './test-fixtures'
+import { enhancedReport, savedReport } from './test-fixtures'
 
 vi.mock('@/api/stock-pairs', async (importOriginal) => ({
   // The real pairTicker; only the network calls are replaced.
@@ -131,4 +131,50 @@ test('a failed search is never retried and never replaces the saved report', asy
   await new Promise((done) => setTimeout(done, 20))
   expect(refreshStockPairs).toHaveBeenCalledTimes(1)
   expect(client.getQueryData(['stock-pairs', 'WDC'])).toEqual(savedReport)
+})
+
+test('a late legacy read cannot overwrite a refreshed report with evidence and plots', async () => {
+  const refreshed = { ...enhancedReport, cached: false, generated_at: '2026-10-02T09:00:00Z' }
+  const read = deferred<StockPairsOut | null>()
+  const search = deferred<StockPairsOut>()
+  vi.mocked(getStockPairs).mockReturnValue(read.promise)
+  vi.mocked(refreshStockPairs).mockReturnValue(search.promise)
+  const client = new QueryClient()
+  const key = ['stock-pairs', 'WDC']
+  client.setQueryData(key, savedReport)
+  const pendingRead = client
+    .fetchQuery({ queryKey: key, queryFn: () => getStockPairs('WDC') })
+    .catch(() => undefined)
+  render(withClient(client, <SearchHarness ticker="WDC" forceRefresh />))
+
+  fireEvent.click(screen.getByRole('button', { name: 'Search' }))
+  await waitFor(() => expect(refreshStockPairs).toHaveBeenCalledWith('WDC', true))
+  await act(async () => search.resolve(refreshed))
+  await waitFor(() => expect(client.getQueryData(key)).toEqual(refreshed))
+  await act(async () => {
+    read.resolve(savedReport)
+    await pendingRead
+  })
+
+  const cached = client.getQueryData<StockPairsOut>(key)
+  expect(cached).toEqual(refreshed)
+  expect(cached?.items[0].business_evidence?.status).toBe('source_checked')
+  expect(cached?.items[0].six_month?.scatter?.points).toHaveLength(120)
+})
+
+test('an enhanced search finishing after navigation is saved only under its own ticker', async () => {
+  const pending = deferred<StockPairsOut>()
+  vi.mocked(refreshStockPairs).mockReturnValue(pending.promise)
+  const client = new QueryClient()
+  const nvdaSaved = { ...savedReport, ticker: 'NVDA' }
+  client.setQueryData(['stock-pairs', 'NVDA'], nvdaSaved)
+  const { rerender } = render(withClient(client, <SearchHarness ticker="WDC" />))
+
+  fireEvent.click(screen.getByRole('button', { name: 'Search' }))
+  await waitFor(() => expect(refreshStockPairs).toHaveBeenCalledWith('WDC', false))
+  rerender(withClient(client, <SearchHarness ticker="NVDA" />))
+  await act(async () => pending.resolve(enhancedReport))
+
+  expect(client.getQueryData(['stock-pairs', 'WDC'])).toEqual(enhancedReport)
+  expect(client.getQueryData(['stock-pairs', 'NVDA'])).toEqual(nvdaSaved)
 })

@@ -60,6 +60,16 @@ function MarketCheck({ check }: { check: StockPairMarketCheckOut }) {
   )
 }
 
+/** Both windows' coefficients, whichever window is selected for ranking and detail. */
+export function PairCorrelations({ item }: { item: StockPairItemOut }) {
+  return (
+    <p className="text-muted-foreground text-xs tabular-nums">
+      Daily-return correlation: 6 months {formatCorrelation(item.six_month?.correlation ?? null)} ·
+      3 months {formatCorrelation(item.three_month?.correlation ?? null)}
+    </p>
+  )
+}
+
 export function PairMetrics({ item, window }: { item: StockPairItemOut; window: PairWindow }) {
   const measured = item[window]
   if (!measured) {

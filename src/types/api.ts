@@ -2232,6 +2232,58 @@ export type StockPairEvidenceStatus =
   | 'price_stale'
   | 'undefined'
 export type StockPairMarketCheckStatus = 'available' | 'unavailable' | 'undefined'
+export type StockPairBusinessKind =
+  | 'shared_industry'
+  | 'shared_product'
+  | 'shared_customer_market'
+  | 'supplier_customer'
+  | 'other'
+// Evidence-coverage labels, not truth scores.
+export type StockPairBusinessStatus = 'source_checked' | 'partial' | 'unverified'
+export type StockPairClaimCheckStatus = 'matched' | 'mismatch' | 'unavailable' | 'not_checked'
+
+/** One business fact Google proposed and what an independent retrieval of its source found. */
+export interface StockPairBusinessClaimOut {
+  kind: StockPairBusinessKind
+  // The ticker the fact is about, or BOTH for a passage naming both companies.
+  subject: string
+  fact: string
+  proposed_excerpt: string
+  // As reported by Google, never independently extracted.
+  reported_source_date: string | null
+  source: GoogleFinanceResearchSourceOut
+  check_status: StockPairClaimCheckStatus
+  checked_excerpt: string | null
+  checked_at: string | null
+  // From the retrieved page's own metadata.
+  source_published_at: string | null
+  final_url: string | null
+  content_sha256: string | null
+  reason: string | null
+}
+
+export interface StockPairBusinessEvidenceOut {
+  hypothesis: string
+  status: StockPairBusinessStatus
+  claims: StockPairBusinessClaimOut[]
+  reason: string | null
+}
+
+/** One aligned daily return of each stock, as fractions (0.01 is 1%). */
+export interface StockPairReturnPointOut {
+  date: string
+  target_return: number
+  candidate_return: number
+}
+
+export interface StockPairScatterOut {
+  status: 'available' | 'unavailable'
+  points: StockPairReturnPointOut[]
+  // Descriptive fit: candidate = intercept + slope * target, both in fractions.
+  intercept: number | null
+  slope: number | null
+  reason: string | null
+}
 
 export interface StockPairMarketCheckOut {
   status: StockPairMarketCheckStatus
@@ -2254,6 +2306,8 @@ export interface StockPairWindowOut {
   baseline_up_day_pct: number | null
   up_day_improvement_pp: number | null
   market_check: StockPairMarketCheckOut
+  // Absent or null in reports saved before scatter plots existed.
+  scatter?: StockPairScatterOut | null
 }
 
 export interface StockPairItemOut {
@@ -2267,6 +2321,8 @@ export interface StockPairItemOut {
   reasons: string[]
   three_month: StockPairWindowOut | null
   six_month: StockPairWindowOut | null
+  // Absent or null in reports saved before sources were independently checked.
+  business_evidence?: StockPairBusinessEvidenceOut | null
 }
 
 export interface StockPairsOut {

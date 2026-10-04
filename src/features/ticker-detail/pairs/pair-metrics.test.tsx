@@ -1,6 +1,6 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, expect, test } from 'vitest'
-import { PairMetrics } from './pair-metrics'
+import { PairCorrelations, PairMetrics } from './pair-metrics'
 import { fund, newListing, seagate, sixMonth } from './test-fixtures'
 
 afterEach(cleanup)
@@ -57,4 +57,18 @@ test('a negative uplift keeps its sign', () => {
   render(<PairMetrics item={item} window="six_month" />)
 
   expect(screen.getByText('−4.3 percentage points')).toBeInTheDocument()
+})
+
+test('both window coefficients are shown together whatever the selected window', () => {
+  render(<PairCorrelations item={seagate} />)
+
+  expect(
+    screen.getByText('Daily-return correlation: 6 months 0.82 · 3 months 0.65'),
+  ).toBeInTheDocument()
+})
+
+test('a window without a coefficient shows a dash', () => {
+  render(<PairCorrelations item={newListing} />)
+
+  expect(screen.getByText('Daily-return correlation: 6 months — · 3 months —')).toBeInTheDocument()
 })
