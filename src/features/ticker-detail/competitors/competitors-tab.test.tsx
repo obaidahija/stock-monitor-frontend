@@ -1,4 +1,5 @@
 import { cleanup, screen } from '@testing-library/react'
+import { useLocation } from 'react-router'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { renderWithProviders } from '@/test/render'
@@ -29,18 +30,64 @@ beforeEach(() => {
 })
 afterEach(cleanup)
 
-test('displays the saved answer, sources and original full response date with a refresh button', () => {
+test('displays a compact saved result with sources collapsed and its original date', async () => {
   hooks.query.mockReturnValue({ data: saved, isPending: false, isError: false, isFetching: false })
   renderWithProviders(<CompetitorsTab ticker="WDC" />)
   expect(screen.getByText('STX')).toBeInTheDocument()
+  expect(screen.queryByRole('link', { name: /Western Digital annual report/ })).toBeNull()
+  await userEvent.click(screen.getByRole('button', { name: 'Sources (1)' }))
   expect(screen.getByRole('link', { name: /Western Digital annual report/ }))
     .toHaveAttribute('href', 'https://investor.wdc.com/annual-report')
   const timestamp = document.querySelector('time')
   expect(timestamp).toHaveAttribute('datetime', '2026-10-02T09:30:00Z')
   expect(timestamp?.textContent).toContain('2026')
-  expect(screen.getByText(/Response received/)).toBeInTheDocument()
+  expect(screen.getByText(/Updated/)).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Refresh' })).toBeEnabled()
   expect(screen.queryByRole('button', { name: 'Find competitors' })).not.toBeInTheDocument()
+})
+
+test('a competitor ticker opens that stock page', async () => {
+  hooks.query.mockReturnValue({ data: saved, isPending: false, isError: false, isFetching: false })
+  function Location() {
+    return <output aria-label="Current location">{useLocation().pathname}</output>
+  }
+  renderWithProviders(<><CompetitorsTab ticker="WDC" /><Location /></>, ['/stocks/WDC'])
+  const ticker = screen.getByRole('link', { name: 'STX' })
+  expect(ticker).toHaveAttribute('href', '/stocks/STX')
+  await userEvent.click(ticker)
+  expect(screen.getByLabelText('Current location')).toHaveTextContent('/stocks/STX')
+})
+
+test('long research stays hidden until opened while direct and indirect summaries remain visible', async () => {
+  hooks.query.mockReturnValue({ data: { ...saved, answer_markdown: `Long market introduction.
+### Direct Competitors
+### Seagate Technology
+- Ticker: NASDAQ:STX
+- Explanation: Seagate competes in HDDs. Detailed technology commentary.
+### Indirect Competitors
+### Micron Technology
+- Ticker: NASDAQ:MU
+- Explanation: Micron supplies enterprise SSDs. Detailed memory commentary.
+` }, isPending: false, isError: false, isFetching: false })
+  renderWithProviders(<CompetitorsTab ticker="WDC" />)
+  expect(screen.getByRole('heading', { name: 'Direct competitors' })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Indirect alternatives' })).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'STX' })).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'MU' })).toBeInTheDocument()
+  expect(screen.queryByText(/Detailed technology commentary/)).toBeNull()
+  expect(screen.queryByText('Long market introduction.')).toBeNull()
+  await userEvent.click(screen.getByRole('button', { name: 'Show detailed research' }))
+  expect(screen.getByText(/Detailed technology commentary/)).toBeInTheDocument()
+  await userEvent.click(screen.getByRole('button', { name: 'Hide detailed research' }))
+  expect(screen.queryByText(/Detailed technology commentary/)).toBeNull()
+})
+
+test('unrecognized answer formats remain available in detailed research', async () => {
+  hooks.query.mockReturnValue({ data: { ...saved, answer_markdown: 'No listed competitors could be confirmed.' }, isPending: false, isError: false, isFetching: false })
+  renderWithProviders(<CompetitorsTab ticker="WDC" />)
+  expect(screen.getByText(/Open detailed research/)).toBeInTheDocument()
+  await userEvent.click(screen.getByRole('button', { name: 'Show detailed research' }))
+  expect(screen.getByText('No listed competitors could be confirmed.')).toBeInTheDocument()
 })
 
 test('requires an explicit first search and explains that the answer is saved', async () => {
