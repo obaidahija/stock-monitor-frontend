@@ -7,6 +7,7 @@ import { EmptyState } from '@/components/shared/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { STAGE_META } from '@/components/shared/stage-badge'
+import { DigestLiveQuotes } from '@/features/digest/live-quotes'
 import { DigestItemCard } from '@/features/digest/digest-item-card'
 import { selectDigestPresentation } from '@/features/digest/presentation'
 import { sectionMeta, sectionOf } from '@/features/digest/sections'
@@ -93,6 +94,11 @@ export function DigestPage() {
   const selectedStages = useMemo(() => stageParam.split(',').filter(Boolean), [stageParam])
   const items = digest?.payload.items ?? EMPTY_ITEMS
 
+  const quoteTickers = useMemo(() => [...new Set([
+    ...items.map((item) => item.ticker),
+    ...Object.values(digest?.payload.research_first ?? {}).flatMap((report) => report.items.map((item) => item.ticker)),
+  ])], [items, digest?.payload.research_first])
+
   const stageCounts = useMemo(() => {
     const counts: Record<string, number> = {}
     for (const item of items) {
@@ -160,183 +166,185 @@ export function DigestPage() {
   )
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Digest"
-        description="Signals mixed from score, momentum, volume, chart patterns, and catalysts"
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1" role="group" aria-label="Digest edition">
-              {(['morning', 'intraday'] as const).map((value) => (
+    <DigestLiveQuotes tickers={quoteTickers}>
+      <div className="space-y-6">
+        <PageHeader
+          title="Digest"
+          description="Signals mixed from score, momentum, volume, chart patterns, and catalysts · Prices refresh every 30 seconds"
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1" role="group" aria-label="Digest edition">
+                {(['morning', 'intraday'] as const).map((value) => (
+                  <Button
+                    key={value}
+                    size="sm"
+                    variant={edition === value ? 'secondary' : 'ghost'}
+                    aria-pressed={edition === value}
+                    onClick={() => setEdition(value)}
+                  >
+                    {value === 'morning' ? 'Morning' : 'Intraday'}
+                  </Button>
+                ))}
+              </div>
+              {buildButton}
+              {edition === 'morning' && (
                 <Button
-                  key={value}
+                  variant="outline"
                   size="sm"
-                  variant={edition === value ? 'secondary' : 'ghost'}
-                  aria-pressed={edition === value}
-                  onClick={() => setEdition(value)}
+                  onClick={() => sendDigest.mutate()}
+                  disabled={sendDigest.isPending || !digest || !telegram?.ready}
+                  title={
+                    !telegram?.ready
+                      ? (telegram?.error ?? 'Telegram is not configured')
+                      : !digest
+                        ? 'Build a digest before sending it'
+                        : 'Send this morning edition to Telegram now'
+                  }
                 >
-                  {value === 'morning' ? 'Morning' : 'Intraday'}
+                  <Send className="size-3.5" />
+                  {sendDigest.isPending ? 'Sending…' : 'Send to Telegram'}
                 </Button>
-              ))}
+              )}
             </div>
-            {buildButton}
-            {edition === 'morning' && (
+          }
+        />
+
+        {digest && (
+          <p className="text-muted-foreground text-xs" data-testid="digest-edition-label">
+            {editionLabel(digest)}
+          </p>
+        )}
+
+        {edition === 'intraday' && (
+          <p className="text-muted-foreground text-xs" data-testid="digest-intraday-send-note">
+            Telegram sends the morning edition, not this update. Switch to Morning to send it.
+          </p>
+        )}
+
+        {edition === 'morning' && sendDigest.isSuccess && (
+          <p className="text-muted-foreground text-xs" data-testid="digest-send-result">
+            {sendDigest.data.skipped
+              ? `Already sent to Telegram today (${sendDigest.data.slot} slot).`
+              : sendDigest.data.status === 'sent'
+                ? `Sent ${sendDigest.data.messages_sent} of ${sendDigest.data.message_count} messages to Telegram.`
+                : `Telegram delivery ${sendDigest.data.status}: ${sendDigest.data.last_error ?? 'unknown error'}`}
+          </p>
+        )}
+
+        {edition === 'morning' && sendDigest.isError && (
+          <p className="text-destructive text-xs" data-testid="digest-send-result">
+            Could not send to Telegram: {(sendDigest.error as Error).message}
+          </p>
+        )}
+
+        {telegram && !telegram.digest_enabled && (
+          <p className="text-muted-foreground text-xs" data-testid="digest-schedule-note">
+            Scheduled Telegram delivery (07:50 and 09:10 ET) is off. Set DIGEST_TELEGRAM_ENABLED=true
+            in the backend .env to turn it on — manual sends work either way.
+          </p>
+        )}
+
+        {isPending && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-40 rounded-xl" />
+            ))}
+          </div>
+        )}
+
+        {isError && <ErrorState error={error} onRetry={() => refetch()} />}
+
+        {!isPending && !isError && !digest && edition === 'morning' && (
+          <EmptyState
+            icon={Newspaper}
+            title="No digest built yet for today"
+            description="The morning edition builds at 07:45 ET and refreshes at 09:05 ET on trading days, each time with fresh full-universe premarket prices. A manual build is saved as an intraday update."
+            action={buildButton}
+          />
+        )}
+
+        {!isPending && !isError && !digest && edition === 'intraday' && (
+          <EmptyState
+            icon={Newspaper}
+            title="No intraday update yet for today"
+            description="An update is a separate snapshot built on demand; it never replaces the morning edition."
+            action={buildButton}
+          />
+        )}
+
+        {digest && (
+          <DigestResearchFirst
+            snapshots={digest.payload.research_first}
+            onVisibleTickersChange={setResearchTickers}
+          />
+        )}
+
+        {digest && items.length === 0 && !Object.values(digest.payload.research_first ?? {}).some((report) => report.items.length > 0) && (
+          <EmptyState
+            title="No tracked tickers yet"
+            description="Scores populate daily once universe_score has run, or add a custom ticker on Discover."
+          />
+        )}
+
+        {digest && items.length > 0 && (
+          <>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-muted-foreground text-xs">Filter by stage</span>
+              {Object.keys(STAGE_META)
+                .filter((stage) => stageCounts[stage] > 0)
+                .map((stage) => {
+                  const meta = STAGE_META[stage]
+                  const active = selectedStages.includes(stage)
+                  return (
+                    <Button
+                      key={stage}
+                      size="sm"
+                      variant={active ? 'secondary' : 'ghost'}
+                      onClick={() => toggleStage(stage)}
+                    >
+                      <meta.icon className={cn('size-3.5', active && 'opacity-100')} />
+                      {meta.label} ({stageCounts[stage]})
+                    </Button>
+                  )
+                })}
+              {filtering && (
+                <Button size="sm" variant="ghost" onClick={clearStages}>
+                  Clear
+                </Button>
+              )}
+            </div>
+
+            <p className="text-muted-foreground text-xs" data-testid="digest-coverage-count">
+              Showing {visibleCount} of {presentation.total} tickers
+              {!filtering && !expanded && researchTickers.length > 0 && ' · Research First tickers are not repeated'}
+            </p>
+
+            {filtering && presentation.prominent.length === 0 && (
+              <EmptyState title="No tickers match the selected stages" />
+            )}
+
+            {/* Expanded, the whole payload is one ranked list again, so each
+                section appears once instead of split into compact and rest. */}
+            <div id="digest-coverage" className="space-y-6">
+              <DigestSections items={showRemaining ? items : presentation.prominent} />
+            </div>
+
+            {!filtering && presentation.remaining.length > 0 && (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => sendDigest.mutate()}
-                disabled={sendDigest.isPending || !digest || !telegram?.ready}
-                title={
-                  !telegram?.ready
-                    ? (telegram?.error ?? 'Telegram is not configured')
-                    : !digest
-                      ? 'Build a digest before sending it'
-                      : 'Send this morning edition to Telegram now'
-                }
+                aria-expanded={expanded}
+                aria-controls="digest-coverage"
+                onClick={() => setExpanded(!expanded)}
               >
-                <Send className="size-3.5" />
-                {sendDigest.isPending ? 'Sending…' : 'Send to Telegram'}
+                {expanded
+                  ? 'Show compact view'
+                  : `Show all coverage (${presentation.remaining.length} more${remainingFilings ? `, including ${remainingFilings} other filings` : ''})`}
               </Button>
             )}
-          </div>
-        }
-      />
-
-      {digest && (
-        <p className="text-muted-foreground text-xs" data-testid="digest-edition-label">
-          {editionLabel(digest)}
-        </p>
-      )}
-
-      {edition === 'intraday' && (
-        <p className="text-muted-foreground text-xs" data-testid="digest-intraday-send-note">
-          Telegram sends the morning edition, not this update. Switch to Morning to send it.
-        </p>
-      )}
-
-      {edition === 'morning' && sendDigest.isSuccess && (
-        <p className="text-muted-foreground text-xs" data-testid="digest-send-result">
-          {sendDigest.data.skipped
-            ? `Already sent to Telegram today (${sendDigest.data.slot} slot).`
-            : sendDigest.data.status === 'sent'
-              ? `Sent ${sendDigest.data.messages_sent} of ${sendDigest.data.message_count} messages to Telegram.`
-              : `Telegram delivery ${sendDigest.data.status}: ${sendDigest.data.last_error ?? 'unknown error'}`}
-        </p>
-      )}
-
-      {edition === 'morning' && sendDigest.isError && (
-        <p className="text-destructive text-xs" data-testid="digest-send-result">
-          Could not send to Telegram: {(sendDigest.error as Error).message}
-        </p>
-      )}
-
-      {telegram && !telegram.digest_enabled && (
-        <p className="text-muted-foreground text-xs" data-testid="digest-schedule-note">
-          Scheduled Telegram delivery (07:50 and 09:10 ET) is off. Set DIGEST_TELEGRAM_ENABLED=true
-          in the backend .env to turn it on — manual sends work either way.
-        </p>
-      )}
-
-      {isPending && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-40 rounded-xl" />
-          ))}
-        </div>
-      )}
-
-      {isError && <ErrorState error={error} onRetry={() => refetch()} />}
-
-      {!isPending && !isError && !digest && edition === 'morning' && (
-        <EmptyState
-          icon={Newspaper}
-          title="No digest built yet for today"
-          description="The morning edition builds at 07:45 ET and refreshes at 09:05 ET on trading days, each time with fresh full-universe premarket prices. A manual build is saved as an intraday update."
-          action={buildButton}
-        />
-      )}
-
-      {!isPending && !isError && !digest && edition === 'intraday' && (
-        <EmptyState
-          icon={Newspaper}
-          title="No intraday update yet for today"
-          description="An update is a separate snapshot built on demand; it never replaces the morning edition."
-          action={buildButton}
-        />
-      )}
-
-      {digest && (
-        <DigestResearchFirst
-          snapshots={digest.payload.research_first}
-          onVisibleTickersChange={setResearchTickers}
-        />
-      )}
-
-      {digest && items.length === 0 && !Object.values(digest.payload.research_first ?? {}).some((report) => report.items.length > 0) && (
-        <EmptyState
-          title="No tracked tickers yet"
-          description="Scores populate daily once universe_score has run, or add a custom ticker on Discover."
-        />
-      )}
-
-      {digest && items.length > 0 && (
-        <>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-muted-foreground text-xs">Filter by stage</span>
-            {Object.keys(STAGE_META)
-              .filter((stage) => stageCounts[stage] > 0)
-              .map((stage) => {
-                const meta = STAGE_META[stage]
-                const active = selectedStages.includes(stage)
-                return (
-                  <Button
-                    key={stage}
-                    size="sm"
-                    variant={active ? 'secondary' : 'ghost'}
-                    onClick={() => toggleStage(stage)}
-                  >
-                    <meta.icon className={cn('size-3.5', active && 'opacity-100')} />
-                    {meta.label} ({stageCounts[stage]})
-                  </Button>
-                )
-              })}
-            {filtering && (
-              <Button size="sm" variant="ghost" onClick={clearStages}>
-                Clear
-              </Button>
-            )}
-          </div>
-
-          <p className="text-muted-foreground text-xs" data-testid="digest-coverage-count">
-            Showing {visibleCount} of {presentation.total} tickers
-            {!filtering && !expanded && researchTickers.length > 0 && ' · Research First tickers are not repeated'}
-          </p>
-
-          {filtering && presentation.prominent.length === 0 && (
-            <EmptyState title="No tickers match the selected stages" />
-          )}
-
-          {/* Expanded, the whole payload is one ranked list again, so each
-              section appears once instead of split into compact and rest. */}
-          <div id="digest-coverage" className="space-y-6">
-            <DigestSections items={showRemaining ? items : presentation.prominent} />
-          </div>
-
-          {!filtering && presentation.remaining.length > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              aria-expanded={expanded}
-              aria-controls="digest-coverage"
-              onClick={() => setExpanded(!expanded)}
-            >
-              {expanded
-                ? 'Show compact view'
-                : `Show all coverage (${presentation.remaining.length} more${remainingFilings ? `, including ${remainingFilings} other filings` : ''})`}
-            </Button>
-          )}
-        </>
-      )}
-    </div>
+          </>
+        )}
+      </div>
+    </DigestLiveQuotes>
   )
 }

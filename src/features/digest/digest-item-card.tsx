@@ -6,9 +6,10 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { SentimentBadge } from '@/components/shared/sentiment-badge'
 import { StageBadge } from '@/components/shared/stage-badge'
-import { formatCurrency, formatEasternDateTime, formatSignedPct } from '@/lib/format'
+import { formatEasternDateTime, formatSignedPct } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { DigestItem, DigestTopFiling } from '@/types/api'
+import { DigestLivePrice } from './live-quotes'
 import { useDismissDigestItem } from './hooks'
 
 function safeUrl(url: string | undefined): string | null {
@@ -27,7 +28,6 @@ function FilingLink({ filing }: { filing: DigestTopFiling }) {
 }
 
 export function DigestItemCard({ item }: { item: DigestItem }) {
-  const changePct = item.premarket?.change_pct ?? null
   const pattern = item.recent_pattern
   const dismissItem = useDismissDigestItem()
 
@@ -81,25 +81,7 @@ export function DigestItemCard({ item }: { item: DigestItem }) {
             </TooltipTrigger>
             <TooltipContent>Hide from digest for 7 days</TooltipContent>
           </Tooltip>
-          {item.premarket && (
-            <div className="text-right">
-              <div className="font-medium tabular-nums">
-                {formatCurrency(item.premarket.price)}
-              </div>
-              <div
-                className={cn(
-                  'text-sm tabular-nums',
-                  changePct === null
-                    ? 'text-muted-foreground'
-                    : changePct >= 0
-                      ? 'text-emerald-600 dark:text-emerald-400'
-                      : 'text-red-600 dark:text-red-400',
-                )}
-              >
-                {formatSignedPct(changePct)}
-              </div>
-            </div>
-          )}
+          <DigestLivePrice ticker={item.ticker} />
         </div>
       </CardHeader>
       <CardContent className="space-y-2">

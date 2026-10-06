@@ -11,6 +11,7 @@ import { useResearchCapabilities } from '@/features/research/hooks'
 import { FollowThroughControl } from '@/features/watchlists/follow-through-control'
 import { ManageListsDialog } from '@/features/watchlists/manage-lists-dialog'
 import { formatEasternDateTime } from '@/lib/format'
+import { DigestLivePrice } from '@/features/digest/live-quotes'
 import { getResearchFirst } from './api'
 import type { ResearchFirstItem, ResearchFirstReport } from './types'
 
@@ -51,6 +52,7 @@ function ResearchCard({ item, horizon, trackingEnabled }: {
           }</Badge>
         </div>
         <CardDescription className="truncate">{item.company_name || item.ticker}</CardDescription>
+        <DigestLivePrice ticker={item.ticker} />
       </CardHeader>
       <CardContent className="flex flex-col gap-3 text-sm">
         <p className="font-medium break-words">{item.headline}</p>
