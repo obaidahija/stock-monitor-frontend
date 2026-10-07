@@ -5,10 +5,10 @@ import {
   Pencil,
   Trash2,
 } from 'lucide-react'
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, useCallback, useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getSetupEventWindow } from '@/api/watchlists'
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 import { EmptyState } from '@/components/shared/empty-state'
 import { ErrorState } from '@/components/shared/error-state'
@@ -50,7 +50,24 @@ import type { AnalysisLean, WatchlistItemOut } from '@/types/api'
 
 export function WatchlistsPage() {
   const lists = useWatchlists()
-  const [selectedId, setSelectedId] = useState<number | null>(null)
+  // The selected list lives in ?list=<id> so a refresh or shared link reopens it.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const listParam = Number(searchParams.get('list'))
+  const selectedId = Number.isInteger(listParam) && listParam > 0 ? listParam : null
+  const setSelectedId = useCallback(
+    (id: number | null, options?: { replace?: boolean }) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev)
+          if (id === null) next.delete('list')
+          else next.set('list', String(id))
+          return next
+        },
+        { replace: options?.replace },
+      )
+    },
+    [setSearchParams],
+  )
   const items = useWatchlistItems(selectedId)
   const create = useCreateWatchlist()
   const rename = useRenameWatchlist()
@@ -59,9 +76,9 @@ export function WatchlistsPage() {
   useEffect(() => {
     if (!lists.data?.length) return
     if (selectedId === null || !lists.data.some((list) => list.id === selectedId)) {
-      setSelectedId(lists.data[0].id)
+      setSelectedId(lists.data[0].id, { replace: true })
     }
-  }, [lists.data, selectedId])
+  }, [lists.data, selectedId, setSelectedId])
 
   const selected = lists.data?.find((list) => list.id === selectedId)
 
@@ -91,7 +108,7 @@ export function WatchlistsPage() {
     if (!selected || !window.confirm(`Delete ${selected.name} and all of its setup history?`)) return
     try {
       await remove.mutateAsync(selected.id)
-      setSelectedId(null)
+      setSelectedId(null, { replace: true })
     } catch {
       toast.error('The final watchlist cannot be deleted')
     }
@@ -165,18 +182,23 @@ function SimpleWatchlistTable({ items }: { items: WatchlistItemOut[] }) {
         <TableBody>
           {items.map((item) => {
             const isExpanded = expanded.has(item.id)
-            const sessionChange =
-              item.current_price !== null && item.session_price !== null
-                ? item.session_price - item.current_price
-                : null
-            const sessionChangePct =
-              sessionChange !== null && item.current_price !== null && item.current_price > 0
-                ? (sessionChange / item.current_price) * 100
-                : null
             const showSessionPrice =
               item.market_session === 'pre_market' ||
               item.market_session === 'post_market' ||
               item.market_session === 'overnight'
+            // Extended hours: the move from the regular price. Regular/closed: the
+            // day's move vs. the previous close (session_price equals the regular
+            // price then, so deriving it would always read 0).
+            const sessionChange = showSessionPrice
+              ? item.current_price !== null && item.session_price !== null
+                ? item.session_price - item.current_price
+                : null
+              : (item.change_amount ?? null)
+            const sessionChangePct = showSessionPrice
+              ? sessionChange !== null && item.current_price !== null && item.current_price > 0
+                ? (sessionChange / item.current_price) * 100
+                : null
+              : (item.change_pct ?? null)
             return (
               <Fragment key={item.id}>
                 <TableRow>

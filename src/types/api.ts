@@ -1036,6 +1036,8 @@ export interface WatchlistItemOut {
   company_name: string | null
   created_at: string
   current_price: number | null
+  change_amount?: number | null
+  change_pct?: number | null
   session_price: number | null
   quote_updated_at: string | null
   market_session: 'overnight' | 'pre_market' | 'regular' | 'post_market' | 'closed' | null
