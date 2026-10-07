@@ -10,7 +10,6 @@ import { formatEasternDateTime, formatSignedPct } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { DigestItem, DigestTopFiling } from '@/types/api'
 import { DigestLivePrice } from './live-quotes'
-import { FilingEstimatePanel } from './filing-estimate'
 import { useDismissDigestItem } from './hooks'
 
 function safeUrl(url: string | undefined): string | null {
@@ -133,9 +132,6 @@ export function DigestItemCard({ item }: { item: DigestItem }) {
             <FilingLink filing={item.top_filing} /> topic: {item.top_filing.prominence_reason}.
             Item codes name the disclosed topic, not its effect.
           </p>
-        )}
-        {item.top_filing && (
-          <FilingEstimatePanel ticker={item.ticker} filingUrl={item.top_filing.url} compact />
         )}
         {item.supporting_filings && item.supporting_filings.length > 0 && (
           <details className="text-xs">
