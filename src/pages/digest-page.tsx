@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { STAGE_META } from '@/components/shared/stage-badge'
 import { DigestLiveQuotes } from '@/features/digest/live-quotes'
 import { DigestItemCard } from '@/features/digest/digest-item-card'
+import { EventStudyPanel } from '@/features/digest/event-study-panel'
 import { selectDigestPresentation } from '@/features/digest/presentation'
 import { sectionMeta, sectionOf } from '@/features/digest/sections'
 import { DigestResearchFirst } from '@/features/research-first/research-first-panel'
@@ -208,6 +209,7 @@ export function DigestPage() {
             </div>
           }
         />
+        <EventStudyPanel tickers={quoteTickers} />
 
         {digest && (
           <p className="text-muted-foreground text-xs" data-testid="digest-edition-label">
