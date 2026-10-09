@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { formatNumber } from '@/lib/format'
+import { formatCompactNumber } from '@/lib/format'
 import type { ShortInterestOut } from '@/types/api'
 
 function Row({ label, value }: { label: string; value: string | null }) {
@@ -43,7 +43,7 @@ export function ShortInterestCard({
           value={
             shortInterest.float_shares === null
               ? null
-              : `${formatNumber(shortInterest.float_shares)} shares`
+              : `${formatCompactNumber(shortInterest.float_shares)} shares`
           }
         />
         <Row

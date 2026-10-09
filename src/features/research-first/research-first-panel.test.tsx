@@ -167,3 +167,39 @@ test('digest reports the first three cards of the selected horizon, independent 
   fireEvent.change(screen.getByLabelText('Research horizon'), { target: { value: '3' } })
   expect(onVisible).toHaveBeenLastCalledWith([])
 })
+
+test('a watch line shared by every card is said once above the cards', () => {
+  const snapshot = report()
+  const shared = '2 scheduled market events overlap this window; check Events for details'
+  snapshot.items[0].risks = [shared, 'Observed price direction opposes the composite lean']
+  snapshot.items.push({ ...snapshot.items[0], rank: 2, ticker: 'XYZ', headline: 'XYZ announces a new contract', risks: [shared] })
+  renderWithProviders(<DigestResearchFirst snapshots={{ '5': snapshot }} />)
+
+  expect(screen.getAllByText(shared)).toHaveLength(1)
+  expect(screen.getByText('Observed price direction opposes the composite lean')).toBeInTheDocument()
+})
+
+test('keeps source, feed time and dates on one line', () => {
+  const snapshot = report()
+  snapshot.rule_version = 'research-first-v3'
+  snapshot.items[0].original_article_status = 'verified'
+  snapshot.items[0].original_article_on = '2026-09-28'
+  snapshot.items[0].issuer_event_status = 'unknown'
+  renderWithProviders(<DigestResearchFirst snapshots={{ '5': snapshot }} />)
+
+  expect(screen.getByText(/Feed time:/).parentElement).toHaveTextContent(
+    'Issuer · Feed time: Sep 28, 8:00 AM ET · Publisher article: 2026-09-28 · Issuer event date: unverified',
+  )
+})
+
+test('says the volatility caveat once, in the footer', () => {
+  const snapshot = report()
+  snapshot.items[0].selected_volatility = {
+    horizon_sessions: 5, move_pct: 7.9, sample_count: 60, reason: null,
+    quality: { status: 'ok', as_of: null, fetched_at: null, sources: [], reasons: [], price_basis: 'adjusted', market_session: null },
+  } as never
+  renderWithProviders(<DigestResearchFirst snapshots={{ '5': snapshot }} />)
+
+  expect(screen.getByText('5-session volatility reference: ±7.9%')).toBeInTheDocument()
+  expect(screen.getAllByText(/typical magnitudes, not forecasts/)).toHaveLength(1)
+})

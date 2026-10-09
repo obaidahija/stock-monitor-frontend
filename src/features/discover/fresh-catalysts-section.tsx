@@ -7,6 +7,7 @@ import { sameTimeVolumeLabel } from '@/features/research/intraday'
 import { IntradayControl } from '@/features/research/intraday-control'
 import { FollowThroughControl } from '@/features/watchlists/follow-through-control'
 import { formatEasternDateTime, formatSignedPct } from '@/lib/format'
+import { humanizeLabel } from '@/lib/labels'
 import type { CatalystReactionOut, FreshCatalystOut } from '@/types/api'
 import { useFreshCatalysts } from './hooks'
 import type { FreshCatalystParams } from '@/api/discover'
@@ -20,6 +21,7 @@ const CATEGORIES = [
   ['product_contract_regulatory_approval', 'Product, contract & approval'],
   ['filing_regulatory_action', 'Regulatory action'],
 ] as const
+const CATEGORY_LABELS: Record<string, string> = Object.fromEntries(CATEGORIES)
 
 export function volumeLabel(ratio: number | null): string {
   return ratio === null ? 'Daily volume confirmation pending' : `${ratio.toFixed(2)}x daily volume`
@@ -45,7 +47,7 @@ function CatalystRow({ item, horizon, trackingEnabled }: { item: FreshCatalystOu
     <li className="min-w-0 space-y-1 rounded-lg border p-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <Link className="font-semibold hover:underline" to={`/stocks/${encodeURIComponent(item.ticker)}?tab=analysis&horizon_sessions=${horizon}`}>{item.ticker}</Link>
-        <span className="text-muted-foreground text-xs">{item.event.category.replaceAll('_', ' ')}</span>
+        <span className="text-muted-foreground text-xs">{CATEGORY_LABELS[item.event.category] ?? humanizeLabel(item.event.category)}</span>
       </div>
       <p className="break-words text-sm">{item.event.headline}</p>
       <p className="text-muted-foreground text-xs">
@@ -56,7 +58,7 @@ function CatalystRow({ item, horizon, trackingEnabled }: { item: FreshCatalystOu
       {item.latest_quote_reaction && <ReactionLine reaction={item.latest_quote_reaction} label="Quote at" />}
       {!item.daily_reaction && !item.latest_quote_reaction && <p className="text-muted-foreground text-xs">{volumeLabel(null)}</p>}
       {item.quality.reasons.length > 0 && <p className="text-muted-foreground text-xs">Data limits: {item.quality.reasons.join(', ').replaceAll('_', ' ')}</p>}
-      {item.intraday && (
+      {item.intraday && (item.intraday.same_time_volume || item.intraday.pre_publication_reference) && (
         <div className="space-y-1">
           {item.intraday.same_time_volume && (
             <p className="text-muted-foreground text-xs">{sameTimeVolumeLabel(item.intraday.same_time_volume)}</p>
@@ -67,10 +69,14 @@ function CatalystRow({ item, horizon, trackingEnabled }: { item: FreshCatalystOu
               {formatEasternDateTime(item.intraday.pre_publication_reference.bar_end_at)} (reference only, not the cause of a move)
             </p>
           )}
-          <IntradayControl origin={{ catalyst_candidate_id: item.candidate_id }} subscriptionId={item.intraday.subscription_id} />
         </div>
       )}
-      <FollowThroughControl ticker={item.ticker} origin={{ kind: 'catalyst', candidateId: item.candidate_id }} enabled={trackingEnabled} />
+      <div className="flex flex-wrap items-center gap-2 pt-1">
+        {item.intraday && (
+          <IntradayControl origin={{ catalyst_candidate_id: item.candidate_id }} subscriptionId={item.intraday.subscription_id} />
+        )}
+        <FollowThroughControl ticker={item.ticker} origin={{ kind: 'catalyst', candidateId: item.candidate_id }} enabled={trackingEnabled} />
+      </div>
     </li>
   )
 }

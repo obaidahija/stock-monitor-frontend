@@ -63,10 +63,13 @@ test('sorts risers first, not by current rank', () => {
   expect(rows[1]).toHaveTextContent('Technology')
 })
 
-test('renders the caveat as visible text', () => {
-  mockData = payload()
+test('explains rotation in plain words instead of the API caveat', () => {
+  mockData = payload({ caveat: 'SectorContext.trend_pct is itself a trailing 20-day return' })
   render(<SectorRotation />)
+
+  expect(screen.getByText(/trailing 20-day return, so readings a few days apart/i)).toBeInTheDocument()
   expect(screen.getByText(/windows are calendar days/i)).toBeInTheDocument()
+  expect(screen.queryByText(/SectorContext/)).not.toBeInTheDocument()
 })
 
 test('shows an unchanged marker rather than a signed zero', () => {

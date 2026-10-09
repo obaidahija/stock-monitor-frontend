@@ -10,6 +10,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import type { ShortSqueezeMonitoringOut } from '@/types/api'
 import { useResearchMonitoring } from './hooks'
 
 const HORIZONS = [1, 3, 5, 7] as const
@@ -21,6 +22,43 @@ const number = (value: number | null, digits = 2) =>
   value === null ? '—' : value.toFixed(digits)
 const signedPct = (value: number | null) =>
   value === null ? '—' : `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`
+
+function ShortSqueezeHealth({ scanner }: { scanner: ShortSqueezeMonitoringOut }) {
+  const failed = scanner.checkpoints.failed ?? 0
+  const pending = scanner.checkpoints.pending ?? 0
+  return (
+    <section aria-label="Short Squeeze scanner">
+      <Card>
+        <CardHeader>
+          <CardTitle>Short Squeeze scanner</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-1 text-sm">
+          <p>
+            {scanner.collection_enabled ? 'Collecting' : 'Collection off'} ·{' '}
+            {scanner.latest_target_session
+              ? `latest session ${scanner.latest_target_session}`
+              : 'No scan published yet'}
+            {scanner.corrections > 0 && ` · ${scanner.corrections} corrected`}
+          </p>
+          {scanner.coverage && (
+            <p className="text-muted-foreground">
+              {scanner.coverage.evaluated} evaluated / {scanner.coverage.matched} matched /{' '}
+              {scanner.coverage.incomplete} incomplete · {scanner.observations_recorded} observations
+              recorded
+            </p>
+          )}
+          {(failed > 0 || pending > 0) && (
+            <p className="text-amber-700 dark:text-amber-300">
+              Warm-up incomplete: {failed} failed, {pending} pending
+              {scanner.checkpoint_target_session && ` for ${scanner.checkpoint_target_session}`}. Gain
+              matches still work; the prior-high branch stays unknown until history arrives.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    </section>
+  )
+}
 
 /** Stored evidence only; loading this tab does not start a research job. */
 export function ResearchHealthPanel() {
@@ -208,6 +246,8 @@ export function ResearchHealthPanel() {
               </p>
             </CardContent>
           </Card>
+
+          {data.short_squeeze && <ShortSqueezeHealth scanner={data.short_squeeze} />}
 
           <Card>
             <CardHeader>

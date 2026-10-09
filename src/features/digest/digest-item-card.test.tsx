@@ -60,3 +60,14 @@ test.each([undefined, null, ''])('supporting filings without stored codes (%s) s
   expect(fact).toHaveTextContent('auditor change (4.01)')
   expect(fact).not.toHaveTextContent('Item codes:')
 })
+
+test('a supporting filing known only by its date shows no invented time', async () => {
+  const user = userEvent.setup()
+  renderWithProviders(<DigestItemCard item={itemWithSupportingFiling({ ...filing, filed_at: '2026-10-01T00:00:00Z' })} />)
+
+  await user.click(screen.getByText('Other filings (1)'))
+
+  const fact = screen.getByRole('listitem')
+  expect(fact).toHaveTextContent('Oct 1, 2026')
+  expect(fact).not.toHaveTextContent('PM ET')
+})

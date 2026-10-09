@@ -41,6 +41,7 @@ test('displays a compact saved result with sources collapsed and its original da
   const timestamp = document.querySelector('time')
   expect(timestamp).toHaveAttribute('datetime', '2026-10-02T09:30:00Z')
   expect(timestamp?.textContent).toContain('2026')
+  expect(timestamp?.textContent).toBe('Oct 2, 2026, 5:30 AM ET')
   expect(screen.getByText(/Updated/)).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Refresh' })).toBeEnabled()
   expect(screen.queryByRole('button', { name: 'Find competitors' })).not.toBeInTheDocument()

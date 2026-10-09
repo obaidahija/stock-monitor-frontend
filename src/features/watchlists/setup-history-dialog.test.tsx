@@ -112,3 +112,35 @@ test('restores with the legacy 20-day horizon while swing research is off', asyn
     body: { side: 'short', horizon: 'short_term', replace_existing: true },
   })
 })
+
+test('a setup saved from a scanner match shows where it came from', async () => {
+  history.rows = [
+    {
+      ...expiredSwing,
+      side: 'long',
+      stop_loss: 90,
+      take_profit: 110,
+      strategy_observation_id: 7,
+      strategy_provenance: {
+        observation_id: 7,
+        source_kind: 'short_squeeze',
+        rule_version: 'short-squeeze-daily-v1',
+        signal_session: '2026-10-05',
+      },
+    },
+  ]
+  const user = userEvent.setup()
+  render(<SetupHistoryDialog itemId={10} ticker="NVDA" />)
+  await user.click(screen.getByRole('button', { name: /history/i }))
+
+  expect(screen.getByText(/From a Short Squeeze match · signal session Oct 5, 2026/)).toBeTruthy()
+})
+
+test('an ordinary setup shows no scanner origin', async () => {
+  history.rows = [expiredSwing]
+  const user = userEvent.setup()
+  render(<SetupHistoryDialog itemId={10} ticker="NVDA" />)
+  await user.click(screen.getByRole('button', { name: /history/i }))
+
+  expect(screen.queryByText(/Short Squeeze/)).toBeNull()
+})

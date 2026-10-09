@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Temporary company-X browser walkthrough configuration.
+vite.walkthrough.config.ts

@@ -11,7 +11,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { useResearchCapabilities } from '@/features/research/hooks'
-import { formatCurrency, formatRelativeTime } from '@/lib/format'
+import { formatCurrency, formatDate, formatRelativeTime } from '@/lib/format'
 import type { WatchlistSetupOut } from '@/types/api'
 import { useCloneSetup, useSetupHistory } from './hooks'
 import { setupExpiryLabel, setupHorizonLabel } from './research-window'
@@ -91,6 +91,11 @@ export function SetupHistoryDialog({
               <p className="text-muted-foreground mt-2 text-xs">
                 {setup.source_mode === 'ai_managed' ? 'AI-managed' : 'Manual'} · {formatRelativeTime(setup.created_at)}
               </p>
+              {setup.strategy_provenance && (
+                <p className="text-muted-foreground text-xs">
+                  From a Short Squeeze match · signal session {formatDate(setup.strategy_provenance.signal_session)}
+                </p>
+              )}
             </div>
           ))}
         </div>

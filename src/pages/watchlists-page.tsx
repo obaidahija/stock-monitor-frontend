@@ -46,6 +46,7 @@ import {
   formatSignedPct,
 } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { PHONE_MEDIA_QUERY, useMediaQuery } from '@/lib/use-media-query'
 import type { AnalysisLean, WatchlistItemOut } from '@/types/api'
 
 export function WatchlistsPage() {
@@ -69,6 +70,7 @@ export function WatchlistsPage() {
     [setSearchParams],
   )
   const items = useWatchlistItems(selectedId)
+  const isPhone = useMediaQuery(PHONE_MEDIA_QUERY)
   const create = useCreateWatchlist()
   const rename = useRenameWatchlist()
   const remove = useDeleteWatchlist()
@@ -148,16 +150,15 @@ export function WatchlistsPage() {
         <EmptyState title="No tickers in this list" description="Use Manage lists from Discover or a ticker page to add favorites." />
       )}
       {items.data && items.data.length > 0 && (
-        <SimpleWatchlistTable items={items.data} />
+        isPhone ? <WatchlistCards items={items.data} /> : <SimpleWatchlistTable items={items.data} />
       )}
     </div>
   )
 }
 
-function SimpleWatchlistTable({ items }: { items: WatchlistItemOut[] }) {
+function useExpandedSet() {
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
-
-  function toggleExpanded(id: number) {
+  function toggle(id: number) {
     setExpanded((current) => {
       const next = new Set(current)
       if (next.has(id)) next.delete(id)
@@ -165,40 +166,173 @@ function SimpleWatchlistTable({ items }: { items: WatchlistItemOut[] }) {
       return next
     })
   }
+  return [expanded, toggle] as const
+}
+
+function WatchlistPrice({ item }: { item: WatchlistItemOut }) {
+  const showSessionPrice =
+    item.market_session === 'pre_market' ||
+    item.market_session === 'post_market' ||
+    item.market_session === 'overnight'
+  // Extended hours: the move from the regular price. Regular/closed: the
+  // day's move vs. the previous close (session_price equals the regular
+  // price then, so deriving it would always read 0).
+  const sessionChange = showSessionPrice
+    ? item.current_price !== null && item.session_price !== null
+      ? item.session_price - item.current_price
+      : null
+    : (item.change_amount ?? null)
+  const sessionChangePct = showSessionPrice
+    ? sessionChange !== null && item.current_price !== null && item.current_price > 0
+      ? (sessionChange / item.current_price) * 100
+      : null
+    : (item.change_pct ?? null)
+
+  return (
+    <>
+      <span className="block">{formatCurrency(item.current_price)}</span>
+      {item.market_session && (
+        <>
+          <span className="mt-0.5 flex flex-wrap items-center justify-end gap-x-1.5 text-xs leading-snug">
+            <span className="text-muted-foreground">{formatMarketSession(item.market_session)}</span>
+            {showSessionPrice && item.session_price !== null && (
+              <span>{formatCurrency(item.session_price)}</span>
+            )}
+            {sessionChange !== null && sessionChangePct !== null && (
+              <span
+                className={cn(
+                  'font-medium',
+                  sessionChange > 0 && 'text-emerald-600 dark:text-emerald-400',
+                  sessionChange < 0 && 'text-red-600 dark:text-red-400',
+                  sessionChange === 0 && 'text-muted-foreground',
+                )}
+              >
+                {formatSignedPriceChange(sessionChange)} ({formatSignedPct(
+                  sessionChangePct,
+                  Math.abs(sessionChangePct) < 1 ? 3 : 2,
+                )})
+              </span>
+            )}
+          </span>
+          <span className="text-muted-foreground mt-0.5 block text-xs leading-snug">
+            {item.market_session === 'overnight' && 'Closed: '}
+            {formatEasternDateTime(item.quote_updated_at)}
+          </span>
+        </>
+      )}
+    </>
+  )
+}
+
+function WatchlistActions({
+  item,
+  isExpanded,
+  onToggle,
+}: {
+  item: WatchlistItemOut
+  isExpanded: boolean
+  onToggle: () => void
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-end gap-0.5">
+      <SetupFormDialog watchlistId={item.watchlist_id} ticker={item.ticker} setup={item.current_setup} compact />
+      <SetupHistoryDialog itemId={item.id} ticker={item.ticker} compact />
+      <WatchlistEventsDialog item={item} />
+      <RemoveWatchlistItemButton item={item} />
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${item.ticker} details`}
+        aria-expanded={isExpanded}
+        onClick={onToggle}
+      >
+        <ChevronDown className={cn('transition-transform', isExpanded && 'rotate-180')} />
+      </Button>
+    </div>
+  )
+}
+
+const PLAN_LEVELS = [
+  { key: 'entry_primary', label: 'Primary entry' },
+  { key: 'entry_secondary', label: 'Secondary entry' },
+  { key: 'take_profit', label: 'Take profit' },
+] as const
+
+function WatchlistCards({ items }: { items: WatchlistItemOut[] }) {
+  const [expanded, toggle] = useExpandedSet()
+  return (
+    <ul className="space-y-3">
+      {items.map((item) => {
+        const isExpanded = expanded.has(item.id)
+        const setup = item.current_setup
+        return (
+          <li key={item.id} aria-label={item.ticker} className="rounded-lg border">
+            <div className="flex items-start justify-between gap-3 p-3">
+              <div className="min-w-0">
+                <Link to={`/stocks/${item.ticker}`} className="font-medium hover:underline">
+                  {item.ticker}
+                </Link>
+                {item.company_name && (
+                  <span className="text-muted-foreground block text-sm leading-snug break-words">
+                    {item.company_name}
+                  </span>
+                )}
+              </div>
+              <div className="shrink-0 text-right tabular-nums">
+                <WatchlistPrice item={item} />
+              </div>
+            </div>
+            {setup && (
+              <dl className="grid grid-cols-3 gap-2 border-t px-3 py-2 text-xs tabular-nums">
+                {PLAN_LEVELS.map((level) => (
+                  <div key={level.key}>
+                    <dt className="text-muted-foreground">{level.label}</dt>
+                    <dd>
+                      <SimpleLevel value={setup[level.key]} distance={item.distance_pct?.[level.key]} />
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+            <div className="border-t px-2 py-1">
+              <WatchlistActions item={item} isExpanded={isExpanded} onToggle={() => toggle(item.id)} />
+            </div>
+            {isExpanded && (
+              <div className="bg-muted/20 border-t">
+                <ExpandedWatchlistDetails item={item} />
+              </div>
+            )}
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+function SimpleWatchlistTable({ items }: { items: WatchlistItemOut[] }) {
+  const [expanded, toggle] = useExpandedSet()
+  // Plan columns would read "—" on every row of a favorites-only list.
+  const hasPlans = items.some((item) => item.current_setup !== null)
 
   return (
     <div className="overflow-hidden rounded-lg border">
       <Table className="table-fixed">
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[20%] whitespace-normal">Ticker</TableHead>
-            <TableHead className="w-[20%] whitespace-normal text-right">Price</TableHead>
-            <TableHead className="w-[14%] whitespace-normal text-right">Primary entry</TableHead>
-            <TableHead className="w-[14%] whitespace-normal text-right">Secondary entry</TableHead>
-            <TableHead className="w-[14%] whitespace-normal text-right">Take profit</TableHead>
-            <TableHead className="w-[18%] whitespace-normal text-right">Actions</TableHead>
+            <TableHead className={cn('whitespace-normal', hasPlans ? 'w-[20%]' : 'w-[45%]')}>Ticker</TableHead>
+            <TableHead className={cn('whitespace-normal text-right', hasPlans ? 'w-[20%]' : 'w-[30%]')}>Price</TableHead>
+            {hasPlans &&
+              PLAN_LEVELS.map((level) => (
+                <TableHead key={level.key} className="w-[14%] whitespace-normal text-right">
+                  {level.label}
+                </TableHead>
+              ))}
+            <TableHead className={cn('whitespace-normal text-right', hasPlans ? 'w-[18%]' : 'w-[25%]')}>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {items.map((item) => {
             const isExpanded = expanded.has(item.id)
-            const showSessionPrice =
-              item.market_session === 'pre_market' ||
-              item.market_session === 'post_market' ||
-              item.market_session === 'overnight'
-            // Extended hours: the move from the regular price. Regular/closed: the
-            // day's move vs. the previous close (session_price equals the regular
-            // price then, so deriving it would always read 0).
-            const sessionChange = showSessionPrice
-              ? item.current_price !== null && item.session_price !== null
-                ? item.session_price - item.current_price
-                : null
-              : (item.change_amount ?? null)
-            const sessionChangePct = showSessionPrice
-              ? sessionChange !== null && item.current_price !== null && item.current_price > 0
-                ? (sessionChange / item.current_price) * 100
-                : null
-              : (item.change_pct ?? null)
             return (
               <Fragment key={item.id}>
                 <TableRow>
@@ -213,85 +347,24 @@ function SimpleWatchlistTable({ items }: { items: WatchlistItemOut[] }) {
                     )}
                   </TableCell>
                   <TableCell className="whitespace-normal text-right tabular-nums">
-                    <span className="block">{formatCurrency(item.current_price)}</span>
-                    {item.market_session && (
-                      <>
-                        <span className="mt-0.5 flex flex-wrap items-center justify-end gap-x-1.5 text-xs leading-snug">
-                          <span className="text-muted-foreground">
-                            {formatMarketSession(item.market_session)}
-                          </span>
-                          {showSessionPrice && item.session_price !== null && (
-                            <span>{formatCurrency(item.session_price)}</span>
-                          )}
-                          {sessionChange !== null && sessionChangePct !== null && (
-                            <span
-                              className={cn(
-                                'font-medium',
-                                sessionChange > 0 && 'text-emerald-600 dark:text-emerald-400',
-                                sessionChange < 0 && 'text-red-600 dark:text-red-400',
-                                sessionChange === 0 && 'text-muted-foreground',
-                              )}
-                            >
-                              {formatSignedPriceChange(sessionChange)} ({formatSignedPct(
-                                sessionChangePct,
-                                Math.abs(sessionChangePct) < 1 ? 3 : 2,
-                              )})
-                            </span>
-                          )}
-                        </span>
-                        <span className="text-muted-foreground mt-0.5 block text-xs leading-snug">
-                          {item.market_session === 'overnight' && 'Closed: '}
-                          {formatEasternDateTime(item.quote_updated_at)}
-                        </span>
-                      </>
-                    )}
+                    <WatchlistPrice item={item} />
                   </TableCell>
-                  <TableCell className="whitespace-normal text-right tabular-nums">
-                    <SimpleLevel
-                      value={item.current_setup?.entry_primary ?? null}
-                      distance={item.distance_pct?.entry_primary}
-                    />
-                  </TableCell>
-                  <TableCell className="whitespace-normal text-right tabular-nums">
-                    <SimpleLevel
-                      value={item.current_setup?.entry_secondary ?? null}
-                      distance={item.distance_pct?.entry_secondary}
-                    />
-                  </TableCell>
-                  <TableCell className="whitespace-normal text-right tabular-nums">
-                    <SimpleLevel
-                      value={item.current_setup?.take_profit ?? null}
-                      distance={item.distance_pct?.take_profit}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap items-center justify-end gap-0.5">
-                      <SetupFormDialog
-                        watchlistId={item.watchlist_id}
-                        ticker={item.ticker}
-                        setup={item.current_setup}
-                        compact
-                      />
-                      <SetupHistoryDialog itemId={item.id} ticker={item.ticker} compact />
-                      <WatchlistEventsDialog item={item} />
-                      <RemoveWatchlistItemButton item={item} />
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${item.ticker} details`}
-                        aria-expanded={isExpanded}
-                        onClick={() => toggleExpanded(item.id)}
-                      >
-                        <ChevronDown
-                          className={cn('transition-transform', isExpanded && 'rotate-180')}
+                  {hasPlans &&
+                    PLAN_LEVELS.map((level) => (
+                      <TableCell key={level.key} className="whitespace-normal text-right tabular-nums">
+                        <SimpleLevel
+                          value={item.current_setup?.[level.key] ?? null}
+                          distance={item.distance_pct?.[level.key]}
                         />
-                      </Button>
-                    </div>
+                      </TableCell>
+                    ))}
+                  <TableCell>
+                    <WatchlistActions item={item} isExpanded={isExpanded} onToggle={() => toggle(item.id)} />
                   </TableCell>
                 </TableRow>
                 {isExpanded && (
                   <TableRow className="hover:bg-transparent">
-                    <TableCell colSpan={6} className="bg-muted/20 p-0 whitespace-normal">
+                    <TableCell colSpan={hasPlans ? 6 : 3} className="bg-muted/20 p-0 whitespace-normal">
                       <ExpandedWatchlistDetails item={item} />
                     </TableCell>
                   </TableRow>

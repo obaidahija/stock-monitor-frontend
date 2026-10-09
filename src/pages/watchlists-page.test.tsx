@@ -1,7 +1,8 @@
-import { cleanup, fireEvent, screen } from '@testing-library/react'
+import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
 import type { WatchlistItemOut } from '@/types/api'
 import { renderWithProviders } from '@/test/render'
+import { emulatePhone } from '@/test/phone'
 import { WatchlistsPage } from './watchlists-page'
 
 const items: WatchlistItemOut[] = [
@@ -125,6 +126,7 @@ vi.mock('@/features/watchlists/hooks', () => ({
 afterEach(() => {
   cleanup()
   itemState.override = null
+  vi.unstubAllGlobals()
 })
 
 test('keeps expired and favorite-only tickers visible and surfaces review state', () => {
@@ -215,4 +217,29 @@ test('shows a swing setup as a session window with its exact exchange expiry', (
 
   expect(screen.getByText('Swing · 3 trading sessions')).toBeTruthy()
   expect(screen.getByText('Wed, Sep 23, 4:00 PM ET')).toBeTruthy()
+})
+
+test('hides the plan columns when no ticker in the list has a plan', () => {
+  itemState.override = items.map((item) => ({ ...item, current_setup: null, distance_pct: null }))
+  renderWithProviders(<WatchlistsPage />)
+
+  expect(screen.getByRole('columnheader', { name: 'Price' })).toBeTruthy()
+  expect(screen.queryByRole('columnheader', { name: 'Primary entry' })).toBeNull()
+  expect(screen.queryByRole('columnheader', { name: 'Take profit' })).toBeNull()
+})
+
+test('shows each ticker as a card on a phone', () => {
+  emulatePhone()
+  renderWithProviders(<WatchlistsPage />)
+
+  expect(screen.queryByRole('table')).toBeNull()
+  const nvda = screen.getByRole('listitem', { name: 'NVDA' })
+  expect(within(nvda).getByText('NVIDIA Corporation')).toBeTruthy()
+  expect(within(nvda).getByText('Primary entry')).toBeTruthy()
+  const aapl = screen.getByRole('listitem', { name: 'AAPL' })
+  expect(within(aapl).queryByText('Primary entry')).toBeNull()
+
+  fireEvent.click(within(aapl).getByRole('button', { name: 'Expand AAPL details' }))
+
+  expect(screen.getByText(/saved as a favorite without a price setup/i)).toBeTruthy()
 })

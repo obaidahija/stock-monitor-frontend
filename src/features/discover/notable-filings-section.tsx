@@ -12,8 +12,12 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState } from '@/components/shared/error-state'
 import { EmptyState } from '@/components/shared/empty-state'
-import { formatDateTime } from '@/lib/format'
+import { PagedList } from '@/components/shared/paged-list'
+import { formatTimestamp } from '@/lib/format'
+import { companyFromFilingTitle, formatItemCodes } from '@/lib/labels'
 import { useNotableFilings } from './hooks'
+
+const FILINGS_PAGE_SIZE = 15
 
 export function NotableFilingsSection() {
   const { data, isPending, isError, error, refetch } = useNotableFilings()
@@ -27,42 +31,54 @@ export function NotableFilingsSection() {
       {data && data.length === 0 && <EmptyState title="No notable filings" />}
 
       {data && data.length > 0 && (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Ticker</TableHead>
-              <TableHead>Form</TableHead>
-              <TableHead>Filed</TableHead>
-              <TableHead className="w-8" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.map((filing) => (
-              <TableRow key={filing.id}>
-                <TableCell className="font-medium">
-                  {filing.ticker ? (
-                    <Link to={`/stocks/${filing.ticker}`} className="hover:underline">
-                      {filing.ticker}
-                    </Link>
-                  ) : (
-                    '—'
-                  )}
-                </TableCell>
-                <TableCell>
-                  <Badge>{filing.form_type}</Badge>
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {formatDateTime(filing.filed_at)}
-                </TableCell>
-                <TableCell>
-                  <a href={filing.filing_url} target="_blank" rel="noreferrer">
-                    <ExternalLink className="text-muted-foreground size-4 hover:text-foreground" />
-                  </a>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <PagedList items={data} pageSize={FILINGS_PAGE_SIZE}>
+          {(rows) => (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Ticker</TableHead>
+                  <TableHead>Company</TableHead>
+                  <TableHead>Form</TableHead>
+                  <TableHead>Items</TableHead>
+                  <TableHead>Filed</TableHead>
+                  <TableHead className="w-8" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((filing) => (
+                  <TableRow key={filing.id}>
+                    <TableCell className="font-medium">
+                      {filing.ticker ? (
+                        <Link to={`/stocks/${filing.ticker}`} className="hover:underline">
+                          {filing.ticker}
+                        </Link>
+                      ) : (
+                        '—'
+                      )}
+                    </TableCell>
+                    <TableCell className="max-w-56 whitespace-normal break-words">
+                      {companyFromFilingTitle(filing.title) ?? '—'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge>{filing.form_type}</Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground max-w-64 whitespace-normal">
+                      {formatItemCodes(filing.item_codes) ?? '—'}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatTimestamp(filing.filed_at)}
+                    </TableCell>
+                    <TableCell>
+                      <a href={filing.filing_url} target="_blank" rel="noreferrer">
+                        <ExternalLink className="text-muted-foreground size-4 hover:text-foreground" />
+                      </a>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </PagedList>
       )}
     </section>
   )

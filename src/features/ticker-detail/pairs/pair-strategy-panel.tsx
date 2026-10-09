@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { ApiError } from '@/lib/api-client'
-import { formatDate } from '@/lib/format'
+import { formatDate, formatEasternDateTimeWithYear } from '@/lib/format'
 import type { PairStrategyOut } from '@/types/pair-strategy'
 import { PairSpreadChart } from './pair-spread-chart'
 import { formatHedgeRatio, formatPValue, formatZScore } from './pair-strategy-format'
@@ -36,18 +36,6 @@ function strategyStatus(report: PairStrategyOut): { label: string; variant: Badg
 
 function formatFixed(value: number | null, digits: number) {
   return value === null ? DASH : value.toFixed(digits)
-}
-
-function formatTimestamp(value: string) {
-  // The viewer's own locale and time zone, with the zone named.
-  return new Intl.DateTimeFormat(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    timeZoneName: 'short',
-  }).format(new Date(value))
 }
 
 function errorMessage(error: unknown) {
@@ -204,7 +192,7 @@ function StrategyDetails({ report }: { report: PairStrategyOut }) {
         Method {report.method_version} · split- and dividend-adjusted daily closes · from the pair
         report verified{' '}
         <time dateTime={report.source_pair_verified_at}>
-          {formatTimestamp(report.source_pair_verified_at)}
+          {formatEasternDateTimeWithYear(report.source_pair_verified_at)}
         </time>
       </p>
     </div>
@@ -221,7 +209,7 @@ function StrategySummary({ report }: { report: PairStrategyOut }) {
       <Badge variant={status.variant}>{status.label}</Badge>
       <div className="text-muted-foreground space-y-0.5 text-xs">
         <p>
-          Analyzed: <time dateTime={report.generated_at}>{formatTimestamp(report.generated_at)}</time>
+          Analyzed: <time dateTime={report.generated_at}>{formatEasternDateTimeWithYear(report.generated_at)}</time>
         </p>
         <p>
           Prices through: <time dateTime={report.data_through}>{formatDate(report.data_through)}</time>{' '}

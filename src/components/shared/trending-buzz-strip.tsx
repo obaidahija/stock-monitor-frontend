@@ -34,13 +34,14 @@ function scoreFor(item: TrendingTickerOut, filter: PlatformFilter): number {
   return item.combined_score
 }
 
-// Lands on whichever platform's tab actually has the stronger showing for
-// this ticker (lower rank = stronger), so a Reddit-only mention doesn't drop
-// someone onto an empty Twitter tab.
-function targetTabFor(item: TrendingTickerOut): 'twitter' | 'reddit' {
-  if (!item.reddit) return 'twitter'
-  if (!item.twitter) return 'reddit'
-  return item.twitter.rank <= item.reddit.rank ? 'twitter' : 'reddit'
+// Opens the stock page's Social tab on whichever platform actually has the
+// stronger showing for this ticker (lower rank = stronger), so a Reddit-only
+// mention doesn't drop someone onto an empty Twitter feed. Twitter is the
+// Social tab's default platform, so only Reddit needs the extra param.
+function socialTabPathFor(item: TrendingTickerOut): string {
+  const twitterIsStronger =
+    !item.reddit || (item.twitter !== null && item.twitter.rank <= item.reddit.rank)
+  return `/stocks/${item.ticker}?tab=social${twitterIsStronger ? '' : '&platform=reddit'}`
 }
 
 export function TrendingBuzzStripSkeleton() {
@@ -169,7 +170,7 @@ export function TrendingBuzzStrip({
                   <button
                     type="button"
                     aria-label={`Open ${item.ticker}`}
-                    onClick={() => navigate(`/stocks/${item.ticker}?tab=${targetTabFor(item)}`)}
+                    onClick={() => navigate(socialTabPathFor(item))}
                     className={cn(
                       'relative flex h-8 shrink-0 items-center gap-1.5 overflow-hidden rounded-r-full rounded-l-[3px] py-0 pr-2.5 pl-2.5 text-xs font-medium ring-1 transition-colors select-none hover:ring-primary/40',
                       weightClassFor(index, items.length),

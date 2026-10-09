@@ -22,10 +22,14 @@ import {
 } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState } from '@/components/shared/error-state'
-import { formatDateTime, formatSignedPct } from '@/lib/format'
+import { formatEasternDateTime, formatSignedPct } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { SectorRotationEntryOut } from '@/types/api'
 import { useSectorRotation } from './hooks'
+
+// Shown instead of the API's `caveat`, which is written for scripts and names internal columns.
+const ROTATION_NOTE =
+  "Momentum is each sector ETF's trailing 20-day return, so readings a few days apart share most of their input: rank changes describe the past and are not an independent signal. Windows are calendar days. Informational only."
 
 const WINDOWS = [5, 20] as const
 type SortMode = 'rotation' | 'rank'
@@ -353,9 +357,9 @@ export function SectorRotation() {
               <div>
                 <p className="text-sm font-semibold">Rotation map</p>
                 <p className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-2 text-xs">
-                  <span>{formatDateTime(data.prior_as_of)}</span>
+                  <span>{formatEasternDateTime(data.prior_as_of)}</span>
                   <span aria-hidden="true">→</span>
-                  <span>{formatDateTime(data.as_of)}</span>
+                  <span>{formatEasternDateTime(data.as_of)}</span>
                 </p>
               </div>
               <ButtonGroup aria-label="Sort sectors">
@@ -403,10 +407,10 @@ export function SectorRotation() {
           </>
         )}
 
-        {data?.caveat ? (
+        {data ? (
           <div className="border-border bg-muted/25 text-muted-foreground flex gap-2 rounded-lg border px-3 py-2.5 text-xs leading-relaxed">
             <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-            <p>{data.caveat}</p>
+            <p>{ROTATION_NOTE}</p>
           </div>
         ) : null}
 

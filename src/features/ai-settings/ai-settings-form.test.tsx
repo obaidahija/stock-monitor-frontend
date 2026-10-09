@@ -227,6 +227,13 @@ test('shows a Free badge instead of zero prices for a free model', async () => {
   expect(screen.queryByText('Output $0/token')).not.toBeInTheDocument()
 })
 
+test('prices paid models per million tokens', async () => {
+  renderWithProviders(<AiSettingsForm />)
+
+  expect(await screen.findByText('Input $0.20 / 1M tokens')).toBeInTheDocument()
+  expect(screen.getByText('Output $0.60 / 1M tokens')).toBeInTheDocument()
+})
+
 test('selecting a catalog model saves its reported context window', async () => {
   const user = userEvent.setup()
   renderWithProviders(<AiSettingsForm />)
@@ -240,4 +247,28 @@ test('selecting a catalog model saves its reported context window', async () => 
     model: 'google/lyria-3-pro-preview',
     context_window_tokens: 1048576,
   })
+})
+
+test('says a router model has a varying price instead of printing a negative one', async () => {
+  api.getAiSettings.mockResolvedValue({
+    ...settings,
+    research: { ...settings.research, model: 'openrouter/auto' },
+  })
+  api.getOpenRouterModels.mockResolvedValue([
+    {
+      id: 'openrouter/auto',
+      name: 'Auto Router',
+      context_length: 2000000,
+      input_modalities: ['text'],
+      output_modalities: ['text'],
+      supported_parameters: [],
+      prompt_price: '-1',
+      completion_price: '-1',
+    },
+  ])
+  renderWithProviders(<AiSettingsForm />)
+
+  expect(await screen.findByText('Input price varies')).toBeInTheDocument()
+  expect(screen.getByText('Output price varies')).toBeInTheDocument()
+  expect(screen.queryByText(/-\$/)).not.toBeInTheDocument()
 })

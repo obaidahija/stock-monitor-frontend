@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, screen } from '@testing-library/react'
+import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
 import { renderWithProviders } from '@/test/render'
 import { FreshCatalystsSection, volumeLabel } from './fresh-catalysts-section'
@@ -84,4 +84,5 @@ test('an uncollected catalyst offers explicit collection', () => {
   }]))
   renderWithProviders(<FreshCatalystsSection />)
   expect(screen.getByRole('button', { name: 'Collect 5-minute bars' })).toBeInTheDocument()
+  expect(within(screen.getByRole('listitem')).getByText('Product, contract & approval')).toBeInTheDocument()
 })

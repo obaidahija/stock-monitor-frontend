@@ -1,6 +1,7 @@
 import { useSearchParams } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/shared/empty-state'
+import { PagedList } from '@/components/shared/paged-list'
 import { ErrorState } from '@/components/shared/error-state'
 import { Skeleton } from '@/components/ui/skeleton'
 import { MacroNewsCard } from './macro-news-card'
@@ -15,6 +16,7 @@ const WINDOW_OPTIONS = [
   { label: '14d', hours: 24 * 14 },
 ]
 const DEFAULT_WINDOW_HOURS = 24
+const MACRO_PAGE_SIZE = 20
 
 export function MacroNewsFeed() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -60,11 +62,15 @@ export function MacroNewsFeed() {
         />
       )}
       {query.data && query.data.length > 0 && (
-        <div className="space-y-2">
-          {query.data.map((item) => (
-            <MacroNewsCard key={item.id} item={item} />
-          ))}
-        </div>
+        <PagedList key={`${category ?? 'all'}-${hours}`} items={query.data} pageSize={MACRO_PAGE_SIZE}>
+          {(items) => (
+            <div className="space-y-2">
+              {items.map((item) => (
+                <MacroNewsCard key={item.id} item={item} />
+              ))}
+            </div>
+          )}
+        </PagedList>
       )}
     </div>
   )

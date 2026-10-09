@@ -46,6 +46,7 @@ export function ResearchObservationsTable({ filters }: { filters: ResearchPerfor
               {filters.source_kind === 'composite_daily' && <>
                 <TableHead className="text-right">Score</TableHead><TableHead>Lean</TableHead>
               </>}
+              {filters.source_kind === 'short_squeeze' && <TableHead>Signal session</TableHead>}
               <TableHead>Decision session</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Baseline → exit</TableHead>
@@ -63,6 +64,9 @@ export function ResearchObservationsTable({ filters }: { filters: ResearchPerfor
                   <TableCell className="text-right tabular-nums">{row.score ?? '—'}</TableCell>
                   <TableCell>{row.lean ?? '—'}</TableCell>
                 </>}
+                {filters.source_kind === 'short_squeeze' && (
+                  <TableCell>{row.signal_session ?? '—'}</TableCell>
+                )}
                 <TableCell>{row.decision_session}</TableCell>
                 <TableCell>
                   {STATUS_LABELS[row.status] ?? row.status}
@@ -89,7 +93,13 @@ export function ResearchObservationsTable({ filters }: { filters: ResearchPerfor
                 <TableCell className="min-w-40 text-xs">
                   {row.path_status ? (
                     <>
-                      <span>{row.target_stop_order?.replaceAll('_', ' ') ?? row.path_status.replaceAll('_', ' ')}</span>
+                      <span>
+                        {row.target_stop_order
+                          ? row.target_stop_order.replaceAll('_', ' ')
+                          : filters.source_kind === 'short_squeeze'
+                            ? 'Stop/target order unavailable'
+                            : row.path_status.replaceAll('_', ' ')}
+                      </span>
                       {row.path_status.startsWith('gap_through_') && (
                         <span className="text-muted-foreground block">
                           {row.path_status.replaceAll('_', ' ')} · no fill assumed

@@ -3,12 +3,15 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { renderWithProviders } from '@/test/render'
 import type { ResearchMetricOut, ResearchPerformanceOut } from '@/types/api'
 import { ResearchPerformancePanel } from './research-performance-panel'
+import { downloadResearchExport } from '@/api/system'
 import { useResearchObservations, useResearchPerformance } from './hooks'
 
 vi.mock('./hooks', () => ({
   useResearchPerformance: vi.fn(),
   useResearchObservations: vi.fn(),
 }))
+
+vi.mock('@/api/system', () => ({ downloadResearchExport: vi.fn(() => Promise.resolve()) }))
 
 function metric(overrides: Partial<ResearchMetricOut> = {}): ResearchMetricOut {
   return {
@@ -116,6 +119,13 @@ test('shows every coverage count instead of only the evaluated rows', () => {
   expect(screen.getByText('Provisional sample')).toBeInTheDocument()
   expect(screen.getByText(/7 decision sessions/)).toBeInTheDocument()
   expect(screen.getByText(/research-flat-10bps-per-side-v1/)).toBeInTheDocument()
+})
+
+test('distinguishes overdue evaluations from missing market data', () => {
+  mockReport({ data: { ...report, coverage: { ...report.coverage, awaiting_evaluation: 3 } } })
+  renderWithProviders(<ResearchPerformancePanel />)
+  expect(screen.getByText('3 awaiting evaluation')).toBeInTheDocument()
+  expect(screen.getByText('5 missing data')).toBeInTheDocument()
 })
 
 test('each metric shows its own denominator, including a missing benchmark', () => {
@@ -273,4 +283,67 @@ test('older backend responses still show the overall report during a staggered r
   renderWithProviders(<ResearchPerformancePanel />)
   expect(screen.getByText('100 recorded')).toBeInTheDocument()
   expect(screen.queryByRole('region', { name: 'Score grading' })).not.toBeInTheDocument()
+})
+
+const scannerReport: ResearchPerformanceOut = {
+  ...report,
+  cohort: { ...report.cohort, source_kind: 'short_squeeze', rule_version: 'short-squeeze-daily-v1' },
+  collection_enabled: true,
+}
+
+test('selects_scanner_cohort_and_clears_follow_through_origin', () => {
+  mockReport({ data: report })
+  renderWithProviders(<ResearchPerformancePanel />)
+  fireEvent.change(screen.getByLabelText('Source'), { target: { value: 'follow_through' } })
+  fireEvent.change(screen.getByLabelText('Origin'), { target: { value: 'setup' } })
+
+  fireEvent.change(screen.getByLabelText('Source'), { target: { value: 'short_squeeze' } })
+
+  const lastFilters = vi.mocked(useResearchPerformance).mock.lastCall?.[0]
+  expect(lastFilters?.source_kind).toBe('short_squeeze')
+  expect(lastFilters?.origin).toBeUndefined()
+  expect(lastFilters?.horizon_sessions).toBe(5)
+  expect(screen.queryByLabelText('Origin')).not.toBeInTheDocument()
+  expect(screen.getByRole('option', { name: 'Short Squeeze Strategy' })).toBeInTheDocument()
+})
+
+test('the scanner cohort states when its measurement starts', () => {
+  mockReport({ data: scannerReport })
+  renderWithProviders(<ResearchPerformancePanel />)
+  fireEvent.change(screen.getByLabelText('Source'), { target: { value: 'short_squeeze' } })
+
+  expect(
+    screen.getByText(
+      'Measured from the first regular close after discovery. The move between discovery and that close is excluded. Repeated observations and overlapping horizons may be correlated.',
+    ),
+  ).toBeInTheDocument()
+  expect(screen.getByText(/rule short-squeeze-daily-v1/)).toBeInTheDocument()
+  expect(screen.getByText('100 recorded')).toBeInTheDocument()
+})
+
+test('exports_the_selected_scanner_cohort', async () => {
+  mockReport({ data: scannerReport })
+  renderWithProviders(<ResearchPerformancePanel />)
+  fireEvent.change(screen.getByLabelText('Source'), { target: { value: 'short_squeeze' } })
+  fireEvent.click(screen.getByRole('button', { name: /download csv/i }))
+
+  expect(downloadResearchExport).toHaveBeenCalledWith(expect.objectContaining({
+    source_kind: 'short_squeeze', horizon_sessions: 5,
+  }))
+  expect(vi.mocked(downloadResearchExport).mock.lastCall?.[0]).not.toHaveProperty('origin')
+})
+
+test('scanner rows can be listed with their signal and baseline sessions', () => {
+  mockReport({ data: scannerReport })
+  renderWithProviders(<ResearchPerformancePanel />)
+  fireEvent.change(screen.getByLabelText('Source'), { target: { value: 'short_squeeze' } })
+  fireEvent.click(screen.getByRole('button', { name: /show recorded rows/i }))
+
+  expect(useResearchObservations).toHaveBeenLastCalledWith(
+    expect.objectContaining({ source_kind: 'short_squeeze' }),
+    1,
+    50,
+    true,
+  )
+  expect(vi.mocked(useResearchObservations).mock.lastCall?.[0]).not.toHaveProperty('status')
 })

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { SentimentBadge } from '@/components/shared/sentiment-badge'
 import { StageBadge } from '@/components/shared/stage-badge'
-import { formatEasternDateTime, formatSignedPct } from '@/lib/format'
+import { formatSignedPct, formatTimestamp } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { DigestItem, DigestTopFiling } from '@/types/api'
 import { DigestLivePrice } from './live-quotes'
@@ -130,7 +130,6 @@ export function DigestItemCard({ item }: { item: DigestItem }) {
         {item.top_filing?.prominence_reason && (
           <p className="text-muted-foreground text-xs">
             <FilingLink filing={item.top_filing} /> topic: {item.top_filing.prominence_reason}.
-            Item codes name the disclosed topic, not its effect.
           </p>
         )}
         {item.supporting_filings && item.supporting_filings.length > 0 && (
@@ -141,7 +140,7 @@ export function DigestItemCard({ item }: { item: DigestItem }) {
             <ul className="text-muted-foreground mt-1 space-y-1">
               {item.supporting_filings.map((filing) => (
                 <li key={`${filing.url}-${filing.filed_at}`}>
-                  <FilingLink filing={filing} /> · {formatEasternDateTime(filing.filed_at)}
+                  <FilingLink filing={filing} /> · {formatTimestamp(filing.filed_at)}
                   {filing.item_codes && ` · Item codes: ${filing.item_codes}`}
                   {filing.prominence_reason && ` · ${filing.prominence_reason}`}
                 </li>

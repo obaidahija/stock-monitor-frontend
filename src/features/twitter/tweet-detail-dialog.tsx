@@ -2,7 +2,7 @@ import { BadgeCheck, ExternalLink, Eye, Heart, MessageCircle, Repeat2 } from 'lu
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Separator } from '@/components/ui/separator'
 import { SentimentBadge } from '@/components/shared/sentiment-badge'
-import { formatDateTime, formatNumber } from '@/lib/format'
+import { formatEasternDateTime, formatNumber } from '@/lib/format'
 import { SignalScoreDetail } from './signal-score-detail'
 import type { TwitterPostOut } from '@/types/api'
 
@@ -55,7 +55,7 @@ export function TweetDetailDialog({
               </span>
             </div>
 
-            <p className="text-muted-foreground text-xs">{formatDateTime(post.created_at)}</p>
+            <p className="text-muted-foreground text-xs">{formatEasternDateTime(post.created_at)}</p>
 
             <a
               href={post.url}

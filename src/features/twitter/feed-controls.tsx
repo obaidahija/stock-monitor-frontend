@@ -1,7 +1,8 @@
 import { useSearchParams } from 'react-router'
-import { RefreshCw, X } from 'lucide-react'
+import { RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { FilterChip } from '@/components/shared/feed-badges'
 import { TickerTagFilter } from '@/components/shared/ticker-tag-filter'
 import { cn } from '@/lib/utils'
 import { useRefreshFeed } from './hooks'
@@ -102,20 +103,11 @@ export function FeedControls({ onRefreshed }: { onRefreshed: () => void }) {
           {accounts.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5">
               {accounts.map((username) => (
-                <span
+                <FilterChip
                   key={username}
-                  className="bg-secondary text-secondary-foreground inline-flex items-center gap-1 rounded-full py-0.5 pr-1 pl-2 text-xs font-medium"
-                >
-                  @{username}
-                  <button
-                    type="button"
-                    aria-label={`Stop filtering by @${username}`}
-                    onClick={() => setAccounts(accounts.filter((u) => u !== username))}
-                    className="hover:bg-secondary-foreground/20 rounded-full p-0.5"
-                  >
-                    <X className="size-3" />
-                  </button>
-                </span>
+                  label={`@${username}`}
+                  onRemove={() => setAccounts(accounts.filter((u) => u !== username))}
+                />
               ))}
             </div>
           )}
@@ -129,7 +121,7 @@ export function FeedControls({ onRefreshed }: { onRefreshed: () => void }) {
 
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-muted-foreground text-xs">Type</span>
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1">
           {TWEET_TYPE_OPTIONS.map((opt) => (
             <Button
               key={opt.value}

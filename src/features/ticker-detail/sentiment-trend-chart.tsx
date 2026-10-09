@@ -5,6 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState } from '@/components/shared/error-state'
 import { cn } from '@/lib/utils'
 import { useSentimentHistory } from './hooks'
+import { formatBucketDay, formatEasternHour } from '@/lib/format'
 import type { SentimentBucketGranularity, SentimentBucketOut } from '@/types/api'
 
 const BUCKET_OPTIONS: {
@@ -25,9 +26,7 @@ const MID_Y = CHART_HEIGHT / 2
 const PLOT_HALF_HEIGHT = MID_Y - 10
 
 function formatBucketLabel(bucketStart: string, bucket: SentimentBucketGranularity): string {
-  const d = new Date(bucketStart)
-  if (bucket === 'hour') return d.toLocaleTimeString('en-US', { hour: 'numeric' })
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return bucket === 'hour' ? formatEasternHour(bucketStart) : formatBucketDay(bucketStart)
 }
 
 function BucketDetail({

@@ -25,6 +25,7 @@ import {
 } from '@/components/ai-elements/prompt-input'
 import { ConversationEmptyState } from '@/components/ai-elements/conversation'
 import { Message, MessageContent, MessageResponse } from '@/components/ai-elements/message'
+import { formatEasternDateTime } from '@/lib/format'
 import { useGoogleFinanceResearch } from '../hooks'
 import type { GoogleFinanceChatTurnIn, GoogleFinanceResearchOut } from '@/types/api'
 
@@ -145,7 +146,7 @@ function AnswerBubble({ turn }: { turn: GoogleFinanceResearchOut }) {
       ) : null}
       <p className="text-muted-foreground text-xs">{turn.caveat}</p>
       <time className="text-muted-foreground text-xs" dateTime={turn.generated_at}>
-        {new Date(turn.generated_at).toLocaleString()}
+        {formatEasternDateTime(turn.generated_at)}
       </time>
     </div>
   )

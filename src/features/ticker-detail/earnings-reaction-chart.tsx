@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { centerHorizontally } from '@/lib/scroll'
 import {
   classifyEarningsEvent,
   EARNINGS_RESULT_BADGE_CLASSES,
@@ -163,11 +164,10 @@ function ReactionTable({
   const todayHeadRef = useRef<HTMLTableCellElement | null>(null)
 
   useEffect(() => {
-    todayHeadRef.current?.scrollIntoView({
-      behavior: 'smooth',
-      inline: 'center',
-      block: 'nearest',
-    })
+    const head = todayHeadRef.current
+    const scroller = head?.closest<HTMLElement>('[data-slot="table-container"]')
+    // Scroll only the table, so opening the tab never jumps the page.
+    if (head && scroller) centerHorizontally(scroller, head)
     // Re-run whenever the ticker or the resolved "today" offset changes --
     // not on every re-render (e.g. row hover), which would fight the user's
     // own scroll position.
@@ -178,7 +178,7 @@ function ReactionTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="whitespace-nowrap">Report</TableHead>
+            <TableHead className="bg-card sticky left-0 z-10 whitespace-nowrap">Report</TableHead>
             <TableHead>Result</TableHead>
             <TableHead className="text-right whitespace-nowrap">P/E</TableHead>
             <TableHead className="text-right whitespace-nowrap">Volume</TableHead>
@@ -222,7 +222,7 @@ function ReactionTable({
                 onPointerEnter={() => onHoverEvent(key)}
                 onPointerLeave={() => onHoverEvent(null)}
               >
-                <TableCell className="whitespace-nowrap">
+                <TableCell className="bg-card sticky left-0 z-10 whitespace-nowrap">
                   <span className="font-medium">{formatDate(event.event_date)}</span>{' '}
                   <span className="text-muted-foreground text-xs uppercase">{event.bmo_amc}</span>
                 </TableCell>

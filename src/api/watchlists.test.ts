@@ -1,6 +1,11 @@
 import { beforeEach, expect, test, vi } from 'vitest'
 import { apiClient } from '@/lib/api-client'
-import { createAiSetups, getSetupWindowPreview, updateWatchlistSetup } from './watchlists'
+import {
+  createAiSetups,
+  createManualSetup,
+  getSetupWindowPreview,
+  updateWatchlistSetup,
+} from './watchlists'
 
 beforeEach(() => vi.restoreAllMocks())
 
@@ -32,4 +37,30 @@ test('patches only the fields the caller changed', async () => {
   const patch = vi.spyOn(apiClient, 'patch').mockResolvedValue({} as never)
   await updateWatchlistSetup(20, { horizon_sessions: 7 })
   expect(patch).toHaveBeenCalledWith('/v1/watchlists/setups/20', { horizon_sessions: 7 })
+})
+
+test('a scanner-origin manual setup carries its observation id in the body', async () => {
+  const post = vi.spyOn(apiClient, 'post').mockResolvedValue({} as never)
+  await createManualSetup({
+    watchlist_id: 1,
+    ticker: 'SQZ',
+    side: 'long',
+    horizon: 'swing',
+    horizon_sessions: 5,
+    entry_primary: 10.8,
+    stop_loss: 9.9,
+    take_profit: 11.66,
+    strategy_observation_id: 7,
+  })
+  expect(post).toHaveBeenCalledWith('/v1/watchlists/setups/manual', {
+    watchlist_id: 1,
+    ticker: 'SQZ',
+    side: 'long',
+    horizon: 'swing',
+    horizon_sessions: 5,
+    entry_primary: 10.8,
+    stop_loss: 9.9,
+    take_profit: 11.66,
+    strategy_observation_id: 7,
+  })
 })

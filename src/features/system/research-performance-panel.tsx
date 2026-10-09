@@ -33,7 +33,10 @@ const SOURCES: { value: ResearchSourceKind; label: string }[] = [
   { value: 'composite_daily', label: 'Composite score (daily)' },
   { value: 'catalyst', label: 'Catalyst scanner' },
   { value: 'follow_through', label: 'Follow-through (selected)' },
+  { value: 'short_squeeze', label: 'Short Squeeze Strategy' },
 ]
+const SCANNER_MEASUREMENT =
+  'Measured from the first regular close after discovery. The move between discovery and that close is excluded. Repeated observations and overlapping horizons may be correlated.'
 const METRIC_ROWS: { metric: ResearchMetricName; label: string }[] = [
   { metric: 'raw_return_pct', label: 'Positive stock return' },
   { metric: 'side_return_pct', label: 'Positive side return' },
@@ -82,6 +85,7 @@ export function ResearchPerformancePanel() {
     source_kind: 'composite_daily',
   })
   const [drillStatus, setDrillStatus] = useState<ResearchOutcomeStatus | null>(null)
+  const [showRows, setShowRows] = useState(false)
   const [exporting, setExporting] = useState(false)
   const report = useResearchPerformance(filters)
 
@@ -214,7 +218,12 @@ export function ResearchPerformancePanel() {
                 <span className="text-muted-foreground">/</span>
                 <span>{data.coverage.evaluated} evaluated</span>
                 <span className="text-muted-foreground">/</span>
-                <span>{data.coverage.missing} missing</span>
+                {(data.coverage.awaiting_evaluation ?? 0) > 0 ? (
+                  <>
+                    <span>{data.coverage.awaiting_evaluation} awaiting evaluation</span>
+                    <span>{data.coverage.missing - (data.coverage.awaiting_evaluation ?? 0)} missing data</span>
+                  </>
+                ) : <span>{data.coverage.missing} missing</span>}
                 {data.provisional && <Badge variant="outline">Provisional sample</Badge>}
               </CardTitle>
             </CardHeader>
@@ -226,6 +235,7 @@ export function ResearchPerformancePanel() {
                 {data.corrections > 0 && ` · ${data.corrections} corrected`}
                 {data.cohort.rule_version && ` · rule ${data.cohort.rule_version}`}
               </p>
+              {filters.source_kind === 'short_squeeze' && <p>{SCANNER_MEASUREMENT}</p>}
               <p>
                 Future close-to-close observations, not fills or trading performance. Costs:{' '}
                 {data.costs.name} ({data.costs.round_trip_bps / 100}% round trip, hypothetical;
@@ -274,6 +284,16 @@ export function ResearchPerformancePanel() {
                         .join(' · ')}. Ambiguous and unknown order are not counted as target-first.
                     </p>
                   )}
+                {filters.source_kind === 'short_squeeze' && (
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="mt-2 mr-4 px-0"
+                    onClick={() => setShowRows((current) => !current)}
+                  >
+                    {showRows ? 'Hide recorded rows' : 'Show recorded rows'}
+                  </Button>
+                )}
                 {data.coverage.missing > 0 && (
                   <Button
                     variant="link"
@@ -294,6 +314,17 @@ export function ResearchPerformancePanel() {
             Array.isArray(data.by_score_bucket) && Array.isArray(data.by_factor) &&
             data.score_spread !== undefined &&
             <ResearchScoreGrading data={data} />}
+
+          {showRows && filters.source_kind === 'short_squeeze' && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">Recorded observations</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResearchObservationsTable filters={filters} />
+              </CardContent>
+            </Card>
+          )}
 
           {drillStatus && (
             <Card>

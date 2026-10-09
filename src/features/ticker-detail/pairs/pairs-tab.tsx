@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
 import { ApiError } from '@/lib/api-client'
-import { formatDate } from '@/lib/format'
+import { formatDate, formatEasternDateTimeWithYear } from '@/lib/format'
 import type {
   StockPairEvidenceStatus,
   StockPairItemOut,
@@ -49,18 +49,6 @@ const EVIDENCE: Record<StockPairEvidenceStatus, string | null> = {
   price_unavailable: 'Prices unavailable',
   price_stale: 'Prices out of date',
   undefined: 'Statistic undefined',
-}
-
-function formatTimestamp(value: string) {
-  // The viewer's own locale and time zone, with the zone named.
-  return new Intl.DateTimeFormat(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    timeZoneName: 'short',
-  }).format(new Date(value))
 }
 
 function errorMessage(error: unknown) {
@@ -171,10 +159,10 @@ function PairsReport({
         <div className="text-muted-foreground space-y-0.5 text-xs">
           <p>
             Google response received:{' '}
-            <time dateTime={report.generated_at}>{formatTimestamp(report.generated_at)}</time>
+            <time dateTime={report.generated_at}>{formatEasternDateTimeWithYear(report.generated_at)}</time>
           </p>
           <p>
-            Verified: <time dateTime={report.verified_at}>{formatTimestamp(report.verified_at)}</time>
+            Verified: <time dateTime={report.verified_at}>{formatEasternDateTimeWithYear(report.verified_at)}</time>
           </p>
           <p>
             Prices through: <time dateTime={report.data_through}>{formatDate(report.data_through)}</time>{' '}

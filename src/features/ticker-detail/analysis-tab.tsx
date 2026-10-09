@@ -5,6 +5,7 @@ import {
   BarChart3,
   Building2,
   CalendarClock,
+  ChevronRight,
   Globe2,
   Layers,
   LineChart,
@@ -27,7 +28,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { ErrorState } from '@/components/shared/error-state'
 import { ApiError } from '@/lib/api-client'
-import { formatCurrency, formatDateTime, formatRelativeTime, formatScore, formatSignedPct } from '@/lib/format'
+import {
+  formatCurrency,
+  formatDate,
+  formatEasternDate,
+  formatEasternDateTime,
+  formatEasternTime,
+  formatRelativeTime,
+  formatScore,
+  formatSignedPct,
+} from '@/lib/format'
 import { LEAN_COLOR_CLASSES } from '@/lib/lean-colors'
 import { cn } from '@/lib/utils'
 import { CapabilityNotice } from '@/features/research/capability-notice'
@@ -50,11 +60,10 @@ import {
   useRefreshUniverseScore,
   useUniverseScore,
 } from './hooks'
-import { SentimentTrendChart } from './sentiment-trend-chart'
 import type {
   AnalystDetailOut,
-  AnalysisLean,
   ComponentScoreOut,
+  EventWindowOut,
   PriceLevelPosition,
   PriceLevelsOut,
   PriceTargetChangeOut,
@@ -177,7 +186,19 @@ function FactorCard({ component }: { component: ComponentScoreOut }) {
   )
 }
 
-function UniverseScoreBadge({ ticker }: { ticker: string }) {
+/**
+ * The live composite behind the header's 0-100 universe score, with the
+ * action that recomputes that score. One headline number lives in the header.
+ */
+function CompositeScoreLine({
+  ticker,
+  overallScore,
+  generatedAt,
+}: {
+  ticker: string
+  overallScore: number
+  generatedAt: string
+}) {
   const { data, isPending } = useUniverseScore(ticker)
   const refreshUniverseScore = useRefreshUniverseScore(ticker)
 
@@ -205,49 +226,23 @@ function UniverseScoreBadge({ ticker }: { ticker: string }) {
     })
   }
 
-  const refreshButton = (
-    <Button
-      size="sm"
-      variant="outline"
-      disabled={refreshUniverseScore.isPending}
-      onClick={runRefresh}
-    >
-      <RefreshCw className={cn(refreshUniverseScore.isPending && 'animate-spin')} />
-      Refresh score
-    </Button>
-  )
-
-  if (isPending) return null
-
-  if (!data || data.score === null) {
-    return (
-      <span className="inline-flex items-center gap-2">
-        <span className="text-muted-foreground text-sm">
-          Not in tracked universe — no daily universe score
-        </span>
-        {refreshButton}
-      </span>
-    )
-  }
-
-  const leanClass = data.lean
-    ? (LEAN_COLOR_CLASSES[data.lean as AnalysisLean] ?? LEAN_COLOR_CLASSES.neutral)
-    : LEAN_COLOR_CLASSES.neutral
-
   return (
-    <span className="inline-flex items-center gap-2 text-sm">
-      <span
-        className={cn(
-          'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold capitalize',
-          leanClass,
-        )}
+    <span className="inline-flex flex-wrap items-center gap-2 text-sm">
+      <span className="text-muted-foreground">
+        composite {formatScore(overallScore)} · {formatEasternDateTime(generatedAt)}
+      </span>
+      {!isPending && (!data || data.score === null) && (
+        <span className="text-muted-foreground">Not in tracked universe — no daily universe score</span>
+      )}
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={refreshUniverseScore.isPending}
+        onClick={runRefresh}
       >
-        Universe score {data.score.toFixed(0)}/100
-      </span>
-      <span className="text-muted-foreground text-xs">
-        updated {formatRelativeTime(data.score_updated_at)}
-      </span>
-      {refreshButton}
+        <RefreshCw className={cn(refreshUniverseScore.isPending && 'animate-spin')} />
+        Refresh score
+      </Button>
     </span>
   )
 }
@@ -425,31 +420,14 @@ function PriceTargetChangeCallout({ change }: { change: PriceTargetChangeOut }) 
   )
 }
 
-// formatDate/formatDateTime in lib/format don't fit here: formatDate assumes a
-// plain "YYYY-MM-DD" string (mis-parses a full ISO timestamp), and
-// formatDateTime omits the year. The rating-actions table wants both, split
-// across two stacked lines (same pattern insider-tab uses for name/title).
-// Also handles the brief cold-cache fallback, whose action_at is a plain
-// "YYYY-MM-DD" date with no time component at all.
+// action_at is a full timestamp, except in the brief cold-cache fallback,
+// where it is a plain "YYYY-MM-DD" date with no time at all.
 function actionDate(actionAt: string): string {
-  if (!actionAt.includes('T')) {
-    const [year, month, day] = actionAt.split('-').map(Number)
-    return new Date(year, month - 1, day).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    })
-  }
-  return new Date(actionAt).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
+  return actionAt.includes('T') ? formatEasternDate(actionAt) : formatDate(actionAt)
 }
 
 function actionTime(actionAt: string): string | null {
-  if (!actionAt.includes('T')) return null
-  return new Date(actionAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  return actionAt.includes('T') ? formatEasternTime(actionAt) : null
 }
 
 function AnalystDetailCard({ ticker, detail }: { ticker: string; detail: AnalystDetailOut }) {
@@ -587,7 +565,12 @@ function AnalystDetailCard({ ticker, detail }: { ticker: string; detail: Analyst
                         </TableCell>
                         <TableCell className="text-muted-foreground">{grade ?? '—'}</TableCell>
                         <TableCell className="text-right tabular-nums">
-                          {hasTarget ? (
+                          {hasTarget && event.prior_price_target === event.current_price_target ? (
+                            <div>
+                              {formatCurrency(event.current_price_target)}{' '}
+                              <span className="text-muted-foreground text-xs">(unchanged)</span>
+                            </div>
+                          ) : hasTarget ? (
                             <>
                               <div>
                                 {formatCurrency(event.prior_price_target)} →{' '}
@@ -665,7 +648,7 @@ function SelectedVolatilityLine({ volatility }: { volatility: SelectedVolatility
   )
 }
 
-function ResearchWindowCard({
+function ResearchWindowDetails({
   value,
   onChange,
   window,
@@ -677,29 +660,92 @@ function ResearchWindowCard({
   volatility: SelectedVolatilityOut | null | undefined
 }) {
   return (
-    <Card>
-      <CardContent className="space-y-3">
-        <div className="flex flex-wrap items-end gap-4">
-          <ResearchWindowControl value={value} onChange={onChange} className="w-56" />
-          {window && (
-            <div className="space-y-0.5">
-              <p className="text-sm font-medium">Expires {formatWindowExpiry(window.expires_at)}</p>
-              <p className="text-muted-foreground text-xs">{sessionsLabel(window.horizon_sessions)}</p>
-            </div>
-          )}
-        </div>
-        {volatility && <SelectedVolatilityLine volatility={volatility} />}
-        <p className="text-muted-foreground text-xs">
-          The window only changes this volatility reference; it does not change the composite
-          score or suggest a level is reachable within it.
-        </p>
-      </CardContent>
-    </Card>
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-end gap-4">
+        <ResearchWindowControl value={value} onChange={onChange} className="w-56" />
+        {window && (
+          <div className="space-y-0.5">
+            <p className="text-sm font-medium">Expires {formatWindowExpiry(window.expires_at)}</p>
+            <p className="text-muted-foreground text-xs">{sessionsLabel(window.horizon_sessions)}</p>
+          </div>
+        )}
+      </div>
+      {volatility && <SelectedVolatilityLine volatility={volatility} />}
+      <p className="text-muted-foreground text-xs">
+        The window only changes this volatility reference; it does not change the composite
+        score or suggest a level is reachable within it.
+      </p>
+    </div>
+  )
+}
+
+// Worded unlike the event card's own headline so the one-line summary never repeats it.
+function windowEventsSummary(eventWindow: EventWindowOut): string {
+  const count = eventWindow.events.length
+  if (count === 0) {
+    return eventWindow.coverage_status === 'complete' ? 'no listed events' : 'event coverage incomplete'
+  }
+  return count === 1 ? '1 event' : `${count} events`
+}
+
+/** One line of window context; the selector and event list open underneath it. */
+function ResearchWindowBar({
+  horizonSessions,
+  onChange,
+  open,
+  onOpenChange,
+  window,
+  volatility,
+  eventWindow,
+}: {
+  horizonSessions: number
+  onChange: (sessions: number) => void
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  window: SwingWindow | null | undefined
+  volatility: SelectedVolatilityOut | null | undefined
+  eventWindow: EventWindowOut | null | undefined
+}) {
+  const details = [
+    window ? `expires ${formatWindowExpiry(window.expires_at)}` : null,
+    volatility?.move_pct != null ? `typical move ±${volatility.move_pct.toFixed(1)}%` : null,
+    eventWindow ? windowEventsSummary(eventWindow) : null,
+  ].filter((part): part is string => part !== null)
+
+  return (
+    <details
+      className="group bg-card text-card-foreground rounded-xl border"
+      open={open}
+      onToggle={(event) => onOpenChange(event.currentTarget.open)}
+    >
+      <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm [&::-webkit-details-marker]:hidden">
+        <ChevronRight
+          className="text-muted-foreground size-4 shrink-0 transition-transform group-open:rotate-90"
+          aria-hidden="true"
+        />
+        <span>
+          <span className="font-medium">{horizonSessions}-session window</span>
+          <span className="text-muted-foreground">{details.map((part) => ` · ${part}`).join('')}</span>
+        </span>
+      </summary>
+      <div className="space-y-4 border-t px-4 py-4">
+        <ResearchWindowDetails
+          value={horizonSessions}
+          onChange={onChange}
+          window={window}
+          volatility={volatility}
+        />
+        {eventWindow && <EventWindowCard data={eventWindow} />}
+      </div>
+    </details>
   )
 }
 
 export function AnalysisTab({ ticker }: { ticker: string }) {
   const [extras, setExtras] = useState({ chartPattern: false })
+  // Held here, above the loading return: choosing a window reloads the whole
+  // tab, and the bar would otherwise come back closed under the user's hand.
+  const [windowOpen, setWindowOpen] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
   const capabilities = useResearchCapabilities()
   const swingEnabled = capabilities.data?.swing_research_enabled === true
@@ -750,26 +796,27 @@ export function AnalysisTab({ ticker }: { ticker: string }) {
         >
           {data.lean}
         </span>
-        <span className="text-muted-foreground text-sm">
-          Overall score {formatScore(data.overall_score)} · generated {formatDateTime(data.generated_at)}
-        </span>
-        <UniverseScoreBadge ticker={ticker} />
+        <CompositeScoreLine
+          ticker={ticker}
+          overallScore={data.overall_score}
+          generatedAt={data.generated_at}
+        />
         <PeerRankLine peerRank={data.peer_rank} />
         <WindowRiskChip windowRisk={data.window_risk} />
       </div>
 
       <CapabilityNotice isError={capabilities.isError} onRetry={() => void capabilities.refetch()} />
       {horizonSessions !== undefined && (
-        <ResearchWindowCard
-          value={horizonSessions}
+        <ResearchWindowBar
+          horizonSessions={horizonSessions}
           onChange={handleWindowChange}
+          open={windowOpen}
+          onOpenChange={setWindowOpen}
           window={data.research_window}
           volatility={data.selected_volatility}
+          eventWindow={data.event_window}
         />
       )}
-      {horizonSessions !== undefined && data.event_window && <EventWindowCard data={data.event_window} />}
-
-      <ScoreHistoryChart ticker={ticker} />
 
       <div className="space-y-2">
         <h3 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
@@ -788,6 +835,7 @@ export function AnalysisTab({ ticker }: { ticker: string }) {
 
       {data.price_levels && <PriceLevelsCard priceLevels={data.price_levels} />}
       {data.analyst_detail && <AnalystDetailCard ticker={ticker} detail={data.analyst_detail} />}
+      <ScoreHistoryChart ticker={ticker} />
       <ShortInterestCard shortInterest={data.short_interest} />
       <ChartPatternCard
         ticker={ticker}
@@ -796,7 +844,6 @@ export function AnalysisTab({ ticker }: { ticker: string }) {
         isError={extras.chartPattern && extrasQuery.isError}
         onDetect={handleDetectChartPattern}
       />
-      <SentimentTrendChart ticker={ticker} />
 
       {data.caveats.length > 0 && (
         <div className="text-muted-foreground space-y-1 text-sm">

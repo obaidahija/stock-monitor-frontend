@@ -16,6 +16,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { PagedList } from '@/components/shared/paged-list'
+import { formatCompactNumber, formatMoneyAmount, formatNumber } from '@/lib/format'
 import type { InsiderTransactionIntent, InsiderTransactionOut } from '@/types/api'
 import { useInsider } from './hooks'
 
@@ -40,8 +42,16 @@ const INTENT_LABELS: Record<InsiderTransactionIntent, string> = {
   unclassified: 'Intent unclassified',
 }
 
-const money = (value: number | null) =>
-  value === null ? '—' : `$${Math.round(value).toLocaleString()}`
+const INSIDER_PAGE_SIZE = 25
+
+/** A compact dollar figure with the exact amount on hover. */
+function Money({ value, signed = false }: { value: number | null; signed?: boolean }) {
+  return (
+    <span title={value === null ? undefined : `$${formatNumber(Math.round(value))}`}>
+      {formatMoneyAmount(value, { signed })}
+    </span>
+  )
+}
 
 /**
  * Intent for a row, falling back to the legacy flag.
@@ -112,19 +122,19 @@ export function InsiderTab({ ticker }: { ticker: string }) {
         <CardContent className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div>
             <p className="text-xs text-muted-foreground">Bought</p>
-            <p className="tabular-nums">{money(summary.buy_value_usd)}</p>
+            <p className="tabular-nums"><Money value={summary.buy_value_usd} /></p>
             <p className="text-xs text-muted-foreground">
               {summary.buy_count} tx · {summary.distinct_buyers} insider(s)
             </p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Sold</p>
-            <p className="tabular-nums">{money(summary.sell_value_usd)}</p>
+            <p className="tabular-nums"><Money value={summary.sell_value_usd} /></p>
             <p className="text-xs text-muted-foreground">{summary.sell_count} tx</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Net</p>
-            <p className="tabular-nums">{money(summary.net_value_usd)}</p>
+            <p className="tabular-nums"><Money value={summary.net_value_usd} signed /></p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Latest</p>
@@ -169,102 +179,110 @@ export function InsiderTab({ ticker }: { ticker: string }) {
             <CardTitle>All reported transactions</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Insider</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead className="text-right">Shares</TableHead>
-                    <TableHead className="text-right">Price</TableHead>
-                    <TableHead className="text-right">Value</TableHead>
-                    <TableHead>Filing</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {transactions.map((transaction, index) => {
-                    const intent = intentOf(transaction)
-                    return (
-                      <TableRow
-                        key={`${transaction.accession_number ?? transaction.insider_name}-${transaction.transaction_date}-${transaction.transaction_code}-${index}`}
-                        // Dimmed, never removed: the replaced row is still a
-                        // filing that exists, and a reader comparing this to
-                        // EDGAR needs to see both versions.
-                        className={transaction.is_superseded ? 'opacity-60' : undefined}
-                      >
-                        <TableCell className="tabular-nums">
-                          {transaction.transaction_date ?? '—'}
-                        </TableCell>
-                        <TableCell>
-                          <div>{transaction.insider_name}</div>
-                          {transaction.insider_title ? (
-                            <div className="text-xs text-muted-foreground">
-                              {transaction.insider_title}
-                            </div>
-                          ) : null}
-                          {transaction.reporting_owners ? (
-                            <CoOwners owners={transaction.reporting_owners} />
-                          ) : null}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap items-center gap-1">
-                            <span>
-                              {transaction.transaction_code
-                                ? (CODE_LABELS[transaction.transaction_code] ??
-                                  transaction.transaction_code)
-                                : '—'}
-                            </span>
-                            {transaction.is_derivative ? (
-                              <Badge variant="outline">Derivative</Badge>
-                            ) : null}
-                            {intent ? <Badge variant="outline">{INTENT_LABELS[intent]}</Badge> : null}
-                            {transaction.is_amendment ? (
-                              <Badge variant="outline">Amendment</Badge>
-                            ) : null}
-                            {transaction.is_superseded ? (
-                              <Badge variant="outline">Superseded</Badge>
-                            ) : null}
-                          </div>
-                          {intent === 'ten_b5_1' && transaction.plan_adoption_date ? (
-                            <div className="text-xs text-muted-foreground">
-                              Plan adopted {transaction.plan_adoption_date}
-                            </div>
-                          ) : null}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {transaction.shares === null
-                            ? '—'
-                            : Math.round(transaction.shares).toLocaleString()}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {transaction.price_per_share === null
-                            ? '—'
-                            : `$${transaction.price_per_share.toFixed(2)}`}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {money(transaction.value_usd)}
-                        </TableCell>
-                        <TableCell>
-                          {transaction.source_url ? (
-                            <a
-                              href={transaction.source_url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-xs underline underline-offset-2"
-                            >
-                              SEC filing
-                            </a>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
-                          )}
-                        </TableCell>
+            <PagedList items={transactions} pageSize={INSIDER_PAGE_SIZE}>
+              {(rows) => (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Insider</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead className="text-right">Shares</TableHead>
+                        <TableHead className="text-right">Price</TableHead>
+                        <TableHead className="text-right">Value</TableHead>
+                        <TableHead>Filing</TableHead>
                       </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+                    </TableHeader>
+                    <TableBody>
+                      {rows.map((transaction, index) => {
+                        const intent = intentOf(transaction)
+                        return (
+                          <TableRow
+                            key={`${transaction.accession_number ?? transaction.insider_name}-${transaction.transaction_date}-${transaction.transaction_code}-${index}`}
+                            // Dimmed, never removed: the replaced row is still a
+                            // filing that exists, and a reader comparing this to
+                            // EDGAR needs to see both versions.
+                            className={transaction.is_superseded ? 'opacity-60' : undefined}
+                          >
+                            <TableCell className="tabular-nums">
+                              {transaction.transaction_date ?? '—'}
+                            </TableCell>
+                            <TableCell>
+                              <div>{transaction.insider_name}</div>
+                              {transaction.insider_title ? (
+                                <div className="text-xs text-muted-foreground">
+                                  {transaction.insider_title}
+                                </div>
+                              ) : null}
+                              {transaction.reporting_owners ? (
+                                <CoOwners owners={transaction.reporting_owners} />
+                              ) : null}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-wrap items-center gap-1">
+                                <span>
+                                  {transaction.transaction_code
+                                    ? (CODE_LABELS[transaction.transaction_code] ??
+                                      transaction.transaction_code)
+                                    : '—'}
+                                </span>
+                                {transaction.is_derivative ? (
+                                  <Badge variant="outline">Derivative</Badge>
+                                ) : null}
+                                {intent ? <Badge variant="outline">{INTENT_LABELS[intent]}</Badge> : null}
+                                {transaction.is_amendment ? (
+                                  <Badge variant="outline">Amendment</Badge>
+                                ) : null}
+                                {transaction.is_superseded ? (
+                                  <Badge variant="outline">Superseded</Badge>
+                                ) : null}
+                              </div>
+                              {intent === 'ten_b5_1' && transaction.plan_adoption_date ? (
+                                <div className="text-xs text-muted-foreground">
+                                  Plan adopted {transaction.plan_adoption_date}
+                                </div>
+                              ) : null}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {transaction.shares === null ? (
+                                '—'
+                              ) : (
+                                <span title={formatNumber(Math.round(transaction.shares))}>
+                                  {formatCompactNumber(transaction.shares)}
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {transaction.price_per_share === null
+                                ? '—'
+                                : `$${transaction.price_per_share.toFixed(2)}`}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              <Money value={transaction.value_usd} />
+                            </TableCell>
+                            <TableCell>
+                              {transaction.source_url ? (
+                                <a
+                                  href={transaction.source_url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-xs underline underline-offset-2"
+                                >
+                                  SEC filing
+                                </a>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </PagedList>
           </CardContent>
         </Card>
       )}

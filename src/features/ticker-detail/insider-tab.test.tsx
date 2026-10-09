@@ -292,3 +292,26 @@ test('does not render the raw signal score as a second unexplained number', () =
 
   expect(screen.queryByText(/-0\.71/)).not.toBeInTheDocument()
 })
+
+test('shows totals compactly with a signed net', () => {
+  mockData = {
+    summary: { ...EMPTY.summary, sell_count: 25, sell_value_usd: 967_599_313, net_value_usd: -967_599_313 },
+    transactions: [],
+  }
+  render(<InsiderTab ticker="NVDA" />)
+
+  expect(screen.getByText('$968M')).toHaveAttribute('title', '$967,599,313')
+  expect(screen.getByText('-$968M')).toBeInTheDocument()
+})
+
+test('pages a long transaction list 25 at a time', () => {
+  mockData = {
+    summary: EMPTY.summary,
+    transactions: Array.from({ length: 30 }, (_, i) => ({ ...BUY, insider_name: `Insider ${i + 1}` })),
+  }
+  render(<InsiderTab ticker="ABNB" />)
+
+  expect(screen.getByText('Showing 1–25 of 30')).toBeInTheDocument()
+  expect(screen.getByText('Insider 25')).toBeInTheDocument()
+  expect(screen.queryByText('Insider 26')).not.toBeInTheDocument()
+})

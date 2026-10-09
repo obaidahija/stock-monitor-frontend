@@ -12,6 +12,9 @@ export default defineConfig({
     },
   },
   server: {
+    // Remote access via `tailscale serve` (https://<pc>.<tailnet>.ts.net);
+    // Vite rejects requests whose Host header isn't listed here.
+    allowedHosts: ['.ts.net'],
     proxy: {
       '/v1': {
         target: 'http://localhost:8100',

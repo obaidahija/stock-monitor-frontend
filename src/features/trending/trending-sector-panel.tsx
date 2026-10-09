@@ -6,7 +6,7 @@ import { EmptyState } from '@/components/shared/empty-state'
 import { ErrorState } from '@/components/shared/error-state'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { formatCurrency, formatDateTime, formatSignedPct } from '@/lib/format'
+import { formatCurrency, formatEasternDateTime, formatSignedPct } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { TrendingSectorOut, TrendingSectorTopTickerOut } from '@/types/api'
 import { useTrendingSectors } from './hooks'
@@ -24,7 +24,7 @@ function SectorSparkline({ sector }: { sector: TrendingSectorOut }) {
     )
   }
   const data = sector.etf_sparkline.map((point) => ({
-    time: formatDateTime(point.captured_at),
+    time: formatEasternDateTime(point.captured_at),
     trend_pct: point.trend_pct,
   }))
   return (

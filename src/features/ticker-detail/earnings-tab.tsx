@@ -5,7 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState } from '@/components/shared/error-state'
 import { EmptyState } from '@/components/shared/empty-state'
-import { formatCompactCurrency, formatDate, formatSignedPct } from '@/lib/format'
+import {
+  easternDaysUntil,
+  formatCompactCurrency,
+  formatCurrency,
+  formatDate,
+  formatSignedPct,
+  formatSurprisePct,
+} from '@/lib/format'
+import { humanizeLabel } from '@/lib/labels'
 import {
   classifyEarningsEvent,
   EARNINGS_RESULT_BADGE_CLASSES,
@@ -16,7 +24,8 @@ import { cn } from '@/lib/utils'
 import { EpsTrendChart } from './eps-trend-chart'
 import { EarningsReactionChart } from './earnings-reaction-chart'
 import { EarningsPlaybookCard } from './earnings-playbook-card'
-import { useEarnings, useEarningsReaction, useRefreshEarnings } from './hooks'
+import { chooseTrackRecord, type TrackRecord, type TrackRecordSource } from './earnings-track-record'
+import { useCatalysts, useEarnings, useEarningsReaction, useRefreshEarnings } from './hooks'
 import type { EarningsEventOut, EarningsResult } from '@/types/api'
 
 function toneClass(pct: number | null): string {
@@ -29,18 +38,8 @@ function revenueSurprisePct(actual: number | null, estimate: number | null): num
   return ((actual - estimate) / Math.abs(estimate)) * 100
 }
 
-// A quarter's actual lands exactly on a calendar day boundary, so a plain
-// day-count diff (no time-of-day component) reads right even when "today" is
-// mid-session.
-function daysUntil(dateStr: string): number {
-  const target = new Date(`${dateStr}T00:00:00`)
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  return Math.round((target.getTime() - today.getTime()) / 86400000)
-}
-
 function countdownLabel(dateStr: string): { label: string; urgent: boolean } {
-  const days = daysUntil(dateStr)
+  const days = easternDaysUntil(dateStr)
   if (days <= 0) return { label: 'Today', urgent: true }
   if (days === 1) return { label: 'Tomorrow', urgent: true }
   return { label: `In ${days} days`, urgent: days <= 3 }
@@ -63,7 +62,7 @@ function ResultBadge({
       {result === 'beat' && <TrendingUp className="size-3" />}
       {result === 'miss' && <TrendingDown className="size-3" />}
       {EARNINGS_RESULT_LABEL[result]}
-      {surprisePct !== null && ` ${formatSignedPct(surprisePct, 1)}`}
+      {surprisePct !== null && ` ${formatSurprisePct(surprisePct)}`}
     </span>
   )
 }
@@ -91,49 +90,22 @@ function SurpriseBar({ pct, result }: { pct: number; result: EarningsResult | nu
   )
 }
 
-type TrackRecord = {
-  quarters: { event: EarningsEventOut; result: EarningsResult; surprisePct: number | null }[]
-  beats: number
-  beatRatePct: number
-  avgSurprisePct: number
-  streak: number
-}
-
-function computeTrackRecord(history: EarningsEventOut[]): TrackRecord | null {
-  const quarters = history
-    .map((event) => ({ event, ...classifyEarningsEvent(event) }))
-    .filter((q): q is typeof q & { result: EarningsResult } => q.result !== null)
-  if (quarters.length === 0) return null
-
-  const beats = quarters.filter((q) => q.result === 'beat').length
-  const surprises = quarters.map((q) => q.surprisePct).filter((p): p is number => p !== null)
-  const avgSurprisePct = surprises.length
-    ? surprises.reduce((sum, p) => sum + p, 0) / surprises.length
-    : 0
-
-  let streak = 0
-  for (const q of quarters) {
-    if (q.result !== 'beat') break
-    streak += 1
-  }
-
-  return { quarters, beats, beatRatePct: (beats / quarters.length) * 100, avgSurprisePct, streak }
+const TRACK_RECORD_SOURCE_LABEL: Record<TrackRecordSource, string> = {
+  finnhub: 'Finnhub history',
+  yahoo: 'Yahoo Finance history',
 }
 
 function TrackRecordSummary({ trackRecord }: { trackRecord: TrackRecord }) {
   return (
-    <div className="space-y-2 pt-3">
+    <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
         <span>
-          Beat rate <span className="font-semibold">{trackRecord.beatRatePct.toFixed(0)}%</span>{' '}
-          <span className="text-muted-foreground text-xs">
-            ({trackRecord.beats}/{trackRecord.quarters.length})
-          </span>
+          Beat <span className="font-semibold">{trackRecord.beats} of last {trackRecord.quarters.length}</span>
         </span>
         <span>
           Avg surprise{' '}
           <span className={cn('font-semibold', toneClass(trackRecord.avgSurprisePct))}>
-            {formatSignedPct(trackRecord.avgSurprisePct, 1)}
+            {formatSurprisePct(trackRecord.avgSurprisePct)}
           </span>
         </span>
         {trackRecord.streak > 0 && (
@@ -142,18 +114,20 @@ function TrackRecordSummary({ trackRecord }: { trackRecord: TrackRecord }) {
             {trackRecord.streak} beat{trackRecord.streak > 1 ? 's' : ''} in a row
           </span>
         )}
+        <span className="text-muted-foreground text-xs">
+          {TRACK_RECORD_SOURCE_LABEL[trackRecord.source]}
+        </span>
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
         {[...trackRecord.quarters].reverse().map((q) => (
           <span
-            key={q.event.id}
-            title={`${formatDate(q.event.event_date)}: ${EARNINGS_RESULT_LABEL[q.result]}${
-              q.surprisePct !== null ? ` (${formatSignedPct(q.surprisePct, 1)})` : ''
+            key={q.key}
+            title={`${formatDate(q.eventDate)}: ${EARNINGS_RESULT_LABEL[q.result]}${
+              q.surprisePct !== null ? ` (${formatSurprisePct(q.surprisePct)})` : ''
             }`}
             className={cn('inline-block size-2.5 rounded-full', EARNINGS_RESULT_DOT_CLASSES[q.result])}
           />
         ))}
-        <span className="text-muted-foreground text-xs">last {trackRecord.quarters.length} quarters</span>
       </div>
     </div>
   )
@@ -187,7 +161,7 @@ function NextEarningsCard({ next }: { next: EarningsEventOut }) {
         <div className="grid grid-cols-2 gap-3">
           <div className="border-border rounded-lg border px-3 py-2">
             <p className="text-muted-foreground text-xs">EPS estimate</p>
-            <p className="text-sm font-medium">{next.eps_estimate ?? '—'}</p>
+            <p className="text-sm font-medium">{formatCurrency(next.eps_estimate)}</p>
           </div>
           <div className="border-border rounded-lg border px-3 py-2">
             <p className="text-muted-foreground text-xs">Revenue estimate</p>
@@ -245,7 +219,7 @@ function HistoryQuarterCard({ event }: { event: EarningsEventOut }) {
           <div className="border-border rounded-lg border px-3 py-2">
             <p className="text-muted-foreground text-xs">Finnhub EPS est. / actual</p>
             <p className="text-sm font-medium">
-              {event.eps_estimate ?? '—'} / {event.eps_actual ?? '—'}
+              {formatCurrency(event.eps_estimate)} / {formatCurrency(event.eps_actual)}
             </p>
           </div>
           {hasRevenue && (
@@ -262,6 +236,37 @@ function HistoryQuarterCard({ event }: { event: EarningsEventOut }) {
             </div>
           )}
         </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+/** Dividends and splits from the catalyst calendar. Earnings are left out: Next earnings already shows that date. */
+function OtherUpcomingEvents({ ticker }: { ticker: string }) {
+  const { data } = useCatalysts(ticker)
+  const events = (data ?? []).filter((event) => event.catalyst_type !== 'earnings')
+  if (events.length === 0) return null
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Other upcoming events</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ul className="divide-border divide-y">
+          {events.map((event) => (
+            <li
+              key={`${event.catalyst_type}-${event.event_date}`}
+              className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2 text-sm first:pt-0 last:pb-0"
+            >
+              <span className="font-medium">{humanizeLabel(event.catalyst_type)}</span>
+              <span className="text-muted-foreground">{formatDate(event.event_date)}</span>
+              {event.description && (
+                <span className="text-muted-foreground w-full text-xs">{event.description}</span>
+              )}
+            </li>
+          ))}
+        </ul>
       </CardContent>
     </Card>
   )
@@ -298,7 +303,7 @@ export function EarningsTab({ ticker }: { ticker: string }) {
   if (isError) return <ErrorState error={error} onRetry={() => refetch()} />
   if (!data) return null
 
-  const trackRecord = computeTrackRecord(data.history)
+  const trackRecord = chooseTrackRecord(data.history, data.yfinance_snapshot)
 
   return (
     <div className="space-y-4">
@@ -314,12 +319,14 @@ export function EarningsTab({ ticker }: { ticker: string }) {
         />
       )}
 
+      <OtherUpcomingEvents ticker={ticker} />
+
       {/* Outside NextEarningsCard on purpose: a ticker with no known upcoming
           date still has a track record worth showing, and nesting it there
           hid it entirely whenever data.next was null. */}
       {trackRecord && (
         <Card>
-          <CardContent className="pt-6">
+          <CardContent>
             <TrackRecordSummary trackRecord={trackRecord} />
           </CardContent>
         </Card>
@@ -332,7 +339,7 @@ export function EarningsTab({ ticker }: { ticker: string }) {
           <h3 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
             Recent quarters
           </h3>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className={cn('grid gap-3', data.history.length > 1 && 'sm:grid-cols-2')}>
             {data.history.map((event) => (
               <HistoryQuarterCard key={event.id} event={event} />
             ))}

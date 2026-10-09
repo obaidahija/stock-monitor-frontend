@@ -199,3 +199,42 @@ test('a disabled-feature response is reported once, not retried', async () => {
   expect(create.mutateAsync).toHaveBeenCalledTimes(1)
   expect(toastError).toHaveBeenCalledWith('Swing research windows are turned off')
 })
+
+test('an ordinary create never sends a strategy origin or a replacement', async () => {
+  const user = userEvent.setup()
+  render(<SetupFormDialog watchlistId={1} ticker="NVDA" />)
+  await user.click(screen.getByRole('button', { name: /create setup/i }))
+  await fillLevels(user)
+  await user.click(screen.getByRole('button', { name: /^save$/i }))
+
+  const body = create.mutateAsync.mock.calls[0][0]
+  expect('strategy_observation_id' in body).toBe(false)
+  expect('replace_existing' in body).toBe(false)
+  expect(screen.queryByRole('button', { name: /use 8% target/i })).toBeNull()
+})
+
+test('a controlled form opens from initial values and still needs a stop and a target', async () => {
+  const onOpenChange = vi.fn()
+  render(
+    <SetupFormDialog
+      watchlistId={1}
+      ticker="SQZ"
+      open
+      onOpenChange={onOpenChange}
+      initialValues={{
+        identity: 'scanner:7:1',
+        side: 'long',
+        horizon: 'swing',
+        horizonSessions: 5,
+        entryPrimary: 10.8,
+        referenceLabel: 'Signal close $10.80 on Oct 5, 2026',
+        proposedTargetPct: 8,
+        strategyObservationId: 7,
+        enforceLevelOrder: true,
+      }}
+    />,
+  )
+  expect(screen.queryByRole('button', { name: /create setup/i })).toBeNull()
+  expect(screen.getByLabelText('Primary entry')).toHaveValue(10.8)
+  expect(screen.getByRole('button', { name: /^save$/i })).toBeDisabled()
+})

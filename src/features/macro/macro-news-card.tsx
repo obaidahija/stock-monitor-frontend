@@ -2,7 +2,8 @@ import { useTheme } from 'next-themes'
 import { SentimentBadge } from '@/components/shared/sentiment-badge'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { formatRelativeTime } from '@/lib/format'
+import { formatEasternDateTime, formatRelativeTime } from '@/lib/format'
+import { formatSourceName } from '@/lib/labels'
 import type { MacroNewsItemOut } from '@/types/api'
 import { macroCategoryColor, macroCategoryLabel } from './constants'
 
@@ -12,11 +13,11 @@ export function MacroNewsCard({ item }: { item: MacroNewsItemOut }) {
 
   return (
     <Card>
-      <CardContent className="space-y-2.5 py-4">
+      <CardContent className="space-y-2">
         <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
-          <span>{item.source}</span>
+          <span>{formatSourceName(item.source)}</span>
           <span aria-hidden="true">·</span>
-          <span>{formatRelativeTime(item.published_at)}</span>
+          <span title={formatEasternDateTime(item.published_at)}>{formatRelativeTime(item.published_at)}</span>
         </div>
         <a href={item.url} target="_blank" rel="noreferrer" className="block">
           <h3 className="font-medium leading-snug hover:underline">{item.title}</h3>

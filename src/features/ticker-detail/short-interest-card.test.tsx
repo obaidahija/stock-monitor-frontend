@@ -22,6 +22,7 @@ describe('ShortInterestCard', () => {
     expect(screen.getByText('4.2 days')).toBeInTheDocument()
     expect(screen.getByText('74.1%')).toBeInTheDocument()
     expect(screen.getByText('1.8%')).toBeInTheDocument()
+    expect(screen.getByText('51M shares')).toBeInTheDocument()
   })
 
   it('renders a dash for individually missing fields', () => {

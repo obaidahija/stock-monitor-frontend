@@ -66,7 +66,7 @@ const BACKGROUND_PROFILES: {
     noun: 'Macro transmission',
     heading: 'Macro transmission',
     description:
-      'Powers macro sector-impact stance/magnitude resolution (GET /macro/sector-impact).',
+      'Powers macro sector-impact stance/magnitude resolution (Macro page → Sector impact).',
   },
 ]
 
@@ -109,6 +109,20 @@ function ProviderSelect({
 // OpenRouter reports a free model as the string "0" for both prices. Test the
 // price rather than a ":free" suffix -- a few free models (e.g. the Lyria
 // previews) carry no suffix, and a model can stop being free without renaming.
+const PER_MILLION = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 4,
+})
+
+/** OpenRouter prices one token; people compare models per million tokens. */
+function perMillionTokens(price: string): string {
+  // OpenRouter marks router models, whose cost depends on the model they pick, with "-1".
+  if (Number(price) < 0) return 'price varies'
+  return `${PER_MILLION.format(Number(price) * 1_000_000)} / 1M tokens`
+}
+
 function isFreeModel(model: OpenRouterModelOut) {
   return model.prompt_price === '0' && model.completion_price === '0'
 }
@@ -207,10 +221,10 @@ function ModelMetadata({ model }: { model: OpenRouterModelOut }) {
       ) : null}
       {isFreeModel(model) ? <Badge variant="secondary">Free</Badge> : null}
       {!isFreeModel(model) && model.prompt_price ? (
-        <Badge variant="outline">Input ${model.prompt_price}/token</Badge>
+        <Badge variant="outline">Input {perMillionTokens(model.prompt_price)}</Badge>
       ) : null}
       {!isFreeModel(model) && model.completion_price ? (
-        <Badge variant="outline">Output ${model.completion_price}/token</Badge>
+        <Badge variant="outline">Output {perMillionTokens(model.completion_price)}</Badge>
       ) : null}
     </div>
   )

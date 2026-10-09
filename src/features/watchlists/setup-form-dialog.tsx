@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import type { SetupUpdateInput } from '@/api/watchlists'
+import type { ManualSetupInput, SetupUpdateInput } from '@/api/watchlists'
 import { useResearchCapabilities, useSetupWindowPreview } from '@/features/research/hooks'
 import type {
   WatchlistSetupHorizon,
@@ -24,18 +24,79 @@ import { useCreateManualSetup, useUpdateWatchlistSetup } from './hooks'
 import { DEFAULT_RESEARCH_WINDOW, isSwingDisabledError } from './research-window'
 import { ResearchWindowControl, WindowExpiryLine } from './research-window-control'
 
+/**
+ * Proposed values for a new setup, e.g. from a Short Squeeze match. Every
+ * level stays editable and stop/target are still entered by the user. Pass a
+ * memoized object: a new one resets the form, which is how nothing carries
+ * from one origin (``identity``) to the next.
+ */
+export interface SetupInitialValues {
+  identity: string
+  side: WatchlistSetupSide
+  horizon: WatchlistSetupHorizon
+  horizonSessions?: number
+  entryPrimary: number
+  /** Dated description of where the entry came from; never a fill. */
+  referenceLabel?: string
+  /** Offers an explicit "Use N% target" proposal from the chosen entry. */
+  proposedTargetPct?: number
+  strategyObservationId?: number
+  /** Requires this checkbox before Save, e.g. after a source correction. */
+  reviewLabel?: string
+  /** Disable Save until the levels are in valid long/short order. */
+  enforceLevelOrder?: boolean
+}
+
+function proposeTarget(entry: string, pct: number): string {
+  const value = Number(entry)
+  if (!(value > 0)) return ''
+  return String(Math.round(value * (1 + pct / 100) * 100) / 100)
+}
+
+function levelsInOrder(
+  side: WatchlistSetupSide,
+  primary: number,
+  secondary: number | null,
+  stop: number,
+  target: number,
+): boolean {
+  const entries = secondary === null ? [primary] : [primary, secondary]
+  const low = Math.min(...entries)
+  const high = Math.max(...entries)
+  if (secondary !== null && (side === 'long' ? secondary > primary : secondary < primary)) {
+    return false
+  }
+  return side === 'long' ? stop < low && high < target : target < low && high < stop
+}
+
 export function SetupFormDialog({
   watchlistId,
   ticker,
   setup,
   compact = false,
+  initialValues,
+  open: controlledOpen,
+  onOpenChange,
+  replaceExisting = false,
 }: {
   watchlistId: number
   ticker: string
   setup?: WatchlistSetupOut | null
   compact?: boolean
+  initialValues?: SetupInitialValues
+  /** Controlled mode: the caller owns opening, and no trigger button renders. */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  /** Send replace_existing: the caller has had the user confirm the replacement. */
+  replaceExisting?: boolean
 }) {
-  const [open, setOpen] = useState(false)
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
+  const controlled = controlledOpen !== undefined
+  const open = controlled ? controlledOpen : uncontrolledOpen
+  function setOpen(next: boolean) {
+    if (controlled) onOpenChange?.(next)
+    else setUncontrolledOpen(next)
+  }
   const idPrefix = useId()
   const [side, setSide] = useState<WatchlistSetupSide>('long')
   const [horizon, setHorizon] = useState<WatchlistSetupHorizon>('short_term')
@@ -46,11 +107,15 @@ export function SetupFormDialog({
   const [stop, setStop] = useState('')
   const [target, setTarget] = useState('')
   const [note, setNote] = useState('')
+  // True only while the target is the explicit proposal and the user has not edited it.
+  const [autoTarget, setAutoTarget] = useState(false)
+  const [reviewed, setReviewed] = useState(false)
   const create = useCreateManualSetup()
   const update = useUpdateWatchlistSetup()
   const capabilities = useResearchCapabilities()
   const swingEnabled = capabilities.data?.swing_research_enabled === true
   const isPending = create.isPending || update.isPending
+  const proposal = setup ? undefined : initialValues
 
   // A saved swing setup keeps its own window until the timing really changes.
   const showsSavedWindow =
@@ -62,6 +127,20 @@ export function SetupFormDialog({
 
   useEffect(() => {
     if (!open) return
+    setAutoTarget(false)
+    setReviewed(false)
+    if (proposal) {
+      setSide(proposal.side)
+      setHorizon(proposal.horizon)
+      setSessions(proposal.horizonSessions ?? DEFAULT_RESEARCH_WINDOW)
+      setExpiresOn('')
+      setPrimary(String(proposal.entryPrimary))
+      setSecondary('')
+      setStop('')
+      setTarget('')
+      setNote('')
+      return
+    }
     setSide(setup?.side ?? 'long')
     setHorizon(setup?.horizon ?? 'short_term')
     setSessions(setup?.horizon_sessions ?? DEFAULT_RESEARCH_WINDOW)
@@ -71,7 +150,27 @@ export function SetupFormDialog({
     setStop(setup ? String(setup.stop_loss) : '')
     setTarget(setup ? String(setup.take_profit) : '')
     setNote(setup?.note ?? '')
-  }, [open, setup])
+    // Reset on opening and when a new proposal arrives -- never on ordinary
+    // re-renders, so typed values survive a failed save.
+  }, [open, setup, proposal])
+
+  function changePrimary(value: string) {
+    setPrimary(value)
+    if (autoTarget && proposal?.proposedTargetPct !== undefined) {
+      setTarget(proposeTarget(value, proposal.proposedTargetPct))
+    }
+  }
+
+  function changeTarget(value: string) {
+    setTarget(value)
+    setAutoTarget(false)
+  }
+
+  function applyProposedTarget() {
+    if (proposal?.proposedTargetPct === undefined) return
+    setTarget(proposeTarget(primary, proposal.proposedTargetPct))
+    setAutoTarget(true)
+  }
 
   async function handleSave() {
     const values = {
@@ -113,7 +212,13 @@ export function SetupFormDialog({
           body,
         })
       } else {
-        await create.mutateAsync({ watchlist_id: watchlistId, ticker, ...values })
+        const body: ManualSetupInput = { watchlist_id: watchlistId, ticker, ...values }
+        // Read from the current props at submit time, never from earlier state.
+        if (proposal?.strategyObservationId !== undefined) {
+          body.strategy_observation_id = proposal.strategyObservationId
+        }
+        if (replaceExisting) body.replace_existing = true
+        await create.mutateAsync(body)
       }
       toast.success(`${ticker} setup ${setup ? 'updated' : 'created'}`)
       setOpen(false)
@@ -131,26 +236,34 @@ export function SetupFormDialog({
     Number(stop) > 0 &&
     Number(target) > 0 &&
     (horizon !== 'custom' || Boolean(expiresOn))
+  const ordered =
+    !proposal?.enforceLevelOrder ||
+    levelsInOrder(side, Number(primary), secondary ? Number(secondary) : null, Number(stop), Number(target))
+  const reviewDone = !proposal?.reviewLabel || reviewed
   const offerSwing = swingEnabled || setup?.horizon === 'swing'
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          size={compact ? 'icon-sm' : 'sm'}
-          aria-label={compact ? (setup ? 'Edit setup' : 'Create setup') : undefined}
-          title={compact ? `${setup ? 'Edit' : 'Create'} ${ticker} setup` : undefined}
-        >
-          {setup ? <Pencil /> : <Plus />}
-          {!compact && (setup ? 'Edit setup' : 'Create setup')}
-        </Button>
-      </DialogTrigger>
+      {!controlled && (
+        <DialogTrigger asChild>
+          <Button
+            variant="outline"
+            size={compact ? 'icon-sm' : 'sm'}
+            aria-label={compact ? (setup ? 'Edit setup' : 'Create setup') : undefined}
+            title={compact ? `${setup ? 'Edit' : 'Create'} ${ticker} setup` : undefined}
+          >
+            {setup ? <Pencil /> : <Plus />}
+            {!compact && (setup ? 'Edit setup' : 'Create setup')}
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{setup ? 'Edit' : 'Create'} {ticker} setup</DialogTitle>
           <DialogDescription>
-            Editing the side or prices makes an AI-managed setup manual. Expiry-only changes keep AI sync enabled.
+            {proposal
+              ? 'Confirm the entry, stop, target and window yourself. Saving records a research setup; nothing is traded.'
+              : 'Editing the side or prices makes an AI-managed setup manual. Expiry-only changes keep AI sync enabled.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -182,11 +295,32 @@ export function SetupFormDialog({
               />
             </div>
           )}
-          <Field label="Primary entry" htmlFor={`${idPrefix}-primary`}><Input id={`${idPrefix}-primary`} type="number" min="0" step="any" value={primary} onChange={(event) => setPrimary(event.target.value)} /></Field>
+          <Field label="Primary entry" htmlFor={`${idPrefix}-primary`}><Input id={`${idPrefix}-primary`} type="number" min="0" step="any" value={primary} onChange={(event) => changePrimary(event.target.value)} /></Field>
           <Field label="Secondary entry" htmlFor={`${idPrefix}-secondary`}><Input id={`${idPrefix}-secondary`} type="number" min="0" step="any" value={secondary} onChange={(event) => setSecondary(event.target.value)} placeholder="Optional" /></Field>
+          {proposal?.referenceLabel && (
+            <p className="text-muted-foreground col-span-2 -mt-1 text-xs">{proposal.referenceLabel}</p>
+          )}
           <Field label="Stop loss" htmlFor={`${idPrefix}-stop`}><Input id={`${idPrefix}-stop`} type="number" min="0" step="any" value={stop} onChange={(event) => setStop(event.target.value)} /></Field>
-          <Field label="Take profit" htmlFor={`${idPrefix}-target`}><Input id={`${idPrefix}-target`} type="number" min="0" step="any" value={target} onChange={(event) => setTarget(event.target.value)} /></Field>
+          <Field label="Take profit" htmlFor={`${idPrefix}-target`}><Input id={`${idPrefix}-target`} type="number" min="0" step="any" value={target} onChange={(event) => changeTarget(event.target.value)} /></Field>
+          {proposal?.proposedTargetPct !== undefined && (
+            <div className="col-span-2 flex flex-wrap items-center gap-2 text-xs">
+              <Button type="button" variant="outline" size="sm" onClick={applyProposedTarget} disabled={!(Number(primary) > 0)}>
+                Use {proposal.proposedTargetPct}% target
+              </Button>
+              <span className="text-muted-foreground">
+                {autoTarget
+                  ? 'Follows the entry until you edit it.'
+                  : `Optional: entry × ${(1 + proposal.proposedTargetPct / 100).toFixed(2)}. Not a reward/risk judgement.`}
+              </span>
+            </div>
+          )}
           <Field label="Note" htmlFor={`${idPrefix}-note`} full><Input id={`${idPrefix}-note`} value={note} onChange={(event) => setNote(event.target.value)} placeholder="Optional context" /></Field>
+          {proposal?.reviewLabel && (
+            <label className="col-span-2 flex items-start gap-2 text-xs">
+              <input type="checkbox" className="mt-0.5" checked={reviewed} onChange={(event) => setReviewed(event.target.checked)} />
+              <span>{proposal.reviewLabel}</span>
+            </label>
+          )}
         </div>
 
         <p className="text-muted-foreground text-xs">
@@ -194,7 +328,7 @@ export function SetupFormDialog({
         </p>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={() => void handleSave()} disabled={!complete || isPending}>
+          <Button onClick={() => void handleSave()} disabled={!complete || !ordered || !reviewDone || isPending}>
             {isPending && <Loader2 className="animate-spin" />} Save
           </Button>
         </DialogFooter>

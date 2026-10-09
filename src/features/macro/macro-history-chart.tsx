@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState } from '@/components/shared/error-state'
 import { cn } from '@/lib/utils'
+import { formatBucketDay, formatEasternHour } from '@/lib/format'
 import type { MacroBucketGranularity, MacroSignalHistoryBucketOut } from '@/types/api'
 import { MACRO_CATEGORIES, macroCategoryColor, macroCategoryLabel } from './constants'
 import { useMacroSignalHistory } from './hooks'
@@ -30,9 +31,7 @@ const AXIS_Y = CHART_HEIGHT - 4
 const PLOT_HEIGHT = AXIS_Y - 6
 
 function formatBucketLabel(bucketStart: string, bucket: MacroBucketGranularity): string {
-  const d = new Date(bucketStart)
-  if (bucket === 'hour') return d.toLocaleTimeString('en-US', { hour: 'numeric' })
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return bucket === 'hour' ? formatEasternHour(bucketStart) : formatBucketDay(bucketStart)
 }
 
 function HistoryBucketDetail({

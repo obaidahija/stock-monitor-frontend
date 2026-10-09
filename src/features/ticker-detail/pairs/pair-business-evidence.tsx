@@ -1,5 +1,5 @@
 import { Badge } from '@/components/ui/badge'
-import { formatDate, formatDateTime } from '@/lib/format'
+import { formatDate, formatEasternDateTime } from '@/lib/format'
 import type {
   StockPairBusinessClaimOut,
   StockPairBusinessEvidenceOut,
@@ -72,7 +72,7 @@ function ClaimDates({ claim }: { claim: StockPairBusinessClaimOut }) {
       )}
       {claim.checked_at && (
         <p>
-          Retrieved: <time dateTime={claim.checked_at}>{formatDateTime(claim.checked_at)}</time>
+          Retrieved: <time dateTime={claim.checked_at}>{formatEasternDateTime(claim.checked_at)}</time>
         </p>
       )}
     </div>

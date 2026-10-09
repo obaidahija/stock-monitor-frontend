@@ -1,9 +1,11 @@
 import { RefreshCw } from 'lucide-react'
 import { useSearchParams } from 'react-router'
 import { Button } from '@/components/ui/button'
+import { FilterChip } from '@/components/shared/feed-badges'
 import { TickerTagFilter } from '@/components/shared/ticker-tag-filter'
 import { cn } from '@/lib/utils'
 import { useRefreshRedditFeed, useSearchRedditTicker } from './hooks'
+import { useSelectedTrustedSubreddits } from './trusted-subreddits-section'
 import type { RedditPostType } from '@/api/reddit'
 import type { RedditFeedFilter, RedditSort } from '@/types/api'
 
@@ -25,6 +27,7 @@ export function RedditFeedControls() {
   const search = useSearchRedditTicker()
   const filter = (params.get('filter') as RedditFeedFilter) || 'all'
   const sort = (params.get('sort') as RedditSort) || 'signal'
+  const { selected: subreddits, setSelected: setSubreddits } = useSelectedTrustedSubreddits()
 
   function update(key: string, value: string, defaultValue: string) {
     setParams((previous) => {
@@ -99,6 +102,17 @@ export function RedditFeedControls() {
             onChange={updateTickers}
             placeholder="Search Reddit by ticker"
           />
+          {subreddits.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {subreddits.map((name) => (
+                <FilterChip
+                  key={name}
+                  label={`r/${name}`}
+                  onRemove={() => setSubreddits(subreddits.filter((s) => s !== name))}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
         <Button size="sm" variant="outline" disabled={refresh.isPending} onClick={() => refresh.mutate()}>

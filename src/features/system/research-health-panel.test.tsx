@@ -129,3 +129,58 @@ test('warns about a renewed drop on the latest finalized session', () => {
   renderWithProviders(<ResearchHealthPanel />)
   expect(screen.getByText(/investigate latest coverage below 95%/i)).toBeInTheDocument()
 })
+
+test('shows scanner collection and an incomplete warm-up beside the other producers', () => {
+  mockReport({
+    ...report,
+    short_squeeze: {
+      collection_enabled: false,
+      latest_publication_id: 4,
+      latest_target_session: '2026-09-25',
+      latest_published_at: '2026-09-25T20:46:00Z',
+      latest_confirmed_at: '2026-09-25T21:46:00Z',
+      coverage: { evaluated: 900, matched: 3, incomplete: 12, excluded: 885, missing_reason_counts: {} },
+      corrections: 1,
+      observations_recorded: 9,
+      checkpoint_target_session: '2026-09-25',
+      checkpoints: { complete: 5, failed: 2, pending: 1 },
+    },
+  })
+  renderWithProviders(<ResearchHealthPanel />)
+
+  const card = screen.getByRole('region', { name: 'Short Squeeze scanner' })
+  expect(card).toHaveTextContent('Collection off')
+  expect(card).toHaveTextContent('Warm-up incomplete: 2 failed, 1 pending')
+  expect(card).toHaveTextContent('900 evaluated / 3 matched / 12 incomplete')
+  expect(card).toHaveTextContent('1 corrected')
+  // The other producers stay visible.
+  expect(screen.getByText('Daily bars by finalized session')).toBeInTheDocument()
+})
+
+test('a complete warm-up and an older backend are both handled', () => {
+  mockReport({
+    ...report,
+    short_squeeze: {
+      collection_enabled: true,
+      latest_publication_id: null,
+      latest_target_session: null,
+      latest_published_at: null,
+      latest_confirmed_at: null,
+      coverage: null,
+      corrections: 0,
+      observations_recorded: 0,
+      checkpoint_target_session: '2026-09-25',
+      checkpoints: { complete: 4 },
+    },
+  })
+  const { unmount } = renderWithProviders(<ResearchHealthPanel />)
+  const card = screen.getByRole('region', { name: 'Short Squeeze scanner' })
+  expect(card).toHaveTextContent('Collecting')
+  expect(card).toHaveTextContent('No scan published yet')
+  expect(card).not.toHaveTextContent('Warm-up incomplete')
+  unmount()
+
+  mockReport(report)
+  renderWithProviders(<ResearchHealthPanel />)
+  expect(screen.queryByRole('region', { name: 'Short Squeeze scanner' })).not.toBeInTheDocument()
+})

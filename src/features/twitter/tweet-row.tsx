@@ -1,9 +1,9 @@
 import { BadgeCheck, Eye, Heart, MessageCircle, Repeat2 } from 'lucide-react'
-import { Link } from 'react-router'
 import { Card, CardHeader } from '@/components/ui/card'
+import { TickerPill, TrustedBadge, ViralBadge } from '@/components/shared/feed-badges'
 import { SentimentBadge } from '@/components/shared/sentiment-badge'
 import { TweetTypeBadge } from '@/components/shared/tweet-type-badge'
-import { formatNumber, formatRelativeTime } from '@/lib/format'
+import { formatEasternDateTime, formatNumber, formatRelativeTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { SignalScoreBadge } from './signal-score-badge'
 import type { TwitterPostOut } from '@/types/api'
@@ -23,32 +23,19 @@ export function TweetRow({ post, onSelect }: { post: TwitterPostOut; onSelect: (
             )}
             <span className="text-muted-foreground">@{post.author_username}</span>
             <span className="text-muted-foreground">·</span>
-            <span className="text-muted-foreground">{formatRelativeTime(post.created_at)}</span>
+            <span className="text-muted-foreground" title={formatEasternDateTime(post.created_at)}>
+              {formatRelativeTime(post.created_at)}
+            </span>
           </div>
 
           <p className="line-clamp-2 text-sm">{post.text}</p>
 
           <div className="flex flex-wrap items-center gap-1.5">
             {post.ticker_matches.map((match) => (
-              <Link
-                key={match.ticker}
-                to={`/stocks/${match.ticker}`}
-                onClick={(e) => e.stopPropagation()}
-                className="bg-secondary text-secondary-foreground hover:bg-primary hover:text-primary-foreground inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium underline decoration-transparent underline-offset-2 transition-colors hover:decoration-current"
-              >
-                ${match.ticker}
-              </Link>
+              <TickerPill key={match.ticker} ticker={match.ticker} />
             ))}
-            {post.is_trusted && (
-              <span className="inline-flex items-center rounded-full bg-blue-500/15 px-2 py-0.5 text-xs font-medium text-blue-600 dark:text-blue-400">
-                Trusted
-              </span>
-            )}
-            {post.is_viral && (
-              <span className="inline-flex items-center rounded-full bg-orange-500/15 px-2 py-0.5 text-xs font-medium text-orange-600 dark:text-orange-400">
-                Viral
-              </span>
-            )}
+            {post.is_trusted && <TrustedBadge />}
+            {post.is_viral && <ViralBadge />}
             {post.sentiment_label && <SentimentBadge label={post.sentiment_label} />}
             <TweetTypeBadge type={post.tweet_type} />
           </div>

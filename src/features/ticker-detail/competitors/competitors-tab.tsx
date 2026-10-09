@@ -1,4 +1,5 @@
 import { useId, useMemo, useState, type ReactNode } from 'react'
+import { formatEasternDateTimeWithYear } from '@/lib/format'
 import { Link } from 'react-router'
 import { ChevronDown, RefreshCw, Search } from 'lucide-react'
 import { MessageResponse } from '@/components/ai-elements/message'
@@ -40,10 +41,7 @@ function CompetitorResult({ result }: { result: GoogleFinanceCompetitorsOut }) {
         <p className="text-muted-foreground text-xs">
           Updated:{' '}
           <time dateTime={result.generated_at}>
-            {new Intl.DateTimeFormat(undefined, {
-              year: 'numeric', month: 'short', day: 'numeric',
-              hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
-            }).format(new Date(result.generated_at))}
+            {formatEasternDateTimeWithYear(result.generated_at)}
           </time>
         </p>
       </CardHeader>

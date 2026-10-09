@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { ApiError } from '@/lib/api-client'
-import { formatDate } from '@/lib/format'
+import { formatDate, formatEasternDateTimeWithYear } from '@/lib/format'
 import type { PairBacktestOut } from '@/types/pair-backtest'
 import { usePairBacktest, useRunPairBacktest } from './pair-backtest-hooks'
 import { PairBacktestReport } from './pair-backtest-report'
@@ -16,18 +16,6 @@ function backtestStatus(report: PairBacktestOut): string {
   const count = calculation.events.length
   if (count === 0) return 'No qualifying historical signals'
   return `${count} historical signal${count === 1 ? '' : 's'}`
-}
-
-function formatTimestamp(value: string) {
-  // The viewer's own locale and time zone, with the zone named.
-  return new Intl.DateTimeFormat(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    timeZoneName: 'short',
-  }).format(new Date(value))
 }
 
 function errorMessage(error: unknown) {
@@ -42,7 +30,7 @@ function BacktestSummary({ report }: { report: PairBacktestOut }) {
       <Badge variant="secondary">{backtestStatus(report)}</Badge>
       <div className="text-muted-foreground space-y-0.5 text-xs">
         <p>
-          Backtested: <time dateTime={report.generated_at}>{formatTimestamp(report.generated_at)}</time>
+          Backtested: <time dateTime={report.generated_at}>{formatEasternDateTimeWithYear(report.generated_at)}</time>
         </p>
         <p>
           Evaluated:{' '}

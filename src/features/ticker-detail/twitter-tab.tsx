@@ -1,27 +1,15 @@
-import { useState } from 'react'
-import { Check, RefreshCw } from 'lucide-react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useId, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState } from '@/components/shared/error-state'
 import { EmptyState } from '@/components/shared/empty-state'
 import { Pagination } from '@/components/shared/pagination'
-import { cn } from '@/lib/utils'
-import { useSearchTicker, useTwitterFeed } from '@/features/twitter/hooks'
-import { useTwitterOperationPoll } from '@/features/twitter/use-operation-poll'
+import { useTwitterFeed } from '@/features/twitter/hooks'
 import { TweetRow } from '@/features/twitter/tweet-row'
 import { TweetDetailDialog } from '@/features/twitter/tweet-detail-dialog'
-import type { TweetType, TwitterMinimumViews, TwitterSort } from '@/api/twitter'
+import type { TweetType, TwitterSort } from '@/api/twitter'
 import type { TwitterPostOut } from '@/types/api'
+import { CompanyPostsSection } from './company-x/company-posts-section'
 
 const SORT_OPTIONS: { label: string; value: TwitterSort }[] = [
   { label: 'Signal', value: 'signal' },
@@ -37,95 +25,83 @@ const TWEET_TYPE_OPTIONS: { label: string; value: TweetType }[] = [
   { label: 'Other', value: 'other' },
 ]
 
-const MINIMUM_VIEW_OPTIONS: TwitterMinimumViews[] = [1000, 2000, 3000, 5000]
+interface MentionsView {
+  ticker: string
+  sort: TwitterSort
+  page: number
+  tweetTypes: TweetType[]
+}
 
 /**
- * Reads the *general* feed filtered to this ticker (`tickers=` OR-match), not the
- * narrower manual-search-only cache -- that cache only ever holds results from an
- * explicit "search X for this ticker" run, so a ticker with real trusted-account
- * coverage but no one having searched it yet used to show up empty here even
- * though the same tweets were already visible on the main Twitter feed page.
- * "Refresh" still runs a live X search for extra coverage; anything it finds gets
- * persisted as regular posts, so it shows up here too once the feed re-fetches.
+ * Posts that trusted accounts made about this ticker, from the general feed with
+ * `filter=trusted` (its usual 72-hour window). Popularity never hides one: sort and
+ * type are the only controls, and nothing here starts a live X search.
  */
-export function TwitterTab({ ticker }: { ticker: string }) {
-  const [sort, setSort] = useState<TwitterSort>('signal')
-  const [page, setPage] = useState(1)
-  const [tweetTypes, setTweetTypes] = useState<TweetType[]>([])
+function TrustedMentions({ ticker }: { ticker: string }) {
+  const headingId = useId()
+  const [view, setView] = useState<MentionsView>({
+    ticker,
+    sort: 'signal',
+    page: 1,
+    tweetTypes: [],
+  })
+  // A different ticker starts from the defaults rather than carrying the old page.
+  const current: MentionsView =
+    view.ticker === ticker ? view : { ticker, sort: 'signal', page: 1, tweetTypes: [] }
   const [selectedPost, setSelectedPost] = useState<TwitterPostOut | null>(null)
-  const [refreshDialogOpen, setRefreshDialogOpen] = useState(false)
-  const [minimumViews, setMinimumViews] = useState<TwitterMinimumViews>(2000)
-  const queryClient = useQueryClient()
 
   const { data, isPending, isError, error, refetch } = useTwitterFeed({
+    filter: 'trusted',
     tickers: [ticker],
-    sort,
-    page,
-    tweetTypes,
+    sort: current.sort,
+    page: current.page,
+    tweetTypes: current.tweetTypes,
   })
-  const search = useSearchTicker()
 
-  const pollingOperationId = search.data?.operation?.id ?? null
-  const poll = useTwitterOperationPoll(pollingOperationId, () => {
-    queryClient.invalidateQueries({ queryKey: ['twitter', 'feed'] })
-  })
-  const isRefreshing =
-    search.isPending || poll.data?.status === 'running' || poll.data?.status === 'queued'
-
-  function changeSort(next: TwitterSort) {
-    setSort(next)
-    setPage(1)
+  function update(next: Partial<MentionsView>) {
+    setView({ ...current, ...next })
   }
 
   function toggleTweetType(value: TweetType) {
-    setTweetTypes((current) =>
-      current.includes(value) ? current.filter((t) => t !== value) : [...current, value]
-    )
-    setPage(1)
-  }
-
-  function openRefreshDialog() {
-    setMinimumViews(2000)
-    setRefreshDialogOpen(true)
-  }
-
-  function runSearch() {
-    search.mutate({ ticker, sort, minViews: minimumViews })
-    setRefreshDialogOpen(false)
+    const tweetTypes = current.tweetTypes.includes(value)
+      ? current.tweetTypes.filter((type) => type !== value)
+      : [...current.tweetTypes, value]
+    update({ tweetTypes, page: 1 })
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
+    <section aria-labelledby={headingId} className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 id={headingId} className="text-sm font-semibold">
+          Trusted-account mentions
+        </h3>
         <div className="flex items-center gap-1">
-          {SORT_OPTIONS.map((opt) => (
+          {SORT_OPTIONS.map((option) => (
             <Button
-              key={opt.value}
+              key={option.value}
               size="sm"
-              variant={sort === opt.value ? 'secondary' : 'ghost'}
-              onClick={() => changeSort(opt.value)}
+              variant={current.sort === option.value ? 'secondary' : 'ghost'}
+              aria-pressed={current.sort === option.value}
+              onClick={() => update({ sort: option.value, page: 1 })}
             >
-              {opt.label}
+              {option.label}
             </Button>
           ))}
         </div>
-        <Button size="sm" variant="outline" disabled={isRefreshing} onClick={openRefreshDialog}>
-          <RefreshCw className={cn(isRefreshing && 'animate-spin')} />
-          Refresh
-        </Button>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-muted-foreground text-xs">Type</span>
         <div className="flex flex-wrap gap-1">
-          {TWEET_TYPE_OPTIONS.map((opt) => (
+          {TWEET_TYPE_OPTIONS.map((option) => (
             <Button
-              key={opt.value}
+              key={option.value}
               size="sm"
-              variant={tweetTypes.includes(opt.value) ? 'secondary' : 'ghost'}
-              onClick={() => toggleTweetType(opt.value)}
+              variant={current.tweetTypes.includes(option.value) ? 'secondary' : 'ghost'}
+              aria-pressed={current.tweetTypes.includes(option.value)}
+              onClick={() => toggleTweetType(option.value)}
             >
-              {opt.label}
+              {option.label}
             </Button>
           ))}
         </div>
@@ -134,17 +110,17 @@ export function TwitterTab({ ticker }: { ticker: string }) {
       {isPending && <Skeleton className="h-64 rounded-xl" />}
       {isError && <ErrorState error={error} onRetry={() => refetch()} />}
 
-      {data && data.items.length === 0 && tweetTypes.length > 0 && (
+      {data && data.items.length === 0 && current.tweetTypes.length > 0 && (
         <EmptyState
-          title={`No ${ticker} tweets match the selected type(s)`}
-          description="Try clearing the type filter above or wait for classification to catch up."
+          title={`No ${ticker} mentions match the selected type(s)`}
+          description="Clear the type filter or wait for classification to catch up."
         />
       )}
 
-      {data && data.items.length === 0 && tweetTypes.length === 0 && (
+      {data && data.items.length === 0 && current.tweetTypes.length === 0 && (
         <EmptyState
-          title={`No tweets found for ${ticker} yet`}
-          description="No trusted-account activity yet — click refresh to search X directly for this ticker."
+          title={`No trusted-account mentions of ${ticker} in the last 72 hours.`}
+          description="Mentions appear here as trusted accounts post about this ticker."
         />
       )}
 
@@ -158,61 +134,33 @@ export function TwitterTab({ ticker }: { ticker: string }) {
 
           <div className="flex items-center justify-between">
             <p className="text-muted-foreground text-xs">
-              Showing {(page - 1) * data.page_size + 1}–{(page - 1) * data.page_size + data.items.length}{' '}
-              of {data.total}
+              Showing {(current.page - 1) * data.page_size + 1}–
+              {(current.page - 1) * data.page_size + data.items.length} of {data.total}
             </p>
             <Pagination
-              page={page}
+              page={current.page}
               totalPages={Math.max(1, Math.ceil(data.total / data.page_size))}
-              onPageChange={setPage}
+              onPageChange={(page) => update({ page })}
             />
           </div>
         </>
       )}
 
       <TweetDetailDialog post={selectedPost} onOpenChange={(open) => !open && setSelectedPost(null)} />
+    </section>
+  )
+}
 
-      <Dialog open={refreshDialogOpen} onOpenChange={setRefreshDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Refresh {ticker} tweets</DialogTitle>
-            <DialogDescription>
-              Choose the minimum number of views a tweet needs for this refresh.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-2 py-2">
-            <p className="text-sm font-medium">Minimum views</p>
-            <div className="grid grid-cols-2 gap-2">
-              {MINIMUM_VIEW_OPTIONS.map((value) => (
-                <Button
-                  key={value}
-                  type="button"
-                  variant={minimumViews === value ? 'default' : 'outline'}
-                  aria-pressed={minimumViews === value}
-                  onClick={() => setMinimumViews(value)}
-                >
-                  {minimumViews === value && <Check />}
-                  {value.toLocaleString()} views
-                </Button>
-              ))}
-            </div>
-            <p className="bg-primary/5 text-primary rounded-lg px-3 py-2 text-sm font-medium">
-              Selected: {minimumViews.toLocaleString()} minimum views
-            </p>
-          </div>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button type="button" variant="outline">
-                Cancel
-              </Button>
-            </DialogClose>
-            <Button type="button" onClick={runSearch}>
-              <RefreshCw />
-              Refresh
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+/**
+ * A ticker's Twitter view: posts from its confirmed company account first, then what
+ * trusted accounts said about it. Each section pages on its own; only the company
+ * section can collect, and only while this tab is the one on screen.
+ */
+export function TwitterTab({ ticker }: { ticker: string }) {
+  return (
+    <div className="space-y-8">
+      <CompanyPostsSection ticker={ticker} />
+      <TrustedMentions ticker={ticker} />
     </div>
   )
 }

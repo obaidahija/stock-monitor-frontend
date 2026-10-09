@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 const CHART_WIDGET_SRC = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js'
-const QUOTE_WIDGET_SRC = 'https://s3.tradingview.com/external-embedding/embed-widget-symbol-info.js'
-const DEFAULT_CHART_HEIGHT = 'h-[600px]'
+// TradingView's script sets an inline `height: 100%` on its container, so the
+// height has to live on a wrapper: without one the chart collapses to 150px.
+const CHART_HEIGHT_CLASSES = 'h-[360px] sm:h-[520px]'
 
 // TradingView's embeds only read their config at script-init time, so a
 // theme change requires tearing down and re-appending the widget rather than
@@ -15,7 +16,7 @@ const DEFAULT_CHART_HEIGHT = 'h-[600px]'
 // its own when its container resizes (e.g. maximizing) — no re-init needed
 // for that.
 //
-// Both widgets render into a genuine cross-origin <iframe> on
+// The widget renders into a genuine cross-origin <iframe> on
 // tradingview-widget.com (confirmed by inspecting the live DOM), so no
 // host-page CSS can reach their internals — background/theming can only be
 // controlled through the JSON config each widget reads at init.
@@ -42,7 +43,6 @@ function mountTradingViewWidget(container: HTMLDivElement, src: string, config: 
 }
 
 export function PriceChart({ ticker }: { ticker: string }) {
-  const quoteContainerRef = useRef<HTMLDivElement>(null)
   const chartContainerRef = useRef<HTMLDivElement>(null)
   const { resolvedTheme } = useTheme()
   const [isMaximized, setIsMaximized] = useState(false)
@@ -60,27 +60,6 @@ export function PriceChart({ ticker }: { ticker: string }) {
       window.removeEventListener('keydown', onKeyDown)
     }
   }, [isMaximized])
-
-  // The Symbol Info strip: a small live quote bar (last price, change,
-  // change %, open/high/low/volume) from the same TradingView feed as the
-  // chart below it — the chart itself is an opaque iframe with no exposed
-  // price API, so this is the practical way to surface a live number.
-  //
-  // isTransparent must stay false: with it true, this particular widget
-  // renders a solid white panel regardless of colorTheme (verified — it
-  // doesn't actually turn transparent, just breaks dark mode). false +
-  // colorTheme gives it a real themed background that matches the chart.
-  useEffect(() => {
-    const container = quoteContainerRef.current
-    if (!container) return
-    return mountTradingViewWidget(container, QUOTE_WIDGET_SRC, {
-      symbol: ticker,
-      width: '100%',
-      locale: 'en',
-      colorTheme: theme,
-      isTransparent: false,
-    })
-  }, [ticker, theme])
 
   useEffect(() => {
     const container = chartContainerRef.current
@@ -120,21 +99,15 @@ export function PriceChart({ ticker }: { ticker: string }) {
             {isMaximized ? <Minimize2 /> : <Maximize2 />}
           </Button>
         </CardHeader>
-        <CardContent className={cn('flex flex-col gap-2', isMaximized && 'flex-1')}>
-          <div
-            ref={quoteContainerRef}
-            className="tradingview-widget-container w-full shrink-0"
-            aria-label={`Live quote for ${ticker}`}
-          />
-          <div
-            ref={chartContainerRef}
-            className={cn(
-              'tradingview-widget-container w-full',
-              isMaximized ? 'flex-1' : DEFAULT_CHART_HEIGHT,
-            )}
-            role="img"
-            aria-label={`Price chart for ${ticker}`}
-          />
+        <CardContent className={cn('flex flex-col', isMaximized && 'min-h-0 flex-1')}>
+          <div className={cn('w-full', isMaximized ? 'min-h-0 flex-1' : CHART_HEIGHT_CLASSES)}>
+            <div
+              ref={chartContainerRef}
+              className="tradingview-widget-container h-full w-full"
+              role="img"
+              aria-label={`Price chart for ${ticker}`}
+            />
+          </div>
         </CardContent>
       </Card>
     </>

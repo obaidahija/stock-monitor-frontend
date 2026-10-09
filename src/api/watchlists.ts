@@ -53,6 +53,8 @@ export interface ManualSetupInput extends SetupTimingInput {
   take_profit: number
   note?: string
   replace_existing?: boolean
+  /** Only when saving from a Short Squeeze match; the server checks its ticker and side. */
+  strategy_observation_id?: number
 }
 
 export interface AiSetupInput {

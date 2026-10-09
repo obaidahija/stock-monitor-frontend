@@ -34,10 +34,6 @@ vi.mock('@/features/research/hooks', () => ({
   }),
 }))
 
-vi.mock('./sentiment-trend-chart', () => ({
-  SentimentTrendChart: () => null,
-}))
-
 vi.mock('./chart-pattern-card', () => ({
   ChartPatternCard: () => null,
 }))
@@ -443,4 +439,101 @@ test('falls back to the capped live list while history has not loaded', () => {
   expect(screen.getByText('BMO Capital')).toBeInTheDocument()
   expect(screen.getByText('Upgraded')).toBeInTheDocument()
   expect(screen.getByText(/refreshing…/)).toBeInTheDocument()
+})
+
+test('shows the live composite as secondary text in New York time', async () => {
+  renderAnalysisTab({ ...baseAnalysis, overall_score: 0.25 })
+
+  expect(await screen.findByText('composite +0.25 · Aug 26, 8:00 AM ET')).toBeInTheDocument()
+  expect(screen.queryByText(/Universe score/)).not.toBeInTheDocument()
+})
+
+test('summarises the research window in one line above the score factors', async () => {
+  researchCapabilities.swing = true
+  renderAnalysisTab(
+    {
+      ...baseAnalysis,
+      research_window: selectedWindow,
+      selected_volatility: selectedVolatility({
+        move_pct: 5.19,
+        reason: null,
+        quality: { ...selectedVolatility().quality, status: 'ok', reasons: [] },
+      }),
+      event_window: {
+        window: selectedWindow,
+        events: [], near_after_expiry: [], highest_severity: null,
+        coverage_status: 'complete', coverage_sources: [], conflicts: [],
+        evaluated_at: '2026-09-21T18:00:00Z', collection_enabled: true,
+        historical_knowledge: false,
+      },
+    },
+    ['/stocks/NVDA?horizon_sessions=3'],
+  )
+
+  const summary = (await screen.findByText('3-session window')).closest('summary')
+  expect(summary).toHaveTextContent(
+    '3-session window · expires Wed, Sep 23, 4:00 PM ET · typical move ±5.2% · no listed events',
+  )
+  const factors = screen.getByText(/Score factors/)
+  expect(summary!.compareDocumentPosition(factors) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})
+
+test('states an unchanged price target once', () => {
+  vi.mocked(useAnalystPriceTargetHistory).mockReturnValue({
+    data: [
+      {
+        firm: 'Cantor Fitzgerald',
+        action_at: '2026-10-01T17:34:00Z',
+        price_target_action: 'Maintains',
+        current_price_target: 350,
+        prior_price_target: 350,
+        pct_change: 0,
+        action: 'reit',
+        from_grade: 'Overweight',
+        to_grade: 'Overweight',
+        is_qualifying_change: false,
+      },
+    ],
+    isFetching: false,
+  } as never)
+
+  renderAnalysisTab({ ...baseAnalysis, analyst_detail: baseAnalystDetail })
+
+  expect(screen.getByText('$350.00')).toBeInTheDocument()
+  expect(screen.getByText('(unchanged)')).toBeInTheDocument()
+  expect(screen.queryByText(/\$350\.00 → \$350\.00/)).not.toBeInTheDocument()
+  // Rating actions are dated in New York time.
+  expect(screen.getByText('Oct 1, 2026')).toBeInTheDocument()
+  expect(screen.getByText('1:34 PM ET')).toBeInTheDocument()
+})
+
+test('the research window stays open while a newly chosen window loads', () => {
+  researchCapabilities.swing = true
+  const analysis = { ...baseAnalysis, research_window: selectedWindow, selected_volatility: selectedVolatility() }
+  let loading = false
+  vi.mocked(useAnalysis).mockImplementation((_ticker, _extras, enabled = true) =>
+    ({
+      data: enabled && !loading ? analysis : undefined,
+      isPending: enabled && loading,
+      isError: false,
+      isFetching: false,
+      error: null,
+      refetch: vi.fn(),
+    }) as never,
+  )
+  vi.mocked(useUniverseScore).mockReturnValue({ data: null, isPending: false } as never)
+  vi.mocked(useRefreshUniverseScore).mockReturnValue({ isPending: false, mutate: vi.fn() } as never)
+  const view = renderWithProviders(<AnalysisTab ticker="NVDA" />, ['/stocks/NVDA?horizon_sessions=3'])
+
+  const details = screen.getByText('3-session window').closest('details')!
+  details.open = true
+  fireEvent(details, new Event('toggle'))
+
+  loading = true
+  fireEvent.change(screen.getByLabelText('Research window'), { target: { value: '7' } })
+  expect(screen.queryByText(/Score factors/)).not.toBeInTheDocument()
+
+  loading = false
+  view.rerender(<AnalysisTab ticker="NVDA" />)
+  expect(screen.getByText('7-session window').closest('details')).toHaveAttribute('open')
 })

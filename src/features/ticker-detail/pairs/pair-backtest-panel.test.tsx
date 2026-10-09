@@ -95,6 +95,7 @@ test('a saved backtest shows its dates, period and a refresh button', async () =
   expect(await screen.findByRole('button', { name: 'Refresh backtest' })).toBeEnabled()
   const ran = screen.getByText(/^Backtested/)
   expect(ran.querySelector('time')).toHaveAttribute('datetime', completedBacktest.generated_at)
+  expect(ran.querySelector('time')?.textContent).toMatch(/ ET$/)
   const period = screen.getByText(/^Evaluated/)
   expect(period).toHaveTextContent('252 sessions')
   expect(period.querySelector('time')).toHaveAttribute(

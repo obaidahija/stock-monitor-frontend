@@ -10,6 +10,40 @@ Discover starts with **Research first**, a ten-stock research shortlist for the 
 and shows data limits and timing risks. The Morning Digest displays the snapshots saved
 when it was built; changing the window there selects another saved snapshot.
 
+## Short Squeeze Strategy (Discover)
+
+Below Fresh catalysts, **Short Squeeze Strategy** lists the latest completed session's matches for
+the backend's daily scanner (rule `short-squeeze-daily-v2`): short float above 7%, days to cover
+above 5, and a gain above 7% or a close at or above the prior 252-session high. Rule v1 counted an
+intraday touch of that high, which matched reversal days. The section appears when
+`short_squeeze_scanner_enabled` is on (an older backend without that capability reads as off), or
+while it is off but a cached publication exists, labelled "Collection off · cached results". An
+enabled scan with no matches still shows its coverage line. Filters live in the URL as
+`squeeze_status`, `squeeze_sort` and `squeeze_page`; invalid values fall back to matches / daily
+move / page 1, and changing a filter resets only `squeeze_page`. Mounting the section issues GET
+requests only.
+
+Rows name the price branch that qualified ("Daily gain", "Closed at prior high" or both), warn when
+a gain match touched the prior high and closed below it ("High touched; closed below") or the
+short-interest report date is unavailable, and show volume as "Completed session volume".
+**Inspect** opens the frozen condition checklist, provenance, the reference high (with the closing
+distance only when the session reached it; a stored v1 row shows its touch condition), and the
+recorded outcomes measured from the first close after discovery; the detail never shows a previous
+selection's evidence while a new one loads.
+
+From a matched evaluation, **Save setup** asks for one watchlist (an explicit checkbox is required
+to replace that list's current setup, and an explicit button creates a list when none exist), then
+opens the shared setup form prefilled long, five-session swing, with the dated signal close as an
+editable entry. Stop and target are entered by the user; **Use 8% target** proposes `entry × 1.08`
+only on request and stops following the entry once the target is edited. A corrected source needs a
+review checkbox before saving. The request carries `strategy_observation_id`; nothing is created
+until Save.
+
+Research Performance offers a **Short Squeeze Strategy** source (no origin filter) with the
+measurement note, a recorded-rows drill-down showing signal and baseline sessions, and the same CSV
+export filters. Research health shows the scanner's collection state, latest publication, coverage
+and warm-up checkpoints.
+
 ## Summary-first SEC tabs
 
 The ticker's Commitments and Filings tabs open with a compact business-impact card: explicit

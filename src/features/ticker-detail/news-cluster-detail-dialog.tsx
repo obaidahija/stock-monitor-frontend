@@ -12,7 +12,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState } from '@/components/shared/error-state'
 import { SentimentBadge } from '@/components/shared/sentiment-badge'
 import { getNewsClusterDetail } from '@/api/stocks'
-import { formatDateTime, stripHtml } from '@/lib/format'
+import { formatEasternDateTime, stripHtml } from '@/lib/format'
+import { formatSourceName } from '@/lib/labels'
 import { useExtractNewsItem } from './hooks'
 
 export function NewsClusterDetailDialog({
@@ -83,9 +84,9 @@ export function NewsClusterDetailDialog({
                     <p className="text-destructive text-xs">Couldn't summarize: {extractError}</p>
                   )}
                   <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
-                    <span>{item.source}</span>
+                    <span>{formatSourceName(item.source)}</span>
                     <span>·</span>
-                    <span>{formatDateTime(item.published_at)}</span>
+                    <span>{formatEasternDateTime(item.published_at)}</span>
                     {item.sentiment_label && (
                       <SentimentBadge label={item.sentiment_label} score={item.sentiment_score} />
                     )}

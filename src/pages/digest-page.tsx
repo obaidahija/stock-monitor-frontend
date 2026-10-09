@@ -8,9 +8,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { STAGE_META } from '@/components/shared/stage-badge'
 import { DigestLiveQuotes } from '@/features/digest/live-quotes'
-import { DigestItemCard } from '@/features/digest/digest-item-card'
+import { DigestSections } from '@/features/digest/digest-sections'
 import { selectDigestPresentation } from '@/features/digest/presentation'
-import { sectionMeta, sectionOf } from '@/features/digest/sections'
+import { sectionOf } from '@/features/digest/sections'
 import { DigestResearchFirst } from '@/features/research-first/research-first-panel'
 import {
   useBuildDigest,
@@ -19,7 +19,7 @@ import {
   type DigestView,
 } from '@/features/digest/hooks'
 import { useTelegramStatus } from '@/features/watchlists/hooks'
-import { formatDateTime, formatEasternDateTime } from '@/lib/format'
+import { formatEasternDateTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { DigestItem, DigestOut } from '@/types/api'
 
@@ -39,43 +39,8 @@ function editionLabel(digest: DigestOut): string {
     case 'intraday':
       return `Intraday update · captured ${captured}`
     default:
-      return `Generated ${formatDateTime(digest.generated_at)}`
+      return `Generated ${formatEasternDateTime(digest.generated_at)}`
   }
-}
-
-/** Sections in payload order: the backend already ranked them. */
-function DigestSections({ items }: { items: DigestItem[] }) {
-  const grouped = new Map<string, DigestItem[]>()
-  for (const item of items) {
-    const section = sectionOf(item)
-    const bucket = grouped.get(section)
-    if (bucket) bucket.push(item)
-    else grouped.set(section, [item])
-  }
-  return (
-    <>
-      {Array.from(grouped, ([section, sectionItems]) => {
-        const meta = sectionMeta(section)
-        return (
-          <section key={section} className="space-y-3">
-            <h2 className="flex items-center gap-2 font-semibold">
-              <meta.icon className="text-muted-foreground size-4" />
-              {meta.label}
-              <span className="text-muted-foreground text-sm font-normal">
-                ({sectionItems.length})
-              </span>
-            </h2>
-
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {sectionItems.map((item) => (
-                <DigestItemCard key={item.ticker} item={item} />
-              ))}
-            </div>
-          </section>
-        )
-      })}
-    </>
-  )
 }
 
 export function DigestPage() {

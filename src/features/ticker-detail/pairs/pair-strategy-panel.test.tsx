@@ -73,6 +73,7 @@ test('a saved analysis shows its dates, its status and a refresh button', async 
   expect(await screen.findByText('No unusual divergence')).toBeInTheDocument()
   const analyzed = screen.getByText(/^Analyzed/)
   expect(analyzed.querySelector('time')).toHaveAttribute('datetime', supportedStrategy.generated_at)
+  expect(analyzed.querySelector('time')?.textContent).toMatch(/ ET$/)
   const through = screen.getByText(/^Prices through/)
   expect(through.querySelector('time')).toHaveAttribute('datetime', '2026-09-30')
   expect(through).toHaveTextContent('Sep 30, 2026')

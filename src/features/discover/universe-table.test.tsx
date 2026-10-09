@@ -137,7 +137,7 @@ test.each([
   vi.setSystemTime(new Date(now))
   renderTable([universeRow({ ticker: 'SNX', next_earnings_date: earnings })])
 
-  expect(screen.getByText(new RegExp(`· ${days} calendar days`))).toBeInTheDocument()
+  expect(screen.getByText(new RegExp(days === 0 ? '· today' : `· in ${days}d`))).toBeInTheDocument()
   expect(screen.getByRole('link', { name: 'Check selected window' })).toHaveAttribute(
     'href', '/stocks/SNX?tab=analysis&horizon_sessions=5',
   )
@@ -149,7 +149,7 @@ test.each(['2026-09-18', '2026-09-27', '2026-11-18'])(
     vi.setSystemTime(new Date('2026-09-20T02:00:00Z'))
     renderTable([universeRow({ ticker: 'COST', next_earnings_date: earnings })])
 
-    expect(screen.queryByText(/· \d+ calendar days/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/· (in \d+d|today)/)).not.toBeInTheDocument()
   },
 )
 
@@ -158,4 +158,13 @@ test('shows the industry tag beside the sector tag', () => {
 
   expect(screen.getByTestId('industry-tag-CCJ')).toHaveTextContent('Uranium')
   expect(screen.getByRole('button', { name: 'Energy' })).toBeInTheDocument()
+})
+
+test('shows volume and float compactly with the exact number on hover', () => {
+  renderTable([
+    universeRow({ ticker: 'NVDA', volume: 1_082_683, short_percent_of_float: 2.0, float_shares: 280_964_657 }),
+  ])
+
+  expect(screen.getByText('1.08M')).toHaveAttribute('title', '1,082,683')
+  expect(screen.getByTestId('short-interest-NVDA')).toHaveTextContent('281M float')
 })

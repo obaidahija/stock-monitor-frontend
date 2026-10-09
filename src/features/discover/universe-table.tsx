@@ -19,7 +19,17 @@ import { ErrorState } from '@/components/shared/error-state'
 import { EmptyState } from '@/components/shared/empty-state'
 import { Pagination } from '@/components/shared/pagination'
 import { PATTERN_LABEL_SHORT, PatternBadge } from '@/components/shared/pattern-badge'
-import { formatCurrency, formatDate, formatNumber, formatOrdinal, formatRelativeTime, formatSignedPct } from '@/lib/format'
+import {
+  easternDaysUntil,
+  formatCompactNumber,
+  formatCurrency,
+  formatDate,
+  formatNumber,
+  formatOrdinal,
+  formatRelativeTime,
+  formatSignedPct,
+  formatSurprisePct,
+} from '@/lib/format'
 import { EARNINGS_RESULT_BADGE_CLASSES } from '@/lib/earnings-colors'
 import { cn } from '@/lib/utils'
 import { AddTickerDialog } from './add-ticker-dialog'
@@ -98,13 +108,13 @@ function EarningsCell({ item }: { item: UniverseTickerOut }) {
           >
             {item.last_earnings_result}
             {item.last_earnings_surprise_pct !== null &&
-              ` ${item.last_earnings_surprise_pct > 0 ? '+' : ''}${item.last_earnings_surprise_pct.toFixed(1)}%`}
+              ` ${formatSurprisePct(item.last_earnings_surprise_pct)}`}
           </span>
         )
       )}
       {item.next_earnings_date &&
         (() => {
-          const until = daysUntil(item.next_earnings_date)
+          const until = easternDaysUntil(item.next_earnings_date)
           const soon = until >= 0 && until <= EARNINGS_WINDOW_DAYS
           return (
             <>
@@ -119,7 +129,7 @@ function EarningsCell({ item }: { item: UniverseTickerOut }) {
               {item.next_earnings_bmo_amc &&
                 item.next_earnings_bmo_amc !== 'unknown' &&
                 ` (${item.next_earnings_bmo_amc.toUpperCase()})`}
-              {soon && ` · ${until} calendar ${until === 1 ? 'day' : 'days'}`}
+              {soon && ` · ${until === 0 ? 'today' : `in ${until}d`}`}
             </p>
             {soon && <Link className="text-muted-foreground text-xs underline-offset-2 hover:underline" to={`/stocks/${encodeURIComponent(item.ticker)}?tab=analysis&horizon_sessions=5`}>Check selected window</Link>}
             </>
@@ -135,23 +145,6 @@ function EarningsCell({ item }: { item: UniverseTickerOut }) {
 // A print inside this many days lands inside a 1-7 day hold, so the date is
 // marked rather than left reading like one three months out.
 const EARNINGS_WINDOW_DAYS = 7
-
-const EASTERN_DATE_FORMAT = new Intl.DateTimeFormat('en-US', {
-  timeZone: 'America/New_York',
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-})
-
-function daysUntil(dateString: string): number {
-  const parts = EASTERN_DATE_FORMAT.formatToParts(new Date())
-  const part = (type: Intl.DateTimeFormatPartTypes) =>
-    Number(parts.find((entry) => entry.type === type)?.value)
-  // Compare calendar dates on a UTC axis so DST cannot add or remove an hour.
-  const today = Date.UTC(part('year'), part('month') - 1, part('day'))
-  const [year, month, day] = dateString.split('-').map(Number)
-  return (Date.UTC(year, month - 1, day) - today) / 86_400_000
-}
 
 const DEFAULT_SORT: NonNullable<UniverseParams['sort']> = 'score'
 const DEFAULT_ORDER: NonNullable<UniverseParams['order']> = 'desc'
@@ -682,7 +675,9 @@ export function UniverseTable() {
                     {item.pe_ratio !== null ? `${item.pe_ratio.toFixed(1)}×` : '—'}
                   </TableCell>
                   <TableCell>
-                    <div className="tabular-nums">{formatNumber(item.volume)}</div>
+                    <div className="tabular-nums" title={item.volume === null ? undefined : formatNumber(item.volume)}>
+                      {formatCompactNumber(item.volume)}
+                    </div>
                     <div className="text-muted-foreground text-xs tabular-nums">
                       {item.volume_ratio !== null ? `${item.volume_ratio.toFixed(1)}×` : '—'}
                     </div>
@@ -696,7 +691,7 @@ export function UniverseTable() {
                         <div>{item.short_percent_of_float.toFixed(1)}%</div>
                         {item.float_shares !== null && (
                           <div className="text-muted-foreground text-xs">
-                            {formatNumber(item.float_shares)} float
+                            {formatCompactNumber(item.float_shares)} float
                           </div>
                         )}
                       </>
@@ -723,11 +718,11 @@ export function UniverseTable() {
                       <span className="text-muted-foreground">—</span>
                     )}
                   </TableCell>
-                  <TableCell className="max-w-32">
+                  <TableCell className="max-w-44 whitespace-normal">
                     {item.catalyst ? (
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <span className="block cursor-help truncate">{item.catalyst}</span>
+                          <span className="line-clamp-2 cursor-help break-words">{item.catalyst}</span>
                         </TooltipTrigger>
                         <TooltipContent>{item.catalyst}</TooltipContent>
                       </Tooltip>
