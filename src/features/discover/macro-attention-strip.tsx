@@ -1,5 +1,5 @@
 import { Link, useSearchParams } from 'react-router'
-import { TrendingDown, TrendingUp } from 'lucide-react'
+import { ShieldOff, TrendingDown, TrendingUp } from 'lucide-react'
 import { useMacroSectorImpact } from '@/features/macro/hooks'
 import { cn } from '@/lib/utils'
 import type { MacroSectorImpactBucketOut } from '@/types/api'
@@ -84,7 +84,28 @@ export function MacroAttentionStrip() {
         .sort(([, a], [, b]) => signalStrength(b) - signalStrength(a))
     : []
 
-  if (flagged.length === 0) return null
+  // Industries whose read DIVERGES from their sector's today -- inverted
+  // (Refining negative while Energy is positive), insulated (Uranium does
+  // not inherit Energy's oil read), or flagged where the sector has no read
+  // at all (Solar on an oil headline). Same-direction refinements are
+  // omitted: the sector pill already says it.
+  const diverging = data
+    ? Object.entries(data.industries ?? {})
+        .filter(([, bucket]) => {
+          if (bucket.net !== 'positive' && bucket.net !== 'negative' && bucket.net !== 'insulated') {
+            return false
+          }
+          const sectorNet = bucket.sector ? data.sectors[bucket.sector]?.net : undefined
+          return bucket.net !== sectorNet
+        })
+        .sort(([, a], [, b]) => {
+          const ins = (b.net === 'insulated' ? 0 : 1) - (a.net === 'insulated' ? 0 : 1)
+          return ins !== 0 ? ins : signalStrength(b) - signalStrength(a)
+        })
+    : []
+  const activeIndustry = searchParams.get('industry')
+
+  if (flagged.length === 0 && diverging.length === 0) return null
 
   const totalPositive = flagged
     .filter(([, b]) => b.net === 'positive')
@@ -94,6 +115,21 @@ export function MacroAttentionStrip() {
     .reduce((sum, [, b]) => sum + signalStrength(b), 0)
   const dominant: Dominant =
     totalPositive === totalNegative ? 'mixed' : totalPositive > totalNegative ? 'positive' : 'negative'
+
+  function toggleIndustry(sector: string, industry: string) {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (activeSector === sector && activeIndustry === industry) {
+        next.delete('sector')
+        next.delete('industry')
+      } else {
+        next.set('sector', sector)
+        next.set('industry', industry)
+      }
+      next.delete('page')
+      return next
+    })
+  }
 
   function toggleSector(sector: string) {
     setSearchParams((prev) => {
@@ -150,6 +186,51 @@ export function MacroAttentionStrip() {
           )
         })}
       </div>
+      {diverging.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Industries diverging from their sector today">
+          <span className="text-muted-foreground mr-1 text-xs">Diverging industries</span>
+          {diverging.map(([industry, bucket]) => {
+            const sector = bucket.sector ?? ''
+            const isActive = activeSector === sector && activeIndustry === industry
+            const Icon =
+              bucket.net === 'positive' ? TrendingUp : bucket.net === 'negative' ? TrendingDown : ShieldOff
+            const tone =
+              bucket.net === 'insulated'
+                ? 'text-muted-foreground'
+                : NET_TEXT_CLASSES[bucket.net as 'positive' | 'negative']
+            const title =
+              bucket.net === 'insulated'
+                ? `${industry} does not inherit ${sector}'s macro read today: ${bucket.items[0]?.rationale ?? ''}`
+                : `${industry} reads ${bucket.net} while ${sector} reads ${data?.sectors[sector]?.net ?? 'nothing'}: ${bucket.items[0]?.rationale ?? ''}`
+            return (
+              <button
+                key={industry}
+                type="button"
+                onClick={() => toggleIndustry(sector, industry)}
+                aria-pressed={isActive}
+                title={title}
+                data-testid={`diverging-industry-${industry}`}
+                className={cn(
+                  'flex items-center gap-1.5 rounded-full border border-dashed px-2.5 py-0.5 text-xs transition-colors',
+                  isActive
+                    ? cn('text-foreground', bucket.net === 'insulated' ? 'bg-muted' : NET_BORDER_TINT[bucket.net as 'positive' | 'negative'])
+                    : 'border-border text-muted-foreground hover:bg-muted hover:text-foreground',
+                )}
+              >
+                <Icon className={cn('size-3.5 shrink-0', tone)} aria-hidden="true" />
+                {industry}
+                <span className="text-muted-foreground/70">· {sector}</span>
+                {bucket.net !== 'insulated' && (
+                  <span className={cn('tabular-nums', tone)}>
+                    {bucket.net === 'positive' ? '+' : '−'}
+                    {signalStrength(bucket)}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

@@ -141,13 +141,36 @@ function OutcomeNote({ impact }: { impact: MarketEventSectorImpactOut }) {
   )
 }
 
+/** Sector rows first, each followed by its industry-level reads (which
+ * refine or invert the sector call); industries whose sector has no read of
+ * its own trail at the end. */
+function orderImpacts(impacts: MarketEventSectorImpactOut[]): MarketEventSectorImpactOut[] {
+  const sectors = impacts.filter((i) => !i.industry)
+  const industries = impacts.filter((i) => i.industry)
+  const ordered: MarketEventSectorImpactOut[] = []
+  for (const sector of sectors) {
+    ordered.push(sector, ...industries.filter((i) => i.sector === sector.sector))
+  }
+  ordered.push(...industries.filter((i) => !sectors.some((s) => s.sector === i.sector)))
+  return ordered
+}
+
 function SectorImpactRow({ impact }: { impact: MarketEventSectorImpactOut }) {
   return (
-    <div className="space-y-1 py-2 first:pt-0">
+    <div className={cn('space-y-1 py-2 first:pt-0', impact.industry && 'pl-4')}>
       <div className="flex flex-wrap items-center gap-1.5 text-xs">
         <Badge className={cn('border-transparent', DIRECTION_CLASSES[impact.predicted_direction])}>
-          {impact.sector} · predicted {impact.predicted_direction}
+          {impact.industry ? `${impact.sector} › ${impact.industry}` : impact.sector} · predicted{' '}
+          {impact.predicted_direction}
         </Badge>
+        {impact.industry && (
+          <span
+            className="text-muted-foreground"
+            title="Industry reads refine or override the sector read and are not graded"
+          >
+            industry
+          </span>
+        )}
         {impact.current_trend_pct !== null && (
           <span className="text-muted-foreground">
             currently {impact.current_trend_pct.toFixed(1)}% (20d trend)
@@ -205,10 +228,10 @@ function EventCard({ event, defaultExpanded }: { event: MarketEventOut; defaultE
           </div>
           {event.sector_impacts.length > 0 ? (
             <div>
-              <p className="text-xs font-medium">Likely sector impact</p>
+              <p className="text-xs font-medium">Likely sector &amp; industry impact</p>
               <div className="divide-border divide-y">
-                {event.sector_impacts.map((impact) => (
-                  <SectorImpactRow key={impact.sector} impact={impact} />
+                {orderImpacts(event.sector_impacts).map((impact) => (
+                  <SectorImpactRow key={`${impact.sector}|${impact.industry ?? ''}`} impact={impact} />
                 ))}
               </div>
             </div>

@@ -190,13 +190,13 @@ test('collapsing and re-expanding an event toggles its detail', async () => {
   renderWithProviders(<MarketEventsList />)
 
   const toggle = screen.getByRole('button', { name: /FOMC rate decision/ })
-  expect(screen.getByText('Likely sector impact')).toBeInTheDocument()
+  expect(screen.getByText('Likely sector & industry impact')).toBeInTheDocument()
 
   await user.click(toggle)
-  expect(screen.queryByText('Likely sector impact')).not.toBeInTheDocument()
+  expect(screen.queryByText('Likely sector & industry impact')).not.toBeInTheDocument()
 
   await user.click(toggle)
-  expect(await screen.findByText('Likely sector impact')).toBeInTheDocument()
+  expect(await screen.findByText('Likely sector & industry impact')).toBeInTheDocument()
 })
 
 test('renders sector-impact rationale and a not-graded-yet outcome note when expanded', () => {
@@ -319,4 +319,56 @@ test('clicking refresh triggers the mutation', async () => {
   await user.click(screen.getByRole('button', { name: 'Refresh' }))
 
   expect(mutate).toHaveBeenCalledTimes(1)
+})
+
+test('industry reads render indented under their sector read and are labelled', async () => {
+  hooks.useMarketEvents.mockReturnValue({
+    data: snapshot({
+      events: [
+        event({
+          sector_impacts: [
+            {
+              sector: 'Energy',
+              industry: 'Oil & Gas Refining & Marketing',
+              rationale: 'Crude is the refiner input.',
+              predicted_direction: 'negative',
+              via_category: null,
+              current_trend_pct: null,
+              graded: false,
+              actual_direction: null,
+              hit: null,
+              trend_pct_before: null,
+              trend_pct_after: null,
+            },
+            {
+              sector: 'Energy',
+              industry: null,
+              rationale: 'Energy tracks oil.',
+              predicted_direction: 'positive',
+              via_category: null,
+              current_trend_pct: 2.5,
+              graded: false,
+              actual_direction: null,
+              hit: null,
+              trend_pct_before: null,
+              trend_pct_after: null,
+            },
+          ],
+        }),
+      ],
+    }),
+    isPending: false,
+    isError: false,
+    error: null,
+  })
+  renderWithProviders(<MarketEventsList />)
+  const toggle = screen.getByRole('button', { name: /FOMC rate decision/ })
+  if (toggle.getAttribute('aria-expanded') === 'false') await userEvent.click(toggle)
+
+  const sectorBadge = screen.getByText(/^Energy · predicted positive/)
+  const industryBadge = screen.getByText(/Energy › Oil & Gas Refining & Marketing · predicted/)
+  expect(industryBadge).toHaveTextContent('negative')
+  // Sector row comes first, its industry read follows.
+  expect(sectorBadge.compareDocumentPosition(industryBadge) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(screen.getByText('industry')).toBeInTheDocument()
 })

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { ChevronDown, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -7,7 +7,7 @@ import { ErrorState } from '@/components/shared/error-state'
 import { ApiError } from '@/lib/api-client'
 import { formatDate, formatRelativeTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import type { MacroSectorImpactBucketOut } from '@/types/api'
+import type { MacroSectorImpactBucketOut, MacroSectorImpactItemOut } from '@/types/api'
 import { macroCategoryLabel } from './constants'
 import { useMacroSectorImpact, useMacroSectorImpactDates, useRefreshMacroSectorImpact } from './hooks'
 
@@ -16,6 +16,13 @@ const NET_BADGE_CLASSES: Record<MacroSectorImpactBucketOut['net'], string> = {
   negative: 'bg-red-500/15 text-red-600 dark:text-red-400 border-transparent',
   mixed: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-transparent',
   neutral: 'bg-muted text-muted-foreground border-transparent',
+  insulated: 'bg-muted text-muted-foreground border-transparent',
+}
+
+const ITEM_DIRECTION_CLASSES: Record<MacroSectorImpactItemOut['direction'], string> = {
+  positive: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
+  negative: 'bg-red-500/15 text-red-600 dark:text-red-400',
+  insulated: 'bg-muted text-muted-foreground',
 }
 
 function StatTile({ label, value }: { label: string; value: string }) {
@@ -32,33 +39,47 @@ function StatTile({ label, value }: { label: string; value: string }) {
 // pair the app already uses for bullish/bearish elsewhere (lean-colors.ts).
 // A tornado-style leaderboard (most-bullish sector on top) reads faster than
 // a fixed alphabetical order for a "what's under pressure right now" view.
-function SectorRow({
-  sector,
+// The same row renders an industry read indented under its sector: an
+// industry rule refines, inverts, or insulates the sector call for tickers
+// in that industry (see macro_transmission_rules.INDUSTRY_TRANSMISSION_RULES).
+function ImpactRow({
+  label,
   bucket,
   maxCount,
+  industry = false,
 }: {
-  sector: string
+  label: string
   bucket: MacroSectorImpactBucketOut
   maxCount: number
+  industry?: boolean
 }) {
   const [expanded, setExpanded] = useState(false)
   const negPct = (bucket.negative_count / maxCount) * 100
   const posPct = (bucket.positive_count / maxCount) * 100
 
   return (
-    <div className="border-border rounded-lg border">
+    <div className={cn('border-border rounded-lg border', industry && 'ml-6 border-dashed')}>
       <button
         type="button"
         onClick={() => setExpanded((e) => !e)}
-        className="hover:bg-muted/50 flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors"
+        className={cn(
+          'hover:bg-muted/50 flex w-full items-center gap-3 px-3 text-left transition-colors',
+          industry ? 'py-1.5' : 'py-2.5',
+        )}
         aria-expanded={expanded}
+        data-testid={industry ? `industry-row-${label}` : `sector-row-${label}`}
       >
         {expanded ? (
           <ChevronDown className="text-muted-foreground size-4 shrink-0" aria-hidden="true" />
         ) : (
           <ChevronRight className="text-muted-foreground size-4 shrink-0" aria-hidden="true" />
         )}
-        <span className="w-36 shrink-0 truncate text-sm font-medium">{sector}</span>
+        <span
+          className={cn('shrink-0 truncate', industry ? 'w-[7.5rem] text-xs' : 'w-36 text-sm font-medium')}
+          title={label}
+        >
+          {label}
+        </span>
         <div className="flex h-5 min-w-0 flex-1 items-center">
           <div className="flex h-full flex-1 items-center justify-end overflow-hidden">
             <div
@@ -88,14 +109,7 @@ function SectorRow({
           {bucket.items.map((item) => (
             <div key={`${item.id}-${item.via_category ?? item.category}`} className="space-y-1 pt-3 first:pt-0">
               <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                <Badge
-                  className={cn(
-                    'border-transparent capitalize',
-                    item.direction === 'positive'
-                      ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-                      : 'bg-red-500/15 text-red-600 dark:text-red-400',
-                  )}
-                >
+                <Badge className={cn('border-transparent capitalize', ITEM_DIRECTION_CLASSES[item.direction])}>
                   {item.direction}
                 </Badge>
                 <span className="text-muted-foreground">
@@ -117,6 +131,9 @@ function SectorRow({
               >
                 {item.title}
               </a>
+              {item.rationale && (
+                <p className="text-muted-foreground text-xs italic">{item.rationale}</p>
+              )}
               {item.direction_note && (
                 <p className="text-muted-foreground text-xs">{item.direction_note}</p>
               )}
@@ -124,6 +141,18 @@ function SectorRow({
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+/** A sector reached only through industry reads (e.g. Technology via Solar
+ * on an oil headline) has no bar of its own -- just a heading for them. */
+function SectorHeadingRow({ sector }: { sector: string }) {
+  return (
+    <div className="text-muted-foreground flex items-center gap-3 px-3 py-1.5 text-sm">
+      <span className="w-4 shrink-0" aria-hidden="true" />
+      <span className="w-36 shrink-0 truncate font-medium">{sector}</span>
+      <span className="text-xs">no sector-level read — industry reads only</span>
     </div>
   )
 }
@@ -157,9 +186,26 @@ export function MacroSectorImpact() {
           b.positive_count - b.negative_count - (a.positive_count - a.negative_count),
       )
     : []
+  // Industry buckets grouped under their sector, most-bullish first; a
+  // sector with industry reads but no read of its own still gets a heading.
+  const industryEntries = Object.entries(data?.industries ?? {})
+  const industriesBySector = new Map<string, [string, MacroSectorImpactBucketOut][]>()
+  for (const entry of industryEntries) {
+    const sector = entry[1].sector ?? '—'
+    industriesBySector.set(sector, [...(industriesBySector.get(sector) ?? []), entry])
+  }
+  for (const list of industriesBySector.values()) {
+    list.sort(
+      ([, a], [, b]) => b.positive_count - b.negative_count - (a.positive_count - a.negative_count),
+    )
+  }
+  const sectorsWithoutBucket = [...industriesBySector.keys()].filter(
+    (sector) => !data?.sectors[sector],
+  )
   const maxCount = Math.max(
     1,
     ...sortedSectors.flatMap(([, bucket]) => [bucket.positive_count, bucket.negative_count]),
+    ...industryEntries.flatMap(([, bucket]) => [bucket.positive_count, bucket.negative_count]),
   )
 
   return (
@@ -232,13 +278,14 @@ export function MacroSectorImpact() {
 
         {data && !isPending && !refresh.isPending && (
           <>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <StatTile label="Considered" value={String(data.items_considered)} />
               <StatTile label="Resolved" value={String(data.items_resolved)} />
               <StatTile label="Sectors flagged" value={String(sortedSectors.length)} />
+              <StatTile label="Industries flagged" value={String(industryEntries.length)} />
             </div>
 
-            {sortedSectors.length === 0 ? (
+            {sortedSectors.length === 0 && industryEntries.length === 0 ? (
               <p className="text-muted-foreground text-sm">
                 No relevant macro items resolved to a directional sector signal in the last{' '}
                 {data.window_hours}h.
@@ -246,7 +293,20 @@ export function MacroSectorImpact() {
             ) : (
               <div className="space-y-1.5">
                 {sortedSectors.map(([sector, bucket]) => (
-                  <SectorRow key={sector} sector={sector} bucket={bucket} maxCount={maxCount} />
+                  <Fragment key={sector}>
+                    <ImpactRow label={sector} bucket={bucket} maxCount={maxCount} />
+                    {(industriesBySector.get(sector) ?? []).map(([industry, ibucket]) => (
+                      <ImpactRow key={industry} label={industry} bucket={ibucket} maxCount={maxCount} industry />
+                    ))}
+                  </Fragment>
+                ))}
+                {sectorsWithoutBucket.map((sector) => (
+                  <Fragment key={sector}>
+                    <SectorHeadingRow sector={sector} />
+                    {(industriesBySector.get(sector) ?? []).map(([industry, ibucket]) => (
+                      <ImpactRow key={industry} label={industry} bucket={ibucket} maxCount={maxCount} industry />
+                    ))}
+                  </Fragment>
                 ))}
               </div>
             )}

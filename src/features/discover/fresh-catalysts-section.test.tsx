@@ -1,5 +1,6 @@
-import { cleanup, fireEvent, screen, within } from '@testing-library/react'
-import { afterEach, expect, test, vi } from 'vitest'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { afterEach, beforeEach, expect, test, vi } from 'vitest'
+import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '@/test/render'
 import { FreshCatalystsSection, volumeLabel } from './fresh-catalysts-section'
 import { useFreshCatalysts } from './hooks'
@@ -9,10 +10,15 @@ vi.mock('./hooks', async (importOriginal) => ({
   useFreshCatalysts: vi.fn(),
 }))
 vi.mock('@/features/research/hooks', () => ({
-  useResearchCapabilities: () => ({ data: { swing_research_enabled: true }, isPending: false }),
+  useResearchCapabilities: () => ({ data: { swing_research_enabled: true, catalyst_scanner_enabled: true }, isPending: false }),
 }))
 
-afterEach(() => { cleanup(); vi.clearAllMocks() })
+beforeEach(() => { vi.spyOn(HTMLElement.prototype, 'scrollIntoView') })
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.clearAllMocks() })
+
+function openCatalysts() {
+  fireEvent.click(screen.getByRole('button', { name: /Show all \d+ catalysts/ }))
+}
 
 test('pending volume is never a zero-volume observation', () => {
   expect(volumeLabel(null)).toBe('Daily volume confirmation pending')
@@ -31,10 +37,11 @@ test('separates headline from observed down move and keeps quote-only volume pen
   } as never)
 
   renderWithProviders(<FreshCatalystsSection />)
-  expect(screen.getByText('ABC wins a major contract')).toBeInTheDocument()
-  expect(screen.getByText(/-2.00%/)).toBeInTheDocument()
+  openCatalysts()
+  expect(within(screen.getByRole('dialog')).getByText('ABC wins a major contract')).toBeInTheDocument()
+  expect(within(screen.getByRole('dialog')).getByText(/-2.00%/)).toBeInTheDocument()
   expect(screen.getByText(/Daily volume comparison unavailable/)).toBeInTheDocument()
-  expect(screen.getByText(/Daily volume confirmation pending/)).toBeInTheDocument()
+  expect(within(screen.getByRole('dialog')).getByText(/Daily volume confirmation pending/)).toBeInTheDocument()
   expect(screen.getByText(/Quote at/)).toBeInTheDocument()
   expect(screen.getByRole('link', { name: 'Wire' })).toHaveAttribute('href', 'https://example.com/story')
   fireEvent.change(screen.getByLabelText('Observed direction'), { target: { value: 'down' } })
@@ -58,6 +65,7 @@ function listing(items: unknown[]) {
 test('intraday evidence appears only when the extension supplied it', () => {
   vi.mocked(useFreshCatalysts).mockReturnValue(listing([{ ...intradayItem, intraday: null }]))
   renderWithProviders(<FreshCatalystsSection />)
+  openCatalysts()
   expect(screen.queryByText(/same-time volume/i)).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: /5-minute/i })).not.toBeInTheDocument()
 })
@@ -72,6 +80,7 @@ test('too few comparable sessions and the reference close are labelled', () => {
     },
   }]))
   renderWithProviders(<FreshCatalystsSection />)
+  openCatalysts()
   expect(screen.getByText(/8 of 10 comparable sessions/)).toBeInTheDocument()
   expect(screen.getByText(/Pre-publication 5-minute close \$9.80/)).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Stop 5-minute collection' })).toBeInTheDocument()
@@ -83,6 +92,80 @@ test('an uncollected catalyst offers explicit collection', () => {
     intraday: { subscription_id: null, collecting: false, coverage: null, same_time_volume: null, pre_publication_reference: null },
   }]))
   renderWithProviders(<FreshCatalystsSection />)
+  openCatalysts()
   expect(screen.getByRole('button', { name: 'Collect 5-minute bars' })).toBeInTheDocument()
   expect(within(screen.getByRole('listitem')).getByText('Product, contract & approval')).toBeInTheDocument()
+})
+
+
+test('three compact chips preview the first page and Show all retains every loaded card', () => {
+  vi.mocked(useFreshCatalysts).mockReturnValue(listing(['AAA', 'BBB', 'CCC', 'DDD'].map((ticker, index) => ({
+    ...intradayItem, candidate_id: index + 1, ticker, event: { ...intradayItem.event, headline: `${ticker} contract` },
+  }))))
+  renderWithProviders(<FreshCatalystsSection />)
+  expect(screen.getAllByRole('button', { name: /^View .* catalyst:/ })).toHaveLength(3)
+  expect(screen.queryByText('DDD contract')).not.toBeInTheDocument()
+  expect(screen.queryByLabelText('Catalyst age')).not.toBeInTheDocument()
+  openCatalysts()
+  const dialog = within(screen.getByRole('dialog'))
+  expect(dialog.getByText('DDD contract')).toBeInTheDocument()
+  expect(dialog.getByLabelText('Catalyst age')).toHaveValue('72')
+  expect(dialog.getAllByRole('link', { name: /AAA|BBB|CCC|DDD/ })).toHaveLength(4)
+})
+
+test('chip opens its selected event and Escape restores focus', async () => {
+  const user = userEvent.setup()
+  vi.mocked(useFreshCatalysts).mockReturnValue(listing([intradayItem]))
+  renderWithProviders(<FreshCatalystsSection />)
+  const chip = screen.getByRole('button', { name: 'View QQQ catalyst: QQQ approval' })
+  await user.click(chip)
+  expect(screen.getByRole('dialog').querySelector('[data-highlighted=true]')).not.toBeNull()
+  await waitFor(() => expect(HTMLElement.prototype.scrollIntoView).toHaveBeenCalledWith({ block: 'start' }))
+  await user.keyboard('{Escape}')
+  await waitFor(() => expect(chip).toHaveFocus())
+})
+
+test('fast tooltip includes publication, source and data limits without opening a card', async () => {
+  const user = userEvent.setup()
+  vi.mocked(useFreshCatalysts).mockReturnValue(listing([{ ...intradayItem, quality: { status: 'partial', reasons: ['prior_mean_volume_missing'] } }]))
+  renderWithProviders(<FreshCatalystsSection />)
+  await user.hover(screen.getByRole('button', { name: 'View QQQ catalyst: QQQ approval' }))
+  const tooltip = within(await screen.findByRole('tooltip'))
+  expect(tooltip.getByText('QQQ approval')).toBeInTheDocument()
+  expect(tooltip.getByText(/Wire · Published/)).toBeInTheDocument()
+  expect(tooltip.getByText(/First seen/)).toBeInTheDocument()
+  expect(tooltip.getByText(/Data limits: prior mean volume missing/)).toBeInTheDocument()
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+})
+
+test('empty filtered results still allow opening filters', () => {
+  vi.mocked(useFreshCatalysts).mockReturnValue(listing([]))
+  renderWithProviders(<FreshCatalystsSection />)
+  fireEvent.click(screen.getByRole('button', { name: 'Browse catalysts' }))
+  expect(screen.getByLabelText('Catalyst age')).toBeInTheDocument()
+  expect(within(screen.getByRole('dialog')).getByText('No recent material events match these filters.')).toBeInTheDocument()
+})
+
+test('panel pagination leaves the preview query on page one', () => {
+  const data = listing([intradayItem]) as unknown as { data: { total: number } }
+  data.data.total = 22
+  vi.mocked(useFreshCatalysts).mockReturnValue(data as never)
+  renderWithProviders(<FreshCatalystsSection />)
+  openCatalysts()
+  fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+  expect(useFreshCatalysts).toHaveBeenNthCalledWith(vi.mocked(useFreshCatalysts).mock.calls.length - 1,
+    expect.objectContaining({ page: 1 }), true)
+  expect(useFreshCatalysts).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2 }), true)
+  expect(screen.getByText('Page 2 of 3')).toBeInTheDocument()
+})
+
+test('opening a preview chip resets pagination and keeps its selection until filters change', () => {
+  vi.mocked(useFreshCatalysts).mockReturnValue(listing([intradayItem]))
+  renderWithProviders(<FreshCatalystsSection />, ['/discover?catalyst_page=2'])
+  fireEvent.click(screen.getByRole('button', { name: 'View QQQ catalyst: QQQ approval' }))
+  expect(useFreshCatalysts).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1 }), true)
+  expect(screen.getByRole('dialog').querySelector('[data-highlighted=true]')).not.toBeNull()
+  fireEvent.change(screen.getByLabelText('Catalyst age'), { target: { value: '24' } })
+  expect(useFreshCatalysts).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, ageHours: 24 }), true)
+  expect(screen.getByRole('dialog').querySelector('[data-highlighted=true]')).toBeNull()
 })

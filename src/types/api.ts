@@ -1719,7 +1719,11 @@ export interface MacroSectorImpactItemOut {
   url: string
   category: string
   via_category: string | null
-  direction: 'positive' | 'negative'
+  /** `insulated` only on an industry bucket: the rule says this industry does
+   * not inherit its sector's read for this headline. */
+  direction: 'positive' | 'negative' | 'insulated'
+  /** The transmission rule's own reasoning; absent on older snapshots. */
+  rationale?: string | null
   stance: string
   magnitude: string
   direction_note: string
@@ -1728,8 +1732,10 @@ export interface MacroSectorImpactItemOut {
 export interface MacroSectorImpactBucketOut {
   positive_count: number
   negative_count: number
-  net: 'positive' | 'negative' | 'mixed' | 'neutral'
+  net: 'positive' | 'negative' | 'mixed' | 'neutral' | 'insulated'
   items: MacroSectorImpactItemOut[]
+  /** Set on industry buckets only: the sector whose read this one overrides. */
+  sector?: string | null
 }
 
 export interface MacroSectorImpactOut {
@@ -1738,6 +1744,9 @@ export interface MacroSectorImpactOut {
   items_considered: number
   items_resolved: number
   sectors: Record<string, MacroSectorImpactBucketOut>
+  /** Keyed by yfinance industry; a ticker's effective read is its industry
+   * bucket when present, else its sector bucket. Absent on older snapshots. */
+  industries?: Record<string, MacroSectorImpactBucketOut>
   generated_at: string
 }
 
@@ -1760,6 +1769,8 @@ export type MarketEventStance = 'hawkish' | 'dovish' | 'neutral_inline' | 'unres
 
 export interface MarketEventSectorImpactOut {
   sector: string
+  /** Industry-level read (never graded); null for a sector read. */
+  industry?: string | null
   rationale: string
   predicted_direction: 'positive' | 'negative'
   via_category: string | null
