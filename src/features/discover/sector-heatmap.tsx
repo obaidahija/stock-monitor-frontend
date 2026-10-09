@@ -81,8 +81,6 @@ interface MapBox {
 // Used only when a sector block is too narrow for its full name.
 const SHORT_SECTOR_NAMES: Record<string, string> = {
   'Communication Services': 'Comm. Svcs',
-  'Technology Services': 'Tech Svcs',
-  'Electronic Technology': 'Elec. Tech',
   'Financial Services': 'Financials',
   'Consumer Cyclical': 'Cons. Cyclical',
   'Consumer Defensive': 'Cons. Defensive',
