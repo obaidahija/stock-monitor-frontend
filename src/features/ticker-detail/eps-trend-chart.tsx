@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatSignedPct } from '@/lib/format'
 import {
-  classifyEarnings,
+  classifyEarningsEvent,
   EARNINGS_RESULT_DOT_CLASSES,
   EARNINGS_RESULT_LABEL,
   EARNINGS_RESULT_TEXT_CLASSES,
@@ -74,7 +74,7 @@ export function EpsTrendChart({ events }: { events: YfEarningsEventOut[] }) {
 
   const hovered = hoveredIndex !== null ? sorted[hoveredIndex] : null
   const hoveredClassification = hovered
-    ? classifyEarnings(hovered.eps_actual, hovered.eps_estimate)
+    ? classifyEarningsEvent(hovered)
     : null
 
   return (
@@ -111,7 +111,7 @@ export function EpsTrendChart({ events }: { events: YfEarningsEventOut[] }) {
           {sorted.map((e, i) => {
             const est = estimatePoints[i]
             const act = actualPoints[i]
-            const { result, surprisePct } = classifyEarnings(e.eps_actual, e.eps_estimate)
+            const { result, surprisePct } = classifyEarningsEvent(e)
             const isHovered = hoveredIndex === i
             return (
               <g key={e.event_date}>

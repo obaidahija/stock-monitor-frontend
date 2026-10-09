@@ -34,11 +34,29 @@ const SURPRISE_TOLERANCE_PCT = 1
 export function classifyEarnings(
   actual: number | null,
   estimate: number | null,
+  comparisonAvailable = true,
 ): { result: EarningsResult | null; surprisePct: number | null } {
-  if (actual === null || estimate === null || estimate === 0) {
+  if (!comparisonAvailable || actual === null || estimate === null || estimate === 0) {
     return { result: null, surprisePct: null }
   }
   const surprisePct = ((actual - estimate) / Math.abs(estimate)) * 100
   if (Math.abs(surprisePct) <= SURPRISE_TOLERANCE_PCT) return { result: 'inline', surprisePct }
   return { result: surprisePct > 0 ? 'beat' : 'miss', surprisePct }
+}
+
+// Use a sourced comparison pair when available; never pair an adjusted actual
+// with an unidentified provider estimate implicitly.
+export function classifyEarningsEvent(event: {
+  eps_actual: number | null
+  eps_estimate: number | null
+  eps_comparison_available?: boolean
+  eps_comparison_basis?: string | null
+  eps_comparison_actual?: number | null
+  eps_comparison_estimate?: number | null
+}) {
+  return classifyEarnings(
+    event.eps_comparison_basis ? event.eps_comparison_actual ?? null : event.eps_actual,
+    event.eps_comparison_basis ? event.eps_comparison_estimate ?? null : event.eps_estimate,
+    event.eps_comparison_available,
+  )
 }

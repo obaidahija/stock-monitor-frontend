@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import {
-  classifyEarnings,
+  classifyEarningsEvent,
   EARNINGS_RESULT_BADGE_CLASSES,
   EARNINGS_RESULT_LABEL,
   EARNINGS_RESULT_TEXT_CLASSES,
@@ -51,7 +51,7 @@ function tickOffsets(points: EarningsReactionPointOut[]): number[] {
 }
 
 function resultFor(event: EarningsReactionEventOut): EarningsResult | null {
-  return classifyEarnings(event.eps_actual, event.eps_estimate).result
+  return classifyEarningsEvent(event).result
 }
 
 function eventKey(event: EarningsReactionEventOut): string {

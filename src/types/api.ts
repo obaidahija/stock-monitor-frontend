@@ -216,9 +216,19 @@ export interface EarningsEventOut {
   eps_actual: number | null
   revenue_estimate: number | null
   revenue_actual: number | null
+  eps_comparison_available?: boolean
+  eps_comparison_actual?: number | null
+  eps_comparison_estimate?: number | null
+  eps_comparison_basis?: string | null
+  eps_comparison_source_url?: string | null
 }
 
 export interface YfEarningsEventOut {
+  eps_comparison_available?: boolean
+  eps_comparison_actual?: number | null
+  eps_comparison_estimate?: number | null
+  eps_comparison_basis?: string | null
+  eps_comparison_source_url?: string | null
   event_date: string
   bmo_amc: string
   eps_estimate: number | null
@@ -258,6 +268,11 @@ export interface EarningsReactionEventOut {
   pe_ratio: number | null
   volume_ratio: number | null
   is_upcoming: boolean
+  eps_comparison_available?: boolean
+  eps_comparison_actual?: number | null
+  eps_comparison_estimate?: number | null
+  eps_comparison_basis?: string | null
+  eps_comparison_source_url?: string | null
   points: EarningsReactionEventPointOut[]
 }
 

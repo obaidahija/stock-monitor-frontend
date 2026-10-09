@@ -7,7 +7,7 @@ import { ErrorState } from '@/components/shared/error-state'
 import { EmptyState } from '@/components/shared/empty-state'
 import { formatCompactCurrency, formatDate, formatSignedPct } from '@/lib/format'
 import {
-  classifyEarnings,
+  classifyEarningsEvent,
   EARNINGS_RESULT_BADGE_CLASSES,
   EARNINGS_RESULT_DOT_CLASSES,
   EARNINGS_RESULT_LABEL,
@@ -101,7 +101,7 @@ type TrackRecord = {
 
 function computeTrackRecord(history: EarningsEventOut[]): TrackRecord | null {
   const quarters = history
-    .map((event) => ({ event, ...classifyEarnings(event.eps_actual, event.eps_estimate) }))
+    .map((event) => ({ event, ...classifyEarningsEvent(event) }))
     .filter((q): q is typeof q & { result: EarningsResult } => q.result !== null)
   if (quarters.length === 0) return null
 
@@ -200,7 +200,7 @@ function NextEarningsCard({ next }: { next: EarningsEventOut }) {
 }
 
 function HistoryQuarterCard({ event }: { event: EarningsEventOut }) {
-  const { result, surprisePct } = classifyEarnings(event.eps_actual, event.eps_estimate)
+  const { result, surprisePct } = classifyEarningsEvent(event)
   const revSurprisePct = revenueSurprisePct(event.revenue_actual, event.revenue_estimate)
   const hasRevenue = event.revenue_estimate !== null || event.revenue_actual !== null
 
@@ -213,13 +213,37 @@ function HistoryQuarterCard({ event }: { event: EarningsEventOut }) {
             {event.bmo_amc}
           </span>
         </CardTitle>
-        {result && <ResultBadge result={result} surprisePct={surprisePct} />}
+        {result && (
+          <div className="flex items-center gap-2">
+            {event.eps_comparison_basis && <span className="text-muted-foreground text-xs">Yahoo EPS</span>}
+            <ResultBadge result={result} surprisePct={surprisePct} />
+          </div>
+        )}
       </CardHeader>
       <CardContent className="space-y-3">
+        {event.eps_comparison_available === false && (
+          <p className="text-muted-foreground text-xs">
+            Yahoo EPS comparison pending. Finnhub values are shown below; no beat/miss is assigned yet.
+          </p>
+        )}
+        {event.eps_comparison_basis && (
+          <div className="text-sm">
+            <p>Yahoo EPS estimate / actual: {event.eps_comparison_estimate} / {event.eps_comparison_actual}</p>
+            <p className="text-muted-foreground text-xs">Provider-reported EPS; GAAP/adjusted basis is not supplied.</p>
+            {event.eps_comparison_actual !== event.eps_actual && (
+              <p className="text-muted-foreground text-xs">Sources report different EPS actuals. The badge uses Yahoo’s estimate and actual together.</p>
+            )}
+            {event.eps_comparison_source_url && (
+              <a className="text-primary text-xs underline" href={event.eps_comparison_source_url} target="_blank" rel="noreferrer">
+                Yahoo earnings source
+              </a>
+            )}
+          </div>
+        )}
         {surprisePct !== null && <SurpriseBar pct={surprisePct} result={result} />}
         <div className="grid grid-cols-2 gap-3">
           <div className="border-border rounded-lg border px-3 py-2">
-            <p className="text-muted-foreground text-xs">EPS est. / actual</p>
+            <p className="text-muted-foreground text-xs">Finnhub EPS est. / actual</p>
             <p className="text-sm font-medium">
               {event.eps_estimate ?? '—'} / {event.eps_actual ?? '—'}
             </p>
