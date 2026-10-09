@@ -214,6 +214,7 @@ export function UniverseTable() {
   const hasInsiderBuy = searchParams.get('has_insider_buy') === 'true' ? true : undefined
   const patternLabel = searchParams.get('pattern_label') ?? undefined
   const sector = searchParams.get('sector') ?? undefined
+  const industry = searchParams.get('industry') ?? undefined
   const q = searchParams.get('q') ?? ''
   const page = Math.max(1, Number(searchParams.get('page')) || 1)
   const offset = (page - 1) * PAGE_SIZE
@@ -229,6 +230,7 @@ export function UniverseTable() {
     hasInsiderBuy,
     patternLabel,
     sector,
+    industry,
     q: q || undefined,
     limit: PAGE_SIZE,
     offset,
@@ -353,17 +355,29 @@ export function UniverseTable() {
         )}
       </div>
 
-      {sector && (
+      {(sector || industry) && (
         <div className="flex items-center gap-2">
           <span className="text-muted-foreground text-xs">Filtered by sector</span>
-          <button
-            type="button"
-            onClick={() => updateParams({ sector: undefined })}
-            className="bg-secondary text-secondary-foreground inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
-          >
-            {sector}
-            <X className="size-3" />
-          </button>
+          {sector && (
+            <button
+              type="button"
+              onClick={() => updateParams({ sector: undefined, industry: undefined })}
+              className="bg-secondary text-secondary-foreground inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
+            >
+              {sector}
+              <X className="size-3" />
+            </button>
+          )}
+          {industry && (
+            <button
+              type="button"
+              onClick={() => updateParams({ industry: undefined })}
+              className="bg-secondary text-secondary-foreground inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
+            >
+              {industry}
+              <X className="size-3" />
+            </button>
+          )}
         </div>
       )}
 
@@ -566,27 +580,46 @@ export function UniverseTable() {
                         </Badge>
                       ) : null}
                     </div>
-                    {(item.company_name || item.sector) && (
-                      <div className="flex max-w-56 items-center gap-1">
-                        {item.company_name && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="text-muted-foreground min-w-0 truncate text-xs font-normal cursor-help">
-                                {item.company_name}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent>{item.company_name}</TooltipContent>
-                          </Tooltip>
-                        )}
+                    {item.company_name && (
+                      <div className="flex max-w-56 items-center">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="text-muted-foreground min-w-0 truncate text-xs font-normal cursor-help">
+                              {item.company_name}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>{item.company_name}</TooltipContent>
+                        </Tooltip>
+                      </div>
+                    )}
+                    {(item.sector || item.industry) && (
+                      // Own row so full sector/industry names fit untruncated.
+                      <div className="mt-0.5 flex flex-wrap items-center gap-1">
                         {item.sector && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="bg-muted text-muted-foreground max-w-24 shrink-0 cursor-help truncate rounded px-1 py-px text-[9px] leading-tight font-medium">
-                                {item.sector}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent>{item.sector}</TooltipContent>
-                          </Tooltip>
+                          <button
+                            type="button"
+                            onClick={() => updateParams({ sector: item.sector ?? undefined, industry: undefined })}
+                            title="Filter by this sector"
+                            className="bg-muted text-muted-foreground hover:text-foreground cursor-pointer rounded px-1 py-px text-[9px] leading-tight font-medium whitespace-nowrap"
+                          >
+                            {item.sector}
+                          </button>
+                        )}
+                        {item.industry && (
+                          <button
+                            type="button"
+                            data-testid={`industry-tag-${item.ticker}`}
+                            onClick={() =>
+                              updateParams({
+                                sector: item.sector ?? undefined,
+                                industry: item.industry ?? undefined,
+                              })
+                            }
+                            title="Filter by this industry"
+                            className="border-border text-muted-foreground hover:text-foreground cursor-pointer rounded border px-1 py-px text-[9px] leading-tight font-medium whitespace-nowrap"
+                          >
+                            {item.industry}
+                          </button>
                         )}
                       </div>
                     )}

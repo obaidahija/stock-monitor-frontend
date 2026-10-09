@@ -67,6 +67,7 @@ export interface UniverseParams {
   hasInsiderBuy?: boolean
   patternLabel?: string
   sector?: string
+  industry?: string
   q?: string
 }
 
@@ -93,6 +94,7 @@ export async function getUniverse(params: UniverseParams = {}): Promise<Universe
   }
   if (params.patternLabel) qs.set('pattern_label', params.patternLabel)
   if (params.sector) qs.set('sector', params.sector)
+  if (params.industry) qs.set('industry', params.industry)
   if (params.q) qs.set('q', params.q)
   const { data, response } = await apiClient.getWithResponse<UniverseTickerOut[]>(
     `/v1/discover/universe?${qs.toString()}`,

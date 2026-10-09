@@ -1,12 +1,12 @@
 import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { getRelatedEtfDescription, getRelatedEtfs, refreshRelatedEtfQuotes } from '@/api/stocks'
+import { getRelatedEtfDescription, getRelatedEtfs, refreshRelatedEtfQuotes, getRelatedEtfRelevance, refreshRelatedEtfRelevance } from '@/api/stocks'
 import { renderWithProviders } from '@/test/render'
-import type { QuoteOut, RelatedEtfsOut } from '@/types/api'
+import type { QuoteOut, RelatedEtfsOut, RelatedEtfRelevanceOut } from '@/types/api'
 import { regularTradingDate, relativeGap } from './related-etf-math'
 import { RelatedEtfs } from './related-etfs'
 
-vi.mock('@/api/stocks', () => ({ getRelatedEtfDescription: vi.fn(), getRelatedEtfs: vi.fn(), refreshRelatedEtfQuotes: vi.fn() }))
+vi.mock('@/api/stocks', () => ({ getRelatedEtfDescription: vi.fn(), getRelatedEtfs: vi.fn(), refreshRelatedEtfQuotes: vi.fn(), getRelatedEtfRelevance: vi.fn(), refreshRelatedEtfRelevance: vi.fn() }))
 vi.mock('@/features/ticker-detail/hooks', () => ({ useQuote: () => ({ data: quote('UEC', 4) }) }))
 
 function quote(ticker: string, pct: number | null, time = '2026-10-08T20:00:00Z'): QuoteOut {
@@ -30,10 +30,19 @@ function payload(ticker = 'UEC'): RelatedEtfsOut {
   }
 }
 
+function fit(ticker = 'UEC', status: RelatedEtfRelevanceOut['status'] = 'ready'): RelatedEtfRelevanceOut {
+  return {
+    ticker, status, model: 'classifier:local', rubric_version: 'business-fit-v1', fetched_at: '2026-10-09T12:00:00Z',
+    items: [{ ticker: 'URA', score: 81, business_score: 90, weight_pct: 4.65, concentration_score: 46.5, category: 'direct', explanation: 'Explicit uranium industry focus.', evidence: 'Uranium', stale: false }],
+  }
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(getRelatedEtfs).mockImplementation(async (ticker) => payload(ticker))
   vi.mocked(refreshRelatedEtfQuotes).mockResolvedValue([])
+  vi.mocked(refreshRelatedEtfRelevance).mockImplementation(async (ticker) => fit(ticker))
+  vi.mocked(getRelatedEtfRelevance).mockImplementation(async (ticker) => fit(ticker))
   vi.mocked(getRelatedEtfDescription).mockResolvedValue({
     ticker: 'URA', description: 'The fund invests in uranium and nuclear energy companies.',
     fetched_at: '2026-10-09T12:00:00Z', stale: false, source_name: 'Yahoo Finance',
@@ -49,7 +58,7 @@ test('shows five visible cards, directions, gap, weight, dates, and attribution'
   expect(screen.getAllByRole('article')).toHaveLength(5)
   expect(within(ura).getByText('+1.50%')).toBeInTheDocument()
   expect(within(ura).getByText('UEC ahead by 2.50 pp')).toBeInTheDocument()
-  expect(within(ura).getByText('4.65%')).toBeInTheDocument()
+  expect(within(ura).getAllByText('4.65%')[0]).toBeInTheDocument()
   expect(within(ura).getByText('UEC weight')).toBeInTheDocument()
   expect(within(ura).getByText('Regular session · Oct 8, 2026')).toBeInTheDocument()
   expect(screen.getByText('-2.00%')).toBeInTheDocument()
@@ -191,5 +200,96 @@ test('description failures do not affect the ETF quote or weight', async () => {
   fireEvent.click(within(ura).getByRole('button', { name: 'About this ETF' }))
   expect(await within(ura).findByText('Description temporarily unavailable.')).toBeVisible()
   expect(within(ura).getByText('+1.50%')).toBeInTheDocument()
-  expect(within(ura).getByText('4.65%')).toBeInTheDocument()
+  expect(within(ura).getAllByText('4.65%')[0]).toBeInTheDocument()
+})
+
+
+test('shows estimated business fit separately from stock weight with explanation in details', async () => {
+  renderWithProviders(<RelatedEtfs ticker="UEC" />)
+  const score = await screen.findByText('81%')
+  const card = screen.getByRole('article', { name: 'URA related ETF' })
+  expect(score).toBeInTheDocument()
+  expect(within(card).getAllByText('4.65%')[0]).toBeInTheDocument()
+  expect(within(card).getByText(/Classifier \+ weight/)).toBeInTheDocument()
+  expect(within(card).getByText('Direct industry or theme')).toBeInTheDocument()
+  expect(within(card).getByText('Explicit uranium industry focus.')).toBeInTheDocument()
+  expect(within(card).getByText(/not a probability/)).toBeInTheDocument()
+  expect(refreshRelatedEtfRelevance).toHaveBeenCalledTimes(1)
+  expect(screen.getAllByRole('article')[0]).toHaveAccessibleName('URA related ETF')
+})
+
+test('unknown and unavailable scores are not rendered as zero', async () => {
+  vi.mocked(refreshRelatedEtfRelevance).mockResolvedValue({ ...fit('UEC', 'unavailable'), items: [{
+    ticker: 'URA', score: null, category: 'unknown', explanation: 'Insufficient information.', evidence: null, stale: false,
+  }] })
+  renderWithProviders(<RelatedEtfs ticker="UEC" />)
+  await screen.findAllByText('Relevance: Unavailable')
+  expect(screen.queryByText('0%')).not.toBeInTheDocument()
+  expect(screen.getAllByRole('article')).toHaveLength(5)
+})
+
+test('cached business fit is marked without blocking the existing quotes', async () => {
+  const response = fit('UEC', 'partial')
+  response.items[0].stale = true
+  vi.mocked(refreshRelatedEtfRelevance).mockResolvedValue(response)
+  renderWithProviders(<RelatedEtfs ticker="UEC" />)
+  await screen.findByText('81%')
+  expect(screen.getByText(/Classifier \+ weight · cached/)).toBeInTheDocument()
+  expect(screen.getByText('+1.50%')).toBeInTheDocument()
+})
+
+test('relevance failures leave cards and independent quote refresh available', async () => {
+  vi.mocked(refreshRelatedEtfRelevance).mockRejectedValue(new Error('offline'))
+  renderWithProviders(<RelatedEtfs ticker="UEC" />)
+  await screen.findByRole('article', { name: 'URA related ETF' })
+  await waitFor(() => expect(screen.getAllByText('Relevance: Unavailable')).toHaveLength(5))
+  expect(refreshRelatedEtfQuotes).toHaveBeenCalledTimes(1)
+})
+
+test('relevance polls pending results every three seconds only when visible, with no overlap', async () => {
+  vi.useFakeTimers()
+  vi.mocked(refreshRelatedEtfRelevance).mockResolvedValue({ ...fit('UEC', 'pending'), items: [] })
+  vi.mocked(getRelatedEtfRelevance).mockResolvedValue({ ...fit('UEC', 'pending'), items: [] })
+  const view = renderWithProviders(<RelatedEtfs ticker="UEC" />)
+  const flush = async () => { await act(async () => { await vi.advanceTimersByTimeAsync(10) }) }
+  await flush(); await flush(); await flush()
+  expect(refreshRelatedEtfRelevance).toHaveBeenCalledTimes(1)
+  expect(screen.getAllByText('Relevance: Assessing…')).toHaveLength(5)
+  await act(async () => { await vi.advanceTimersByTimeAsync(3000) }); await flush()
+  expect(getRelatedEtfRelevance).toHaveBeenCalledTimes(1)
+  const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+  await act(async () => { document.dispatchEvent(new Event('visibilitychange')) })
+  await act(async () => { await vi.advanceTimersByTimeAsync(9000) })
+  expect(getRelatedEtfRelevance).toHaveBeenCalledTimes(1)
+  visibility.mockReturnValue('visible')
+  let finish: (value: RelatedEtfRelevanceOut) => void = () => {}
+  vi.mocked(getRelatedEtfRelevance).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve }))
+  await act(async () => { document.dispatchEvent(new Event('visibilitychange')) })
+  await flush()
+  await act(async () => { await vi.advanceTimersByTimeAsync(9000) })
+  expect(getRelatedEtfRelevance).toHaveBeenCalledTimes(2)
+  await act(async () => { finish(fit()); await Promise.resolve() }); await flush()
+  expect(screen.getByText('90%')).toBeInTheDocument()
+  await act(async () => { await vi.advanceTimersByTimeAsync(9000) })
+  expect(getRelatedEtfRelevance).toHaveBeenCalledTimes(2)
+  view.unmount()
+  await act(async () => { await vi.advanceTimersByTimeAsync(6000) })
+  expect(getRelatedEtfRelevance).toHaveBeenCalledTimes(2)
+  visibility.mockRestore()
+})
+
+test('navigation starts a new assessment and drops polling for the previous ticker', async () => {
+  vi.useFakeTimers()
+  vi.mocked(refreshRelatedEtfRelevance).mockImplementation(async (ticker) => ({ ...fit(ticker, 'pending'), items: [] }))
+  vi.mocked(getRelatedEtfRelevance).mockImplementation(async (ticker) => ({ ...fit(ticker, 'pending'), items: [] }))
+  const view = renderWithProviders(<RelatedEtfs ticker="UEC" />)
+  const flush = async () => { await act(async () => { await vi.advanceTimersByTimeAsync(10) }) }
+  await flush(); await flush(); await flush()
+  view.rerender(<RelatedEtfs ticker="DY" />)
+  await flush(); await flush(); await flush()
+  expect(refreshRelatedEtfRelevance).toHaveBeenCalledWith('DY')
+  vi.mocked(getRelatedEtfRelevance).mockClear()
+  await act(async () => { await vi.advanceTimersByTimeAsync(3000) }); await flush()
+  expect(getRelatedEtfRelevance).toHaveBeenCalledWith('DY')
+  expect(getRelatedEtfRelevance).not.toHaveBeenCalledWith('UEC')
 })

@@ -21,7 +21,9 @@ import type {
   PriceTargetChangeOut,
   QuoteOut,
   EtfDescriptionOut,
+  TickerDescriptionOut,
   RelatedEtfsOut,
+  RelatedEtfRelevanceOut,
   ScoreHistoryPointOut,
   SentimentBucketGranularity,
   SentimentHistoryOut,
@@ -39,10 +41,26 @@ export function getRelatedEtfs(ticker: string) {
   return apiClient.get<RelatedEtfsOut>(`/v1/stocks/${encodeURIComponent(ticker)}/related-etfs`)
 }
 
+export function getRelatedEtfRelevance(ticker: string) {
+  return apiClient.get<RelatedEtfRelevanceOut>(
+    `/v1/stocks/${encodeURIComponent(ticker)}/related-etfs/relevance`,
+  )
+}
+
+export function refreshRelatedEtfRelevance(ticker: string) {
+  return apiClient.post<RelatedEtfRelevanceOut>(
+    `/v1/stocks/${encodeURIComponent(ticker)}/related-etfs/relevance/refresh`,
+  )
+}
+
 export function getRelatedEtfDescription(ticker: string, etf: string) {
   return apiClient.get<EtfDescriptionOut>(
     `/v1/stocks/${encodeURIComponent(ticker)}/related-etfs/${encodeURIComponent(etf)}/description`,
   )
+}
+
+export function getTickerDescription(ticker: string) {
+  return apiClient.get<TickerDescriptionOut>(`/v1/stocks/${encodeURIComponent(ticker)}/description`)
 }
 
 export function refreshRelatedEtfQuotes(ticker: string, tickers: string[]) {

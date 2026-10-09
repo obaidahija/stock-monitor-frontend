@@ -57,6 +57,16 @@ export function useUniverse(params: UniverseParams) {
   })
 }
 
+/** Every ticker in one sector, for the sector map's zoomed-in levels. Only
+ * fetched once the map dives into a sector. */
+export function useSectorTickers(sector: string | null) {
+  return useQuery({
+    queryKey: ['discover', 'universe', 'sector-map', sector],
+    queryFn: () => getUniverse({ sector: sector ?? undefined, sort: 'ticker', order: 'asc', limit: 2000, offset: 0 }),
+    enabled: sector !== null,
+  })
+}
+
 export function useSectorHeatmap() {
   return useQuery({
     queryKey: ['discover', 'universe', 'sectors'],

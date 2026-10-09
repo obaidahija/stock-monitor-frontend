@@ -1,13 +1,13 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowDown, ArrowUp, ChevronRight, ExternalLink, Minus } from 'lucide-react'
-import { getRelatedEtfDescription, getRelatedEtfs, refreshRelatedEtfQuotes } from '@/api/stocks'
+import { getRelatedEtfDescription, getRelatedEtfs, refreshRelatedEtfQuotes, getRelatedEtfRelevance, refreshRelatedEtfRelevance } from '@/api/stocks'
 import { Button } from '@/components/ui/button'
 import { useQuote } from '@/features/ticker-detail/hooks'
 import { regularTradingDate, relativeGap } from '@/features/ticker-detail/related-etf-math'
 import { formatDate, formatSignedPct } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import type { QuoteOut, RelatedEtfOut, RelatedEtfsOut } from '@/types/api'
+import type { QuoteOut, RelatedEtfOut, RelatedEtfsOut, RelatedEtfRelevanceItemOut } from '@/types/api'
 
 function EtfDescription({ ticker, etf }: { ticker: string; etf: string }) {
   const [open, setOpen] = useState(false)
@@ -51,10 +51,89 @@ function EtfDescription({ ticker, etf }: { ticker: string; etf: string }) {
   )
 }
 
-function EtfCard({ item, ticker, stock }: {
+const fitLabels = {
+  direct: 'Direct industry or theme',
+  adjacent: 'Related value chain',
+  sector: 'Broad sector',
+  broad: 'Broad market or strategy',
+  unknown: 'Insufficient information',
+}
+
+function BusinessFit({ relevance, pending }: {
+  relevance?: RelatedEtfRelevanceItemOut
+  pending: boolean
+}) {
+  if (relevance?.score == null) {
+    return <p className="text-muted-foreground mt-2 text-xs">
+      Relevance: {pending ? 'Assessing…' : 'Unavailable'}
+    </p>
+  }
+  return (
+    <details className="group/fit text-muted-foreground mt-2 text-xs">
+      <summary
+        className="bg-muted/40 focus-visible:ring-ring flex cursor-pointer list-none items-center justify-between gap-2 rounded-md px-2.5 py-2 outline-none focus-visible:ring-2 [&::-webkit-details-marker]:hidden"
+        title="Combined business relevance and holding concentration"
+      >
+        <span className="min-w-0">
+          <span className="text-foreground block font-medium">Relevance</span>
+          <span className="mt-0.5 block text-[10px] leading-tight">Classifier + weight{relevance.stale ? ' · cached' : ''}</span>
+        </span>
+        <span className="flex shrink-0 items-center gap-1.5">
+          <span className={cn(
+            'rounded-md px-2 py-0.5 text-sm font-semibold tabular-nums',
+            relevance.score >= 70
+              ? 'bg-violet-500/10 text-violet-700 dark:text-violet-300'
+              : 'bg-muted text-foreground',
+          )}>{relevance.score}%</span>
+          <ChevronRight className="size-3.5 transition-transform group-open/fit:rotate-90 motion-reduce:transition-none" aria-hidden="true" />
+        </span>
+      </summary>
+      <p className="text-foreground mt-2 font-medium">{relevance.category ? fitLabels[relevance.category] : 'Business alignment'}</p>
+      <p className="mt-1 leading-relaxed [overflow-wrap:anywhere]">{relevance.explanation}</p>
+      {relevance.evidence && <p className="mt-1 leading-relaxed [overflow-wrap:anywhere]">ETF strategy: “{relevance.evidence}”</p>}
+      <div className="mt-2 grid grid-cols-2 gap-2 rounded-md bg-muted/40 p-2">
+        <div>Business relevance<strong className="text-foreground mt-1 block tabular-nums">{relevance.business_score ?? '—'}{relevance.business_score != null ? '%' : ''}</strong></div>
+        <div>Stock weight<strong className="text-foreground mt-1 block tabular-nums">{relevance.weight_pct != null ? `${relevance.weight_pct.toFixed(2)}%` : '—'}</strong></div>
+      </div>
+      <p className="mt-2 leading-relaxed">80% business relevance + 20% holding concentration. A 10% stock weight gives full concentration credit. This is an estimate, not a probability.</p>
+      {relevance.stale && <p className="mt-1">Previous assessment; updated information is being checked.</p>}
+    </details>
+  )
+}
+
+function useBusinessFit(ticker: string, enabled: boolean) {
+  const firstRequest = useRef(true)
+  const [visible, setVisible] = useState(() => document.visibilityState !== 'hidden')
+  useEffect(() => {
+    const update = () => setVisible(document.visibilityState !== 'hidden')
+    document.addEventListener('visibilitychange', update)
+    return () => document.removeEventListener('visibilitychange', update)
+  }, [])
+  return useQuery({
+    queryKey: ['related-etf-relevance', ticker],
+    queryFn: async () => {
+      if (firstRequest.current) {
+        firstRequest.current = false
+        return refreshRelatedEtfRelevance(ticker)
+      }
+      return getRelatedEtfRelevance(ticker)
+    },
+    enabled,
+    staleTime: Infinity,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: (query) => query.state.data?.status === 'pending',
+    refetchInterval: (query) => visible && query.state.data?.status === 'pending' ? 3000 : false,
+    refetchIntervalInBackground: false,
+    retry: false,
+  })
+}
+
+function EtfCard({ item, ticker, stock, relevance, fitPending }: {
   item: RelatedEtfOut
   ticker: string
   stock: QuoteOut | undefined
+  relevance?: RelatedEtfRelevanceItemOut
+  fitPending: boolean
 }) {
   const pct = item.quote.change_pct
   const gap = relativeGap(stock, item.quote)
@@ -104,6 +183,7 @@ function EtfCard({ item, ticker, stock }: {
           : Math.abs(gap) < 0.005 ? `${ticker} in line · 0.00 pp`
             : `${ticker} ${gap > 0 ? 'ahead' : 'behind'} by ${Math.abs(gap).toFixed(2)} pp`}
       </div>
+      <BusinessFit relevance={relevance} pending={fitPending} />
       <details className="text-muted-foreground mt-2 text-xs">
         <summary className="cursor-pointer">Holdings · {formatDate(item.holdings_date)}</summary>
         <p className="mt-1">{item.source === 'issuer' ? 'Issuer-reported holdings' : 'SEC Form N-PORT filing'}.
@@ -131,6 +211,9 @@ function RelatedEtfsContent({ ticker }: { ticker: string }) {
     staleTime: 60_000,
     retry: 1,
   })
+  const { data: relevance, isFetching: fitFetching } = useBusinessFit(ticker, data?.status === 'available' && data.items.length > 0)
+  const fitBySymbol = new Map(relevance?.items.map((item) => [item.ticker, item]) ?? [])
+  const fitPending = fitFetching || relevance?.status === 'pending'
   const items = data?.items.slice(0, expanded ? 20 : 5) ?? []
   const symbolsKey = items.map((item) => item.ticker).join(',')
 
@@ -185,7 +268,7 @@ function RelatedEtfsContent({ ticker }: { ticker: string }) {
           : data?.status === 'empty'
             ? <p className="text-muted-foreground text-sm">No ETF holders found in the provider’s covered data.</p>
             : <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-              {items.map((item) => <EtfCard key={item.ticker} item={item} ticker={ticker} stock={stock} />)}
+              {items.map((item) => <EtfCard key={item.ticker} item={item} ticker={ticker} stock={stock} relevance={fitBySymbol.get(item.ticker)} fitPending={fitPending} />)}
             </div>}
       {data?.stale && <p className="text-muted-foreground mt-3 text-xs" role="status">
         Using cached holdings{data.fetched_at ? ` from ${formatDate(regularTradingDate(data.fetched_at))}` : ''}; refresh is temporarily unavailable.

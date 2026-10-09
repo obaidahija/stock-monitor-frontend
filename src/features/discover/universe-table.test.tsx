@@ -152,3 +152,10 @@ test.each(['2026-09-18', '2026-09-27', '2026-11-18'])(
     expect(screen.queryByText(/· \d+ calendar days/)).not.toBeInTheDocument()
   },
 )
+
+test('shows the industry tag beside the sector tag', () => {
+  renderTable([universeRow({ ticker: 'CCJ', sector: 'Energy', industry: 'Uranium' })])
+
+  expect(screen.getByTestId('industry-tag-CCJ')).toHaveTextContent('Uranium')
+  expect(screen.getByRole('button', { name: 'Energy' })).toBeInTheDocument()
+})

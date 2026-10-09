@@ -144,6 +144,8 @@ export interface UniverseTickerOut extends TrackedTickerOut {
   insider_buy_value_usd: number | null
   short_percent_of_float: number | null
   float_shares: number | null
+  /** From universe_score; sizes ticker boxes in the sector map. */
+  market_cap?: number | null
   sector_score_percentile: number | null
   industry_score_percentile: number | null
 }
@@ -177,6 +179,16 @@ export interface QuoteOut {
   session_time: string | null
 }
 
+export interface IndustrySummaryOut {
+  industry: string
+  avg_change_pct: number | null
+  count: number
+  advancers: number
+  decliners: number
+  top_ticker: string | null
+  top_ticker_change_pct: number | null
+}
+
 export interface SectorSummaryOut {
   sector: string
   avg_change_pct: number | null
@@ -185,6 +197,8 @@ export interface SectorSummaryOut {
   decliners: number
   top_ticker: string | null
   top_ticker_change_pct: number | null
+  /** Largest first; empty from a backend that predates industry breakdowns. */
+  industries?: IndustrySummaryOut[]
 }
 
 export interface SectorHeatmapOut {
@@ -2386,4 +2400,29 @@ export interface EtfDescriptionOut {
   stale: boolean
   source_name: string
   source_url: string
+}
+
+export type TickerDescriptionOut = EtfDescriptionOut
+
+export type RelatedEtfRelevanceCategory = 'direct' | 'adjacent' | 'sector' | 'broad' | 'unknown'
+
+export interface RelatedEtfRelevanceItemOut {
+  business_score?: number | null
+  weight_pct?: number
+  concentration_score?: number
+  ticker: string
+  score: number | null
+  category: RelatedEtfRelevanceCategory | null
+  explanation: string | null
+  evidence: string | null
+  stale: boolean
+}
+
+export interface RelatedEtfRelevanceOut {
+  ticker: string
+  status: 'pending' | 'ready' | 'partial' | 'unavailable'
+  items: RelatedEtfRelevanceItemOut[]
+  model: string | null
+  rubric_version: string
+  fetched_at: string | null
 }

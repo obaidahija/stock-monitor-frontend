@@ -103,6 +103,8 @@ export function MacroAttentionStrip() {
       } else {
         next.set('sector', sector)
       }
+      // A sector switch invalidates any industry chosen in the heatmap.
+      next.delete('industry')
       next.delete('page')
       return next
     })
