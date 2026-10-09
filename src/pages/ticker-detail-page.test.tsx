@@ -16,6 +16,9 @@ vi.mock('@/features/ticker-detail/price-target-change-banner', () => ({
   PriceTargetChangeBanner: () => null,
 }))
 vi.mock('@/features/ticker-detail/ticker-price-header', () => ({ TickerPriceHeader: () => null }))
+vi.mock('@/features/ticker-detail/related-etfs', () => ({
+  RelatedEtfs: ({ ticker }: { ticker: string }) => <div>Related ETFs for {ticker}</div>,
+}))
 vi.mock('@/features/ticker-detail/ai-research/ai-research-tab', () => ({
   AiResearchTab: () => <div>AI research content</div>,
 }))

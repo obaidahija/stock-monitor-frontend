@@ -20,6 +20,8 @@ import type {
   NewsRefreshResult,
   PriceTargetChangeOut,
   QuoteOut,
+  EtfDescriptionOut,
+  RelatedEtfsOut,
   ScoreHistoryPointOut,
   SentimentBucketGranularity,
   SentimentHistoryOut,
@@ -31,6 +33,23 @@ export interface AnalysisExtras {
   includeChartPattern?: boolean
   /** Adds the selected 1-7 session research window; omitted keeps the legacy response. */
   horizonSessions?: number
+}
+
+export function getRelatedEtfs(ticker: string) {
+  return apiClient.get<RelatedEtfsOut>(`/v1/stocks/${encodeURIComponent(ticker)}/related-etfs`)
+}
+
+export function getRelatedEtfDescription(ticker: string, etf: string) {
+  return apiClient.get<EtfDescriptionOut>(
+    `/v1/stocks/${encodeURIComponent(ticker)}/related-etfs/${encodeURIComponent(etf)}/description`,
+  )
+}
+
+export function refreshRelatedEtfQuotes(ticker: string, tickers: string[]) {
+  return apiClient.post<QuoteOut[]>(
+    `/v1/stocks/${encodeURIComponent(ticker)}/related-etfs/quotes/refresh`,
+    { tickers },
+  )
 }
 
 export function getFilings(ticker: string, opts?: { form?: string; days?: number }) {

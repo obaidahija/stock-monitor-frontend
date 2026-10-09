@@ -8,6 +8,7 @@ import { RemoveTickerDialog } from '@/features/discover/remove-ticker-dialog'
 import { PriceChart } from '@/features/ticker-detail/price-chart'
 import { PriceTargetChangeBanner } from '@/features/ticker-detail/price-target-change-banner'
 import { TickerPriceHeader } from '@/features/ticker-detail/ticker-price-header'
+import { RelatedEtfs } from '@/features/ticker-detail/related-etfs'
 import { AiResearchTab } from '@/features/ticker-detail/ai-research/ai-research-tab'
 import { AnalysisTab } from '@/features/ticker-detail/analysis-tab'
 import { CompetitorsTab } from '@/features/ticker-detail/competitors/competitors-tab'
@@ -125,6 +126,8 @@ export function TickerDetailPage() {
           </>
         }
       />
+
+      <RelatedEtfs ticker={symbol} />
 
       <PriceTargetChangeBanner ticker={symbol} onNavigate={scrollToAnalystDetail} />
 

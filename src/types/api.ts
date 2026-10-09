@@ -2358,3 +2358,32 @@ export interface StockPairsOut {
   cached: boolean
   caveat: string
 }
+
+export interface RelatedEtfOut {
+  ticker: string
+  name: string | null
+  weight_pct: number
+  holdings_date: string
+  source: 'issuer' | 'sec_nport'
+  quote: QuoteOut
+}
+
+export interface RelatedEtfsOut {
+  ticker: string
+  status: 'available' | 'empty' | 'unavailable'
+  stale: boolean
+  fetched_at: string | null
+  total_count: number
+  items: RelatedEtfOut[]
+  attribution_name: string
+  attribution_url: string
+}
+
+export interface EtfDescriptionOut {
+  ticker: string
+  description: string | null
+  fetched_at: string | null
+  stale: boolean
+  source_name: string
+  source_url: string
+}
