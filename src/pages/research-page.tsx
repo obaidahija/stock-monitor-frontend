@@ -4,8 +4,8 @@ import { ShortSqueezeSection } from '@/features/discover/short-squeeze-section'
 import { DiscoverResearchFirst } from '@/features/research-first/research-first-panel'
 
 /**
- * Short-term research, moved out of Discover so that page stays a scan of the
- * whole market. Research First has no on/off setting, so the page is never
+ * Dedicated short-term research view. Research First has no on/off setting,
+ * so the page is never
  * empty even when the scanners below it are turned off.
  */
 export function ResearchPage() {

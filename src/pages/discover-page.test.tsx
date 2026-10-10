@@ -6,8 +6,6 @@ function stub(name: string) {
   return () => <div data-testid="discover-section">{name}</div>
 }
 
-// The Research page owns these three. They stay stubbed here so that, if Discover
-// rendered them again, they would appear in the section list below.
 vi.mock('@/features/research-first/research-first-panel', () => ({ DiscoverResearchFirst: stub('research-first') }))
 vi.mock('@/features/discover/fresh-catalysts-section', () => ({ FreshCatalystsSection: stub('fresh-catalysts') }))
 vi.mock('@/features/discover/short-squeeze-section', () => ({ ShortSqueezeSection: stub('short-squeeze') }))
@@ -22,12 +20,11 @@ vi.mock('@/features/discover/notable-filings-section', () => ({ NotableFilingsSe
 
 afterEach(cleanup)
 
-test('short-term research moved to the Research page and the universe screens stay', () => {
+test('shows research priorities and catalysts alongside market discovery', () => {
   render(<DiscoverPage />)
   const order = screen.getAllByTestId('discover-section').map((node) => node.textContent)
-  expect(order).not.toContain('research-first')
-  expect(order).not.toContain('fresh-catalysts')
-  expect(order).not.toContain('short-squeeze')
-  // The universe table (with its generic Squeeze chip) is still rendered.
-  expect(order).toContain('universe-table')
+  expect(order).toEqual([
+    'research-first', 'macro-events', 'macro-attention', 'social-buzz',
+    'price-targets', 'outlook', 'fresh-catalysts', 'sector-heatmap', 'universe-table',
+  ])
 })
