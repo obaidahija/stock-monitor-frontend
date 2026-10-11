@@ -65,6 +65,37 @@ test('importance and company-news views change only passive reads', async () => 
   expect(refreshCompanyPosts).not.toHaveBeenCalled()
 })
 
+test('an unreachable local model pauses AI labels without retry or progress', async () => {
+  page = companyPage(account, {
+    analysis_state: 'unavailable',
+    analysis_pending_count: 0,
+    items: [companyPost('101')],
+  })
+  render()
+  expect(await screen.findByText('Company update 101')).toBeVisible()
+  expect(screen.getByText(/AI labels are paused/)).toBeVisible()
+  expect(screen.queryByRole('button', { name: 'Retry AI analysis' })).not.toBeInTheDocument()
+  expect(screen.queryByText(/Analyzing/)).not.toBeInTheDocument()
+  expect(screen.queryByRole('combobox', { name: 'Sort company posts' })).not.toBeInTheDocument()
+})
+
+test('switched-off company AI shows posts without any AI controls', async () => {
+  page = companyPage(account, { analysis_state: 'disabled', items: [companyPost('101')] })
+  render()
+  expect(await screen.findByText('Company update 101')).toBeVisible()
+  expect(screen.queryByText(/AI labels are paused/)).not.toBeInTheDocument()
+  expect(screen.queryByText('About AI labels')).not.toBeInTheDocument()
+  expect(screen.queryByRole('combobox', { name: 'Company posts view' })).not.toBeInTheDocument()
+})
+
+test('ready AI explains its labels and the filing evidence behind Material', async () => {
+  render()
+  await screen.findByText('Company update 101')
+  await userEvent.click(screen.getByText('About AI labels'))
+  expect(screen.getByText(/Material: company news backed by an SEC filing/)).toBeVisible()
+  expect(screen.queryByText(/0–29/)).not.toBeInTheDocument()
+})
+
 test('shrinking news results return to a valid page and load its remaining post', async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   let finished = false
@@ -304,6 +335,137 @@ test('no cache while collecting shows a loading state, not an empty one', async 
   render()
   expect(await screen.findByText('Collecting posts from @Google…')).toBeVisible()
   expect(screen.queryByText(/No posts from/)).not.toBeInTheDocument()
+})
+
+test.each(['not_found', 'identity_conflict'] as const)(
+  'a post-fetch identity recheck surfaces %s while AI polling is disabled',
+  async (state) => {
+    const fetch = twitterOperation('fetch-before-recheck', 'queued')
+    const lookup = twitterOperation('identity-recheck', 'queued', 'company_account_validate')
+    let finishLookup!: (operation: ReturnType<typeof twitterOperation>) => void
+    const lookupResult = new Promise<ReturnType<typeof twitterOperation>>((resolve) => { finishLookup = resolve })
+    page = companyPage(account, {
+      items: [companyPost('101')], analysis_state: 'disabled',
+      phase: 'posts_fetch', operation: fetch,
+    })
+    vi.mocked(ensureCompanyPosts).mockResolvedValue(page)
+    vi.mocked(getTwitterOperation).mockImplementation(async (id) => {
+      if (id === fetch.id) {
+        page = { ...page, phase: 'account_lookup', operation: lookup }
+        return { ...fetch, status: 'succeeded' }
+      }
+      return lookupResult
+    })
+    render()
+    expect(await screen.findByText('Company update 101')).toBeVisible()
+    await waitFor(() => expect(getTwitterOperation).toHaveBeenCalledWith(lookup.id))
+
+    account = companyAccount({ runtime_state: state, public_error_code: state })
+    page = companyPage(account, {
+      items: state === 'identity_conflict' ? [] : [companyPost('101')],
+      analysis_state: 'disabled', cache_state: state === 'identity_conflict' ? 'blocked' : 'ready',
+      public_error_code: state,
+    })
+    await act(async () => finishLookup({ ...lookup, status: 'failed', public_error_code: state }))
+    expect(await screen.findByText(state === 'identity_conflict'
+      ? '@Google now belongs to a different X account. Review and confirm the company account.'
+      : "X couldn't find @Google. The handle may have changed.")).toBeVisible()
+    if (state === 'identity_conflict') expect(screen.queryByText('Company update 101')).not.toBeInTheDocument()
+    else expect(screen.getByText('Company update 101')).toBeVisible()
+    expect(ensureCompanyPosts).toHaveBeenCalledTimes(1)
+    expect(refreshCompanyPosts).not.toHaveBeenCalled()
+  },
+)
+
+test('a recheck completed before the follow-up read updates the directory from that read', async () => {
+  const fetch = twitterOperation('fetch-before-completed-recheck', 'queued')
+  account = companyAccount({ runtime_state: 'validating' })
+  page = companyPage(account, {
+    items: [companyPost('101')], analysis_state: 'disabled',
+    phase: 'posts_fetch', operation: fetch,
+  })
+  vi.mocked(ensureCompanyPosts).mockResolvedValue(page)
+  vi.mocked(getTwitterOperation).mockResolvedValue({ ...fetch, status: 'succeeded' })
+  const checked = companyAccount({ runtime_state: 'identity_conflict', public_error_code: 'identity_conflict' })
+  vi.mocked(getCompanyPosts).mockResolvedValue(companyPage(checked, {
+    analysis_state: 'disabled', cache_state: 'blocked',
+    public_error_code: 'identity_conflict',
+    public_error_message: 'The X account identity changed. Review and confirm the company account.',
+  }))
+  render()
+  expect(await screen.findByText('@Google now belongs to a different X account. Review and confirm the company account.')).toBeVisible()
+  expect(screen.queryByText('Company update 101')).not.toBeInTheDocument()
+  expect(ensureCompanyPosts).toHaveBeenCalledTimes(1)
+  expect(refreshCompanyPosts).not.toHaveBeenCalled()
+})
+
+test.each(['not_found', 'identity_conflict'] as const)(
+  'a recheck finishing during the follow-up read surfaces %s without collecting again',
+  async (state) => {
+    const fetch = twitterOperation('fetch-before-racing-recheck', 'queued')
+    account = companyAccount({ runtime_state: 'validating' })
+    page = companyPage(account, {
+      items: [companyPost('101')], analysis_state: 'disabled',
+      phase: 'posts_fetch', operation: fetch,
+    })
+    vi.mocked(ensureCompanyPosts).mockResolvedValue(page)
+    let finishFetch!: (operation: ReturnType<typeof twitterOperation>) => void
+    const fetchResult = new Promise<ReturnType<typeof twitterOperation>>((resolve) => { finishFetch = resolve })
+    vi.mocked(getTwitterOperation).mockReturnValue(fetchResult)
+    render()
+    expect(await screen.findByText('Company update 101')).toBeVisible()
+    const initialReads = vi.mocked(getCompanyPosts).mock.calls.length
+    const checked = companyAccount({ runtime_state: state, public_error_code: state })
+    vi.mocked(getCompanyPosts)
+      // The queue lookup observes completion after the account snapshot was read.
+      .mockResolvedValueOnce({ ...page, phase: null, operation: null })
+      .mockResolvedValue(companyPage(checked, {
+        items: state === 'identity_conflict' ? [] : [companyPost('101')],
+        analysis_state: 'disabled', cache_state: state === 'identity_conflict' ? 'blocked' : 'ready',
+        public_error_code: state,
+      }))
+    await act(async () => finishFetch({ ...fetch, status: 'succeeded' }))
+    expect(await screen.findByText(state === 'identity_conflict'
+      ? '@Google now belongs to a different X account. Review and confirm the company account.'
+      : "X couldn't find @Google. The handle may have changed.")).toBeVisible()
+    if (state === 'identity_conflict') expect(screen.queryByText('Company update 101')).not.toBeInTheDocument()
+    else expect(screen.getByText('Company update 101')).toBeVisible()
+    expect(getCompanyPosts).toHaveBeenCalledTimes(initialReads + 2)
+    expect(ensureCompanyPosts).toHaveBeenCalledTimes(1)
+    expect(refreshCompanyPosts).not.toHaveBeenCalled()
+  },
+)
+
+test('a delayed directory read cannot overwrite the newer identity result from the posts page', async () => {
+  const fetch = twitterOperation('fetch-before-stale-directory', 'queued')
+  account = companyAccount({ runtime_state: 'validating' })
+  const staleDirectory = account
+  let finishDirectory!: (value: CompanyAccountOut) => void
+  const directoryRead = new Promise<CompanyAccountOut>((resolve) => { finishDirectory = resolve })
+  vi.mocked(getCompanyAccount).mockResolvedValueOnce(account).mockReturnValueOnce(directoryRead)
+  page = companyPage(account, {
+    items: [companyPost('101')], analysis_state: 'disabled',
+    phase: 'posts_fetch', operation: fetch,
+  })
+  vi.mocked(ensureCompanyPosts).mockResolvedValue(page)
+  vi.mocked(getTwitterOperation).mockResolvedValue({ ...fetch, status: 'succeeded' })
+  const checked = companyAccount({ runtime_state: 'identity_conflict', public_error_code: 'identity_conflict' })
+  vi.mocked(getCompanyPosts).mockResolvedValue(companyPage(checked, {
+    analysis_state: 'disabled', cache_state: 'blocked',
+    public_error_code: 'identity_conflict',
+    public_error_message: 'The X account identity changed. Review and confirm the company account.',
+  }))
+  render()
+  const conflict = '@Google now belongs to a different X account. Review and confirm the company account.'
+  expect(await screen.findByText(conflict)).toBeVisible()
+  await act(async () => {
+    finishDirectory(staleDirectory)
+    await directoryRead
+    await new Promise((resolve) => setTimeout(resolve, 20))
+  })
+  expect(screen.getByText(conflict)).toBeVisible()
+  expect(screen.queryByText('Company update 101')).not.toBeInTheDocument()
+  expect(ensureCompanyPosts).toHaveBeenCalledTimes(1)
 })
 
 test('quote context is shown apart from the company text with safe links', async () => {

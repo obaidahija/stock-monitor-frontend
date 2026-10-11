@@ -14,8 +14,9 @@ import type {
   CompanyAccountOut,
   CompanyCollectionPhase,
   CompanyPostsPageOut,
+  CompanyPostsSort,
 } from '@/types/twitter-company'
-import { useCompanyAccount, companyPostsKey } from './hooks'
+import { useCompanyAccount, useCompanyPosts, companyPostsKey } from './hooks'
 import { useCompanyCollection } from './use-company-collection'
 
 vi.mock('@/api/twitter', () => ({ getTwitterOperation: vi.fn() }))
@@ -240,6 +241,220 @@ test('a manual refresh keeps its force intent through the account lookup', async
 
   await waitFor(() => expect(refreshCompanyPosts).toHaveBeenCalledTimes(2))
   await settle()
+  expect(ensureCompanyPosts).toHaveBeenCalledTimes(1)
+})
+
+test('a successful post-fetch recheck finishes without authorizing another collection', async () => {
+  const fetch = operation('fetch-before-recheck', 'queued', 'company_posts_fetch')
+  const lookup = operation('post-fetch-recheck', 'queued', 'company_account_validate')
+  const lookupResult = deferred<TwitterOperationOut>()
+  let checked = false
+  vi.mocked(ensureCompanyPosts).mockResolvedValueOnce(
+    response(directory.GOOG, { phase: 'posts_fetch', operation: fetch }),
+  )
+  vi.mocked(getCompanyPosts).mockImplementation(async () => response(directory.GOOG,
+    checked ? null : { phase: 'account_lookup', operation: lookup },
+  ))
+  vi.mocked(getTwitterOperation).mockImplementation(async (id) => id === fetch.id
+    ? { ...fetch, status: 'succeeded' }
+    : lookupResult.promise,
+  )
+  const hook = mount()
+  await waitFor(() => expect(hook.result.current.operation?.id).toBe(lookup.id))
+  checked = true
+  await act(async () => lookupResult.resolve({ ...lookup, status: 'succeeded' }))
+  await waitFor(() => expect(hook.result.current.isCollecting).toBe(false))
+  await settle()
+  expect(ensureCompanyPosts).toHaveBeenCalledTimes(1)
+  expect(refreshCompanyPosts).not.toHaveBeenCalled()
+})
+
+test.each([
+  { change: 'pages', page: 2, sort: 'newest' as const, analysisState: 'disabled' as const },
+  { change: 'sort', page: 1, sort: 'importance' as const, analysisState: 'ready' as const },
+])('follows the recheck after switching $change with an older posts read pending', async ({ page, sort, analysisState }) => {
+  directory.GOOG = account('GOOG', 1, { runtime_state: 'validating' })
+  const fetch = operation('fetch-before-view-change', 'queued', 'company_posts_fetch')
+  const lookup = operation('recheck-after-view-change', 'queued', 'company_account_validate')
+  const oldPage = {
+    ...response(directory.GOOG, { phase: 'posts_fetch', operation: fetch }),
+    analysis_state: analysisState,
+    analysis_pending_count: 0,
+  }
+  const ensureResult = deferred<CompanyPostsPageOut>()
+  const oldRead = deferred<CompanyPostsPageOut>()
+  const fetchResult = deferred<TwitterOperationOut>()
+  const lookupResult = deferred<TwitterOperationOut>()
+  let oldReadStarted = false
+  let fetchFinished = false
+  let lookupFinished = false
+  vi.mocked(ensureCompanyPosts).mockReturnValueOnce(ensureResult.promise)
+  vi.mocked(getCompanyPosts).mockImplementation(async (ticker, selectedPage = 1, selectedSort = 'newest') => {
+    if (!oldReadStarted && selectedPage === 1 && selectedSort === 'newest') {
+      oldReadStarted = true
+      return oldRead.promise
+    }
+    const work = lookupFinished ? null : fetchFinished
+      ? { phase: 'account_lookup' as const, operation: lookup }
+      : { phase: 'posts_fetch' as const, operation: fetch }
+    return {
+      ...response(directory[ticker], work),
+      page: selectedPage,
+      analysis_state: analysisState,
+      analysis_pending_count: 0,
+    }
+  })
+  vi.mocked(getTwitterOperation).mockImplementation(async (id) =>
+    id === fetch.id ? fetchResult.promise : lookupResult.promise,
+  )
+  const hook = renderHook(({ page: selectedPage, sort: selectedSort }) => {
+    const { data: owner } = useCompanyAccount('GOOG')
+    useCompanyPosts('GOOG', owner?.mapping_revision ?? 0, selectedPage, {
+      enabled: owner?.confirmation_state === 'confirmed', sort: selectedSort,
+    })
+    return {
+      ...useCompanyCollection({ ticker: 'GOOG', account: owner, active: true }),
+      account: owner,
+    }
+  }, { wrapper, initialProps: { page: 1, sort: 'newest' as CompanyPostsSort } })
+  const oldKey = companyPostsKey('GOOG', 1, 1)
+  await waitFor(() => expect(queryClient.getQueryState(oldKey)?.fetchStatus).toBe('fetching'))
+  await act(async () => ensureResult.resolve(oldPage))
+  await waitFor(() => expect(hook.result.current.operation?.id).toBe(fetch.id))
+  hook.rerender({ page, sort })
+  await waitFor(() => expect(queryClient.getQueryCache().find({ queryKey: oldKey, exact: true })?.getObserversCount()).toBe(0))
+
+  fetchFinished = true
+  await act(async () => fetchResult.resolve({ ...fetch, status: 'succeeded' }))
+  // The newer recheck must be tracked before the older cache request finishes.
+  await waitFor(() => expect(hook.result.current.operation?.id).toBe(lookup.id))
+  expect(hook.result.current.isCollecting).toBe(true)
+  lookupFinished = true
+  directory.GOOG = account('GOOG', 1, { runtime_state: 'not_found', public_error_code: 'not_found' })
+  await act(async () => lookupResult.resolve({ ...lookup, status: 'failed', public_error_code: 'not_found' }))
+  await waitFor(() => expect(hook.result.current.account?.runtime_state).toBe('not_found'))
+  await waitFor(() => expect(hook.result.current.operation).toBeNull())
+
+  await act(async () => oldRead.resolve(oldPage))
+  await settle()
+  expect(hook.result.current.account?.runtime_state).toBe('not_found')
+  expect(queryClient.getQueryData<CompanyPostsPageOut>(oldKey)?.account.runtime_state).toBe('not_found')
+  expect(ensureCompanyPosts).toHaveBeenCalledTimes(1)
+  expect(refreshCompanyPosts).not.toHaveBeenCalled()
+})
+
+test('a newer refresh does not report its canceled predecessor cache read as an error', async () => {
+  const firstFetch = operation('fetch-before-overlapping-refresh', 'queued', 'company_posts_fetch')
+  const secondFetch = operation('fetch-after-overlapping-refresh', 'queued', 'company_posts_fetch')
+  const firstResult = deferred<TwitterOperationOut>()
+  const secondResult = deferred<TwitterOperationOut>()
+  const oldRead = deferred<CompanyPostsPageOut>()
+  const latestPage = { ...response(directory.GOOG), total: 1 }
+  const postsKey = companyPostsKey('GOOG', 1, 1)
+  let firstFinished = false
+  let secondFinished = false
+  let oldReadStarted = false
+  vi.mocked(ensureCompanyPosts).mockResolvedValueOnce(
+    response(directory.GOOG, { phase: 'posts_fetch', operation: firstFetch }),
+  )
+  vi.mocked(refreshCompanyPosts).mockResolvedValueOnce(
+    response(directory.GOOG, { phase: 'posts_fetch', operation: secondFetch }),
+  )
+  vi.mocked(getTwitterOperation).mockImplementation(async (id) =>
+    id === firstFetch.id ? firstResult.promise : secondResult.promise,
+  )
+  vi.mocked(getCompanyPosts).mockImplementation(async () => {
+    if (secondFinished) return latestPage
+    if (firstFinished) {
+      oldReadStarted = true
+      return oldRead.promise
+    }
+    return response(directory.GOOG)
+  })
+  const hook = renderHook(() => {
+    const { data: owner } = useCompanyAccount('GOOG')
+    useCompanyPosts('GOOG', owner?.mapping_revision ?? 0, 1, { enabled: !!owner })
+    return useCompanyCollection({ ticker: 'GOOG', account: owner, active: true })
+  }, { wrapper })
+  await waitFor(() => expect(hook.result.current.operation?.id).toBe(firstFetch.id))
+
+  firstFinished = true
+  await act(async () => firstResult.resolve({ ...firstFetch, status: 'succeeded' }))
+  await waitFor(() => expect(oldReadStarted).toBe(true))
+  expect(hook.result.current.isCollecting).toBe(false)
+  act(() => hook.result.current.refresh())
+  await waitFor(() => expect(hook.result.current.operation?.id).toBe(secondFetch.id))
+
+  secondFinished = true
+  await act(async () => secondResult.resolve({ ...secondFetch, status: 'succeeded' }))
+  await waitFor(() => {
+    expect(queryClient.getQueryState(postsKey)?.fetchStatus).toBe('idle')
+    expect(queryClient.getQueryData<CompanyPostsPageOut>(postsKey)?.total).toBe(1)
+    expect(hook.result.current.operation).toBeNull()
+    expect(hook.result.current.error).toBeNull()
+  })
+  await act(async () => oldRead.resolve(response(directory.GOOG)))
+  expect(hook.result.current.error).toBeNull()
+  expect(queryClient.getQueryData<CompanyPostsPageOut>(postsKey)?.total).toBe(1)
+})
+
+test('retrying a failed post-fetch cache read follows existing work without collecting', async () => {
+  const fetch = operation('fetch-before-cache-error', 'queued', 'company_posts_fetch')
+  const lookup = operation('recheck-after-cache-error', 'queued', 'company_account_validate')
+  vi.mocked(ensureCompanyPosts).mockResolvedValueOnce(
+    response(directory.GOOG, { phase: 'posts_fetch', operation: fetch }),
+  )
+  vi.mocked(getTwitterOperation).mockImplementation(async (id) => id === fetch.id
+    ? { ...fetch, status: 'succeeded' }
+    : lookup,
+  )
+  vi.mocked(getCompanyPosts).mockRejectedValueOnce(new Error('Cache follow-up failed'))
+  const hook = mount()
+  await waitFor(() => expect(hook.result.current.error?.message).toBe('Cache follow-up failed'))
+  vi.mocked(getCompanyPosts).mockResolvedValue(
+    response(directory.GOOG, { phase: 'account_lookup', operation: lookup }),
+  )
+  act(() => hook.result.current.retry())
+  await waitFor(() => expect(hook.result.current.operation?.id).toBe(lookup.id))
+  expect(hook.result.current.error).toBeNull()
+  expect(ensureCompanyPosts).toHaveBeenCalledTimes(1)
+  expect(refreshCompanyPosts).not.toHaveBeenCalled()
+})
+
+test('the consistency read for validating without work is bounded', async () => {
+  const fetch = operation('fetch-before-orphaned-validation', 'queued', 'company_posts_fetch')
+  directory.GOOG = account('GOOG', 1, { runtime_state: 'validating' })
+  vi.mocked(ensureCompanyPosts).mockResolvedValueOnce(
+    response(directory.GOOG, { phase: 'posts_fetch', operation: fetch }),
+  )
+  vi.mocked(getTwitterOperation).mockResolvedValue({ ...fetch, status: 'succeeded' })
+  const hook = mount()
+  await waitFor(() => expect(getCompanyPosts).toHaveBeenCalledTimes(2))
+  await settle()
+  expect(getCompanyPosts).toHaveBeenCalledTimes(2)
+  expect(hook.result.current.operation).toBeNull()
+  expect(ensureCompanyPosts).toHaveBeenCalledTimes(1)
+  expect(refreshCompanyPosts).not.toHaveBeenCalled()
+})
+
+test('leaving the tab during a post-fetch cache read drops its queued follow-up', async () => {
+  const fetch = operation('fetch-before-leaving', 'queued', 'company_posts_fetch')
+  const lookup = operation('recheck-after-leaving', 'queued', 'company_account_validate')
+  const cacheRead = deferred<CompanyPostsPageOut>()
+  vi.mocked(ensureCompanyPosts).mockResolvedValueOnce(
+    response(directory.GOOG, { phase: 'posts_fetch', operation: fetch }),
+  )
+  vi.mocked(getTwitterOperation).mockResolvedValue({ ...fetch, status: 'succeeded' })
+  vi.mocked(getCompanyPosts).mockReturnValueOnce(cacheRead.promise)
+  const hook = mount()
+  await waitFor(() => expect(getCompanyPosts).toHaveBeenCalled())
+  hook.rerender({ ticker: 'GOOG', active: false })
+  await act(async () => cacheRead.resolve(
+    response(directory.GOOG, { phase: 'account_lookup', operation: lookup }),
+  ))
+  await settle()
+  expect(hook.result.current.operation).toBeNull()
+  expect(getTwitterOperation).not.toHaveBeenCalledWith(lookup.id)
   expect(ensureCompanyPosts).toHaveBeenCalledTimes(1)
 })
 

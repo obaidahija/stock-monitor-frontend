@@ -116,6 +116,7 @@ test('shows every coverage count instead of only the evaluated rows', () => {
   expect(screen.getByText('80 mature')).toBeInTheDocument()
   expect(screen.getByText('72 evaluated')).toBeInTheDocument()
   expect(screen.getByText('8 missing')).toBeInTheDocument()
+  expect(screen.getByText('20 pending maturity')).toBeInTheDocument()
   expect(screen.getByText('Provisional sample')).toBeInTheDocument()
   expect(screen.getByText(/7 decision sessions/)).toBeInTheDocument()
   expect(screen.getByText(/research-flat-10bps-per-side-v1/)).toBeInTheDocument()

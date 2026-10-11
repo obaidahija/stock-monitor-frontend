@@ -1,8 +1,13 @@
-import { BadgeCheck, Bookmark, Eye, Heart, MessageCircle, Quote, Repeat2 } from 'lucide-react'
+import { BadgeCheck, Bookmark, Eye, FileText, Heart, MessageCircle, Quote, Repeat2 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { formatEasternDateTime, formatNumber, formatRelativeTime } from '@/lib/format'
-import type { CompanyPostMetricsOut, CompanyPostOut } from '@/types/twitter-company'
+import { formatEasternDateTime, formatNumber, formatRelativeTime, formatTimestamp } from '@/lib/format'
+import type {
+  CompanyPostAnalysisOut,
+  CompanyPostMetricsOut,
+  CompanyPostOut,
+} from '@/types/twitter-company'
+import { POST_LABELS, filingLabel } from './labels'
 
 const METRICS: { key: keyof CompanyPostMetricsOut; label: string; icon: LucideIcon }[] = [
   { key: 'views', label: 'Views', icon: Eye },
@@ -15,11 +20,29 @@ const METRICS: { key: keyof CompanyPostMetricsOut; label: string; icon: LucideIc
 
 const linkClass = 'underline-offset-2 hover:underline break-all'
 
+/** A payload from before labels carries only the model's decision, never "material". */
+function labelOf(analysis: CompanyPostAnalysisOut) {
+  if (analysis.status !== 'completed') return null
+  if (analysis.label) return analysis.label
+  if (analysis.is_company_news === null) return null
+  return analysis.is_company_news ? 'company_news' : 'routine'
+}
+
+function analysisBadge(analysis: CompanyPostAnalysisOut) {
+  const label = labelOf(analysis)
+  if (label) return POST_LABELS[label]
+  if (analysis.status === 'pending') return 'Analyzing'
+  if (analysis.status === 'uncertain') return 'Needs review'
+  return 'AI unavailable'
+}
+
 /**
  * One company-authored post. Engagement is shown as X reported it — a metric X did
- * not report is left out rather than shown as zero. AI importance is separate.
+ * not report is left out rather than shown as zero. The AI label is the model's
+ * reading of the text; SEC filings on the same topic are listed as facts beside it.
  */
 export function CompanyPostRow({ post }: { post: CompanyPostOut }) {
+  const evidence = post.evidence ?? []
   return (
     <article
       aria-label={`Post from @${post.author_username}`}
@@ -47,16 +70,26 @@ export function CompanyPostRow({ post }: { post: CompanyPostOut }) {
       {post.analysis && (
         <div className="flex flex-col gap-1 text-xs">
           <div className="flex flex-wrap gap-1.5">
-            <Badge variant="outline">
-              {post.analysis.status === 'completed' && post.analysis.importance_score !== null
-                ? `AI importance ${post.analysis.importance_score}/100`
-                : post.analysis.status === 'pending' ? 'Analyzing'
-                : post.analysis.status === 'uncertain' ? 'Needs review' : 'AI unavailable'}
+            <Badge variant={post.analysis.label === 'material' ? 'default' : 'outline'}>
+              {analysisBadge(post.analysis)}
             </Badge>
-            {post.analysis.status === 'completed' && post.analysis.is_company_news && <Badge variant="secondary">Potential company news</Badge>}
           </div>
           {post.analysis.reason && <p className="text-muted-foreground break-words">{post.analysis.reason}</p>}
         </div>
+      )}
+
+      {evidence.length > 0 && (
+        <ul aria-label="SEC filings on this topic" className="space-y-0.5 text-xs">
+          {evidence.map((filing) => (
+            <li key={filing.url} className="flex flex-wrap items-center gap-1.5">
+              <FileText className="text-muted-foreground size-3.5" aria-hidden />
+              <a href={filing.url} target="_blank" rel="noopener noreferrer" className={linkClass}>
+                {filingLabel(filing)}
+              </a>
+              <span className="text-muted-foreground">filed {formatTimestamp(filing.filed_at)}</span>
+            </li>
+          ))}
+        </ul>
       )}
 
       {post.quote && (

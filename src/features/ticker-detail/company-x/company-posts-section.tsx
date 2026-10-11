@@ -296,9 +296,12 @@ export function CompanyPostsSection({ ticker, active = true }: { ticker: string;
   } else {
     const items = cacheBlocked ? [] : data?.items ?? []
     const hasCache = data?.cache_state === 'ready' || data?.cache_state === 'empty'
+    // Older payloads carry no state; they always had analysis available.
+    const analysisState = data?.analysis_state ?? 'ready'
+    const aiReady = analysisState === 'ready'
     body = (
       <div className="space-y-3">
-        {!cacheBlocked && (
+        {!cacheBlocked && aiReady && (
           <div className="flex flex-col gap-2">
             <div className="flex flex-wrap items-center gap-2">
               <Select value={sort} onValueChange={(value) => setSelection({ key: ticker, sort: value as CompanyPostsSort, view })}>
@@ -314,13 +317,23 @@ export function CompanyPostsSection({ ticker, active = true }: { ticker: string;
               )}
             </div>
             {(data?.analysis_pending_count ?? 0) > 0 && <p className="text-muted-foreground text-xs" aria-live="polite">Analyzing {data?.analysis_pending_count} company posts…</p>}
-            {view === 'company_news' && <p className="text-muted-foreground text-xs">Potential company news and posts awaiting an AI decision.</p>}
+            {view === 'company_news' && <p className="text-muted-foreground text-xs">Company news, material posts and posts awaiting an AI decision.</p>}
             <details className="text-muted-foreground text-xs">
-              <summary className="cursor-pointer">About AI importance</summary>
-              <p className="mt-1">Estimated business significance: 0–29 routine promotion; 30–59 concrete updates; 60–79 significant developments; 80–100 potentially major events. Based on the post's stated facts; it is not a price prediction.</p>
+              <summary className="cursor-pointer">About AI labels</summary>
+              <ul className="mt-1 space-y-0.5">
+                <li>Routine: promotion, events, awards or advice with no stated company development.</li>
+                <li>Company news: a stated development such as a launch, partnership, research result or agreement.</li>
+                <li>Material: company news backed by an SEC filing on the same topic, filed from a day before the post to four days after. The filing is linked under the post. Agreement-only disclosures are not enough.</li>
+              </ul>
+              <p className="mt-1">A local model reads only the post's text. A matching filing names a disclosed topic; it does not verify the exact event or its business effect. Labels are estimates, not price predictions.</p>
             </details>
             {retryAnalysis.error && <ErrorState error={retryAnalysis.error} onRetry={() => retryAnalysis.mutate(revision)} />}
           </div>
+        )}
+        {!cacheBlocked && analysisState === 'unavailable' && (
+          <p className="text-muted-foreground text-xs">
+            AI labels are paused: the local model isn&apos;t reachable. Posts and SEC filings still show.
+          </p>
         )}
         <p className="text-muted-foreground text-xs" aria-live="polite">
           {collection.isCollecting

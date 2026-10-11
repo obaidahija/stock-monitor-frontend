@@ -127,6 +127,19 @@ test('pending AI polls passive reads only while active', async () => {
   expectNoCollection()
 }, 9000)
 
+test('work that cannot progress while the model is unreachable is never polled', async () => {
+  vi.mocked(getCompanyPosts).mockResolvedValue({
+    ...page(1, 1, ['p1']),
+    analysis_state: 'unavailable',
+    analysis_pending_count: 1,
+  })
+  const hook = renderHook(() => useCompanyPosts('GOOG', 1, 1, { active: true }), { wrapper })
+  await waitFor(() => expect(hook.result.current.data?.analysis_state).toBe('unavailable'))
+  await new Promise((resolve) => setTimeout(resolve, 3300))
+  expect(getCompanyPosts).toHaveBeenCalledTimes(1)
+  expectNoCollection()
+}, 9000)
+
 test('reads, refetches, pages and invalidations never send a collection request', async () => {
   const accountHook = renderHook(() => useCompanyAccount('GOOG'), { wrapper })
   const postsHook = renderHook(({ pageNumber }) => useCompanyPosts('GOOG', 1, pageNumber), {

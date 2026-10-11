@@ -25,6 +25,9 @@ import {
   matchedConditionLabel,
   readableReason,
   shortMetadataWarning,
+  shortReportAgeWarning,
+  shortReportLabel,
+  shortInterestSourceLabel,
 } from './short-squeeze-format'
 import { readShortSqueezeParams, useShortSqueezes } from './short-squeeze-hooks'
 
@@ -33,6 +36,7 @@ const selectClass = 'border-input bg-background h-8 max-w-full rounded-md border
 function SqueezeRow({ item, onInspect }: { item: ShortSqueezeItemOut; onInspect: () => void }) {
   const incomplete = item.status === 'incomplete'
   const metadataWarning = shortMetadataWarning(item)
+  const ageWarning = shortReportAgeWarning(item)
   return (
     <TableRow>
       <TableCell className="align-top">
@@ -68,12 +72,12 @@ function SqueezeRow({ item, onInspect }: { item: ShortSqueezeItemOut; onInspect:
           </>
         )}
         {metadataWarning && <p className="text-amber-700 dark:text-amber-400 whitespace-normal">{metadataWarning}</p>}
+        {ageWarning && <p className="text-amber-700 dark:text-amber-400 whitespace-normal">{ageWarning}</p>}
         {closedBelowHigh(item) && <p className="text-amber-700 dark:text-amber-400">High touched; closed below</p>}
         {item.source_corrected && <p className="text-amber-700 dark:text-amber-400">Source data changed after the first match</p>}
         <p className="text-muted-foreground">{completedSessionVolume(item.relative_volume)}</p>
-        {item.short_report_date === null && (
-          <p className="text-muted-foreground">Short-interest report date unavailable</p>
-        )}
+        <p className="text-muted-foreground whitespace-normal">{shortReportLabel(item)}</p>
+        <p className="text-muted-foreground whitespace-normal">{shortInterestSourceLabel(item)}</p>
       </TableCell>
       <TableCell className="align-top text-right">
         <Button variant="outline" size="sm" aria-label={`Inspect ${item.ticker}`} onClick={onInspect}>

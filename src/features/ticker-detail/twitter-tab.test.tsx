@@ -1,14 +1,17 @@
-import { cleanup, screen, waitFor, within } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { ApiError, apiClient } from '@/lib/api-client'
 import { renderWithProviders } from '@/test/render'
-import type { TwitterPageOut, TwitterPostOut } from '@/types/api'
+import type { TwitterOperationOut, TwitterPageOut, TwitterPostOut, TwitterSearchResultOut } from '@/types/api'
 import type { CompanyAccountOut, CompanyPostsPageOut } from '@/types/twitter-company'
 import {
   companyAccount,
   companyPage,
   companyPost,
+  twitterOperation,
 } from './company-x/test-fixtures'
 import { TwitterTab } from './twitter-tab'
 
@@ -18,6 +21,9 @@ let calls: Call[]
 let account: CompanyAccountOut | Error
 let posts: CompanyPostsPageOut
 let trusted: TwitterPageOut
+let crowd: TwitterSearchResultOut
+let searchOperation: TwitterOperationOut | null
+let searchPollError: ApiError | null
 
 function trustedPost(id: string, overrides: Partial<TwitterPostOut> = {}): TwitterPostOut {
   return {
@@ -55,11 +61,30 @@ function trustedPage(items: TwitterPostOut[], total = items.length): TwitterPage
   }
 }
 
+function crowdResult(
+  items: TwitterPostOut[],
+  fetchedAt: string | null = '2026-10-08T11:30:00Z',
+): TwitterSearchResultOut {
+  return {
+    items,
+    cache_fetched_at: fetchedAt,
+    cache_age_seconds: fetchedAt ? 1800 : null,
+    operation: null,
+    stale: false,
+    stale_reason: null,
+  }
+}
+
 beforeEach(() => {
   calls = []
+  searchOperation = null
+  searchPollError = null
   account = companyAccount({ mapping_revision: 2 })
   posts = companyPage(account as CompanyAccountOut, { items: [companyPost('901')] })
   trusted = trustedPage([trustedPost('501')])
+  crowd = crowdResult([
+    trustedPost('801', { text: 'Crowd chatter 801', is_trusted: false, author_username: 'anyone' }),
+  ])
   vi.spyOn(apiClient, 'get').mockImplementation(async (path: string) => {
     calls.push({ method: 'GET', path })
     if (path.startsWith('/v1/twitter/company-accounts/')) {
@@ -68,10 +93,16 @@ beforeEach(() => {
       return account as never
     }
     if (path.startsWith('/v1/twitter/feed')) return trusted as never
+    if (path.startsWith('/v1/twitter/operations/')) {
+      if (searchPollError) throw searchPollError
+      return searchOperation as never
+    }
+    if (path.startsWith('/v1/twitter/searches/')) return crowd as never
     return {} as never
   })
   vi.spyOn(apiClient, 'post').mockImplementation(async (path: string, body?: unknown) => {
     calls.push({ method: 'POST', path, body })
+    if (path.startsWith('/v1/twitter/searches')) return crowd as never
     return posts as never
   })
   vi.spyOn(apiClient, 'put').mockImplementation(async (path: string, body?: unknown) => {
@@ -123,12 +154,223 @@ test('company Refresh goes to its own endpoint with the confirmed revision', asy
     path: '/v1/twitter/company-accounts/GOOG/posts/refresh',
     body: { expected_revision: 2 },
   })
-  for (const call of calls) {
+  // Refreshing company posts never starts a cashtag search.
+  for (const call of posts_()) {
     expect(call.path).not.toContain('/v1/twitter/searches')
     expect(JSON.stringify(call.body ?? null)).not.toContain('min_views')
   }
-  expect(screen.queryByText(/minimum views/i)).not.toBeInTheDocument()
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+})
+
+test('crowd posts show the last X search without starting one', async () => {
+  renderWithProviders(<TwitterTab ticker="GOOG" />)
+  const section = await screen.findByRole('region', { name: 'X search' })
+  expect(await within(section).findByText('Crowd chatter 801')).toBeVisible()
+  expect(calls.some((call) => call.path === '/v1/twitter/searches/GOOG?sort=signal')).toBe(true)
+  await waitFor(() => expect(posts_()).toHaveLength(1)) // the company ensure only
+  expect(posts_().some((call) => call.path.startsWith('/v1/twitter/searches'))).toBe(false)
+})
+
+test('Search X runs one explicit cashtag search with the chosen minimum views', async () => {
+  const user = userEvent.setup()
+  renderWithProviders(<TwitterTab ticker="GOOG" />)
+  const section = await screen.findByRole('region', { name: 'X search' })
+  await within(section).findByText('Crowd chatter 801')
+
+  await user.click(within(section).getByRole('combobox', { name: 'Minimum views' }))
+  await user.click(screen.getByRole('option', { name: '5,000 views' }))
+  await user.click(within(section).getByRole('button', { name: 'Search X for $GOOG' }))
+
+  await waitFor(() =>
+    expect(posts_().filter((call) => call.path.startsWith('/v1/twitter/searches'))).toEqual([
+      {
+        method: 'POST',
+        path: '/v1/twitter/searches?sort=signal',
+        body: { ticker: 'GOOG', min_views: 5000 },
+      },
+    ]),
+  )
+})
+
+test('a ticker never searched explains how to search', async () => {
+  crowd = crowdResult([], null)
+  renderWithProviders(<TwitterTab ticker="GOOG" />)
+  const section = await screen.findByRole('region', { name: 'X search' })
+  expect(await within(section).findByText('X has not been searched for $GOOG yet.')).toBeVisible()
+})
+
+test('a completed X search replaces an initial cache read still pending after a sort change', async () => {
+  const user = userEvent.setup()
+  const previousSearch = crowd
+  let finishInitialRead!: (response: TwitterSearchResultOut) => void
+  const initialRead = new Promise<TwitterSearchResultOut>((resolve) => { finishInitialRead = resolve })
+  let finishOperation!: (operation: TwitterOperationOut) => void
+  const operationRead = new Promise<TwitterOperationOut>((resolve) => { finishOperation = resolve })
+  let initialReadStarted = false
+  const defaultGet = vi.mocked(apiClient.get).getMockImplementation()!
+  vi.mocked(apiClient.get).mockImplementation((path: string) => {
+    if (path === '/v1/twitter/searches/GOOG?sort=newest' && !initialReadStarted) {
+      calls.push({ method: 'GET', path })
+      initialReadStarted = true
+      return initialRead as never
+    }
+    if (path === '/v1/twitter/operations/search-race') {
+      calls.push({ method: 'GET', path })
+      return operationRead as never
+    }
+    return defaultGet(path) as never
+  })
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { staleTime: 30_000, retry: false } },
+  })
+  const view = render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <TwitterTab ticker="GOOG" />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  )
+  try {
+    const section = await screen.findByRole('region', { name: 'X search' })
+    await within(section).findByText('Crowd chatter 801')
+    searchOperation = twitterOperation('search-race', 'queued', 'stock_search')
+    crowd = { ...crowd, operation: searchOperation }
+    await user.click(within(section).getByRole('button', { name: 'Search X for $GOOG' }))
+    await waitFor(() => expect(calls.some((call) => call.path.endsWith('/operations/search-race'))).toBe(true))
+    await user.click(within(section).getByRole('button', { name: 'Newest' }))
+    await waitFor(() => expect(initialReadStarted).toBe(true))
+
+    crowd = crowdResult([trustedPost('802', { text: 'Finished crowd search' })], '2026-10-08T12:00:00Z')
+    await act(async () => finishOperation({ ...searchOperation!, status: 'succeeded' }))
+    await waitFor(() => expect(within(section).getByRole('button', { name: 'Search X for $GOOG' })).toBeEnabled())
+    // The old HTTP response can still arrive after cancellation: it must never
+    // replace the passive read made after the search completed.
+    await act(async () => finishInitialRead(previousSearch))
+
+    expect(await within(section).findByText('Finished crowd search')).toBeVisible()
+    expect(within(section).queryByText('Crowd chatter 801')).not.toBeInTheDocument()
+    expect(queryClient.getQueryData(['twitter', 'search', 'GOOG', 'newest'])).toMatchObject({
+      cache_fetched_at: '2026-10-08T12:00:00Z',
+      items: [{ id: '802' }],
+    })
+    expect(posts_().filter((call) => call.path.startsWith('/v1/twitter/searches'))).toHaveLength(1)
+  } finally {
+    view.unmount()
+    queryClient.clear()
+  }
+})
+
+test('an X search status error offers a passive retry', async () => {
+  const user = userEvent.setup()
+  searchOperation = twitterOperation('search-status-error', 'queued', 'stock_search')
+  searchPollError = new ApiError(503, 'Search status temporarily unavailable')
+  crowd = { ...crowd, operation: searchOperation }
+  renderWithProviders(<TwitterTab ticker="GOOG" />)
+  const section = await screen.findByRole('region', { name: 'X search' })
+  await user.click(within(section).getByRole('button', { name: 'Search X for $GOOG' }))
+  expect(await within(section).findByText('Search status temporarily unavailable')).toBeVisible()
+  expect(within(section).getByRole('button', { name: 'Search X for $GOOG' })).toBeDisabled()
+
+  searchPollError = null
+  searchOperation = { ...searchOperation, status: 'succeeded' }
+  crowd = crowdResult([trustedPost('completed-retry', { text: 'Recovered search results' })])
+  await user.click(within(section).getByRole('button', { name: 'Retry' }))
+  expect(await within(section).findByText('Recovered search results')).toBeVisible()
+  expect(within(section).getByRole('button', { name: 'Search X for $GOOG' })).toBeEnabled()
+  expect(posts_().filter((call) => call.path.startsWith('/v1/twitter/searches'))).toHaveLength(1)
+})
+
+test('an expired X search permits a new explicit search after returning to the tab', async () => {
+  const user = userEvent.setup()
+  searchOperation = twitterOperation('expired-search', 'queued', 'stock_search')
+  searchPollError = new ApiError(404, 'operation not found')
+  crowd = { ...crowd, operation: searchOperation }
+  const view = renderWithProviders(<TwitterTab ticker="GOOG" />)
+  let section = await screen.findByRole('region', { name: 'X search' })
+  await user.click(within(section).getByRole('button', { name: 'Search X for $GOOG' }))
+  expect(await within(section).findByText('operation not found')).toBeVisible()
+  expect(within(section).getByRole('button', { name: 'Search X for $GOOG' })).toBeEnabled()
+  view.rerender(<div>Another tab</div>)
+  view.rerender(<TwitterTab ticker="GOOG" />)
+  section = await screen.findByRole('region', { name: 'X search' })
+  expect(await within(section).findByText('operation not found')).toBeVisible()
+  expect(within(section).getByRole('button', { name: 'Search X for $GOOG' })).toBeEnabled()
+  expect(posts_().filter((call) => call.path.startsWith('/v1/twitter/searches'))).toHaveLength(1)
+
+  searchPollError = null
+  searchOperation = twitterOperation('replacement-search', 'succeeded', 'stock_search')
+  crowd = {
+    ...crowdResult([trustedPost('replacement', { text: 'Replacement search results' })]),
+    operation: { ...searchOperation, status: 'queued' },
+  }
+  await user.click(within(section).getByRole('button', { name: 'Search X for $GOOG' }))
+  expect(await within(section).findByText('Replacement search results')).toBeVisible()
+  await waitFor(() => expect(within(section).getByRole('button', { name: 'Search X for $GOOG' })).toBeEnabled())
+  expect(within(section).queryByText('operation not found')).not.toBeInTheDocument()
+  expect(posts_().filter((call) => call.path.startsWith('/v1/twitter/searches'))).toHaveLength(2)
+})
+
+test.each(['queued', 'deferred', 'succeeded', 'failed'] as const)(
+  'resumes an X search after the tab remounts with status %s',
+  async (status) => {
+    const user = userEvent.setup()
+    searchOperation = twitterOperation('search-1', 'queued', 'stock_search')
+    const view = renderWithProviders(<TwitterTab ticker="GOOG" />)
+    const section = await screen.findByRole('region', { name: 'X search' })
+    await within(section).findByText('Crowd chatter 801')
+    crowd = { ...crowd, operation: searchOperation }
+    await user.click(within(section).getByRole('button', { name: 'Search X for $GOOG' }))
+    await waitFor(() => expect(within(section).getByText('Searching X…')).toBeVisible())
+    await waitFor(() => expect(calls.some((call) => call.path.endsWith('/operations/search-1'))).toBe(true))
+    view.rerender(<div>Another tab</div>)
+
+    // Passive search reads never return an operation. The client must remember it
+    // independently of these reads and of the component's mutation observer.
+    searchOperation = {
+      ...searchOperation,
+      status,
+      public_error_message: status === 'failed' ? 'Search failed after switching tabs.' : null,
+    }
+    crowd = crowdResult([trustedPost('802', { text: 'Finished crowd search' })])
+    const before = calls.filter((call) => call.path.endsWith('/operations/search-1')).length
+    view.rerender(<TwitterTab ticker="GOOG" />)
+    const returned = await screen.findByRole('region', { name: 'X search' })
+    await waitFor(() => expect(
+      calls.filter((call) => call.path.endsWith('/operations/search-1')).length,
+    ).toBeGreaterThan(before), { timeout: 3500 })
+    if (status === 'queued' || status === 'deferred') {
+      expect(within(returned).getByRole('button', { name: 'Search X for $GOOG' })).toBeDisabled()
+      expect(within(returned).getByText('Searching X…')).toBeVisible()
+    } else {
+      expect(await within(returned).findByText('Finished crowd search')).toBeVisible()
+      if (status === 'failed') {
+        expect(await within(returned).findByText('Search failed after switching tabs.')).toBeVisible()
+      }
+    }
+    expect(posts_().filter((call) => call.path.startsWith('/v1/twitter/searches'))).toHaveLength(1)
+  },
+)
+
+test('keeps a pending search request disabled across a tab switch before its response', async () => {
+  const user = userEvent.setup()
+  let finishRequest!: (response: TwitterSearchResultOut) => void
+  const request = new Promise<TwitterSearchResultOut>((resolve) => { finishRequest = resolve })
+  vi.mocked(apiClient.post).mockImplementation((path: string, body?: unknown) => {
+    calls.push({ method: 'POST', path, body })
+    return (path.startsWith('/v1/twitter/searches') ? request : Promise.resolve(posts)) as never
+  })
+  const view = renderWithProviders(<TwitterTab ticker="GOOG" />)
+  await screen.findByText('Crowd chatter 801')
+  await user.click(screen.getByRole('button', { name: 'Search X for $GOOG' }))
+  view.rerender(<div>Another tab</div>)
+  view.rerender(<TwitterTab ticker="MSFT" />)
+  expect(await screen.findByRole('button', { name: 'Search X for $MSFT' })).toBeEnabled()
+  view.rerender(<TwitterTab ticker="GOOG" />)
+  expect(await screen.findByRole('button', { name: 'Search X for $GOOG' })).toBeDisabled()
+  searchOperation = twitterOperation('search-1', 'queued', 'stock_search')
+  finishRequest({ ...crowd, operation: searchOperation })
+  await waitFor(() => expect(calls.some((call) => call.path.endsWith('/operations/search-1'))).toBe(true))
+  expect(posts_().filter((call) => call.path.startsWith('/v1/twitter/searches'))).toHaveLength(1)
 })
 
 test.each([

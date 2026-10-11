@@ -1,4 +1,22 @@
-import type { CompanyAccountType, CompanyConfirmationBasis } from '@/types/twitter-company'
+import type {
+  CompanyAccountType,
+  CompanyConfirmationBasis,
+  CompanyPostEvidenceOut,
+  CompanyPostLabel,
+} from '@/types/twitter-company'
+
+export const POST_LABELS: Record<CompanyPostLabel, string> = {
+  routine: 'Routine',
+  company_news: 'Company news',
+  material: 'Material',
+}
+
+/** "8-K · Items 2.02, 9.01", "8-K · Item 1.01" or just the form type. */
+export function filingLabel(filing: CompanyPostEvidenceOut) {
+  const codes = filing.item_codes
+  if (codes.length === 0) return filing.form_type
+  return `${filing.form_type} · ${codes.length === 1 ? 'Item' : 'Items'} ${codes.join(', ')}`
+}
 
 export const ACCOUNT_TYPE_LABELS: Record<CompanyAccountType, string> = {
   corporate: 'Corporate',

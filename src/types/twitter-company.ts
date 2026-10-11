@@ -95,6 +95,21 @@ export interface CompanyQuoteOut {
   url: string | null
 }
 
+/**
+ * An SEC filing on the same topic as a post, filed from a day before it to four days
+ * after. The category is the specific topic matched to this post. Agreement-only
+ * items are insufficient; a topic match does not verify the exact event or effect.
+ */
+export interface CompanyPostEvidenceOut {
+  kind: 'sec_filing'
+  form_type: string
+  item_codes: string[]
+  title: string | null
+  url: string
+  filed_at: string
+  event_category: string
+}
+
 /** A company-authored post: no social score, ticker matches or sentiment. */
 export interface CompanyPostOut {
   analysis?: CompanyPostAnalysisOut | null
@@ -109,9 +124,19 @@ export interface CompanyPostOut {
   urls: string[]
   quote: CompanyQuoteOut | null
   metrics: CompanyPostMetricsOut
+  /** The post's topic, classified at collection; null when none was confident. */
+  event_category?: string | null
+  evidence?: CompanyPostEvidenceOut[]
 }
 
+/**
+ * disabled: company AI is switched off. unavailable: on, but the local model isn't
+ * reachable, so labels are paused. ready: labels are current.
+ */
+export type CompanyAnalysisState = 'disabled' | 'unavailable' | 'ready'
+
 export interface CompanyPostsPageOut {
+  analysis_state?: CompanyAnalysisState
   analysis_pending_count?: number
   analysis_failed_count?: number
   account: CompanyAccountOut
@@ -135,8 +160,16 @@ export interface CompanyPostsPageOut {
 
 export type CompanyPostsSort = 'newest' | 'importance'
 export type CompanyPostsView = 'all' | 'company_news'
+/**
+ * routine / company_news are the model's decision; material is company news backed
+ * by a same-topic SEC filing (see the post's evidence).
+ */
+export type CompanyPostLabel = 'routine' | 'company_news' | 'material'
+
 export interface CompanyPostAnalysisOut {
   status: 'pending' | 'completed' | 'uncertain' | 'failed' | 'unavailable'
+  label?: CompanyPostLabel | null
+  /** Raw model estimate, kept for API compatibility; the UI shows `label`. */
   importance_score: number | null
   is_company_news: boolean | null
   reason: string | null

@@ -63,6 +63,12 @@ export interface ShortSqueezeItemOut {
   float_shares: number | null
   short_metadata_fetched_at: string | null
   short_report_date: string | null
+  short_interest_provider?: string | null
+  short_interest_source_url?: string | null
+  short_average_daily_volume?: number | null
+  float_metadata_fetched_at?: string | null
+  /** Report age at the API read time; older backends omit it. */
+  short_report_age_days?: number | null
   conditions: ShortSqueezeConditionsOut
   quality_reasons: string[]
   observation_id: number | null

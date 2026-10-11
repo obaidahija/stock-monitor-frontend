@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useIsMutating, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   addTrustedAccount,
   fetchTrustedAccount,
@@ -15,6 +15,29 @@ import {
   type TwitterMinimumViews,
   type TwitterSort,
 } from '@/api/twitter'
+import type { TwitterOperationOut } from '@/types/api'
+
+const TWITTER_SEARCH_REQUEST_KEY = ['twitter', 'search-request'] as const
+
+export const twitterSearchOperationKey = (ticker: string) =>
+  ['twitter', 'search-operation', ticker] as const
+
+/** Client-only state survives a tab unmount and passive search-cache reads. */
+export function useTwitterSearchOperation(ticker: string) {
+  const operation = useQuery<TwitterOperationOut | null>({
+    queryKey: twitterSearchOperationKey(ticker),
+    queryFn: () => null,
+    initialData: null,
+    enabled: false,
+    gcTime: Infinity,
+  })
+  const pendingRequests = useIsMutating({
+    mutationKey: TWITTER_SEARCH_REQUEST_KEY,
+    predicate: (mutation) =>
+      (mutation.state.variables as { ticker?: string } | undefined)?.ticker === ticker,
+  })
+  return { data: operation.data, isRequestPending: pendingRequests > 0 }
+}
 
 export function useTwitterAuth() {
   return useQuery({ queryKey: ['twitter', 'auth'], queryFn: getTwitterAuth, refetchInterval: 30_000 })
@@ -95,6 +118,7 @@ export function useTwitterSearchCache(ticker: string, sort: TwitterSort) {
 export function useSearchTicker() {
   const queryClient = useQueryClient()
   return useMutation({
+    mutationKey: TWITTER_SEARCH_REQUEST_KEY,
     mutationFn: ({
       ticker,
       sort,
@@ -105,6 +129,7 @@ export function useSearchTicker() {
       minViews: TwitterMinimumViews
     }) => searchTicker(ticker, sort, minViews),
     onSuccess: (data, { ticker, sort }) => {
+      queryClient.setQueryData(twitterSearchOperationKey(ticker), data.operation)
       queryClient.setQueryData(['twitter', 'search', ticker, sort], data)
     },
   })

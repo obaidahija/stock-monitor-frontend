@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
-import { ensureCompanyPosts, getCompanyAccount, refreshCompanyPosts } from '@/api/twitter-company'
+import { isCancelledError, useQueryClient } from '@tanstack/react-query'
+import { ensureCompanyPosts, getCompanyAccount, getCompanyPosts, refreshCompanyPosts } from '@/api/twitter-company'
 import { useTwitterOperationPoll } from '@/features/twitter/use-operation-poll'
 import { ApiError } from '@/lib/api-client'
 import type { TwitterOperationOut } from '@/types/api'
@@ -13,6 +13,7 @@ interface CollectionWork {
   operation: TwitterOperationOut
   phase: CompanyCollectionPhase
   activation: string
+  collectAfterLookup: boolean
 }
 
 /**
@@ -36,7 +37,8 @@ function activationOf(ticker: string, account: CompanyAccountOut | undefined, ac
  *   while the same confirmed ticker and revision are still active. Leaving the tab,
  *   switching ticker or platform, or a changed revision drops the follow-up; work the
  *   worker already started may still finish on the server.
- * - A finished fetch refreshes the directory and cache once.
+ * - A finished operation refreshes the directory and cache, following any work
+ *   already queued behind it. A post-fetch identity recheck never collects again.
  *
  * Query refetches never authorize a request; nothing here runs on a timer.
  */
@@ -56,6 +58,7 @@ export function useCompanyCollection({
   const currentActivation = useRef<string | null>(null)
   const ensuredActivation = useRef<string | null>(null)
   const inFlight = useRef<string | null>(null)
+  const cacheReadRetry = useRef<string | null>(null)
   const forceIntent = useRef(false)
   const handledOperations = useRef(new Set<string>())
   const workRef = useRef<CollectionWork | null>(null)
@@ -74,10 +77,61 @@ export function useCompanyCollection({
     void queryClient.invalidateQueries({ queryKey: ['twitter', 'company-posts', ticker] })
   }, [queryClient, ticker])
 
+  const refreshAfterOperation = useCallback(async (key: string) => {
+    cacheReadRetry.current = key
+    setError(null)
+    try {
+      const queryKey = companyPostsKey(ticker, revision, 1)
+      // Inactive pages can still have an older request running. Cancel it before
+      // invalidating, so fetchQuery can only share a post-operation cache read.
+      await queryClient.cancelQueries({ queryKey, exact: true })
+      if (cacheReadRetry.current !== key || currentActivation.current !== key) return
+      invalidate()
+      const readPage = () => queryClient.fetchQuery({
+        queryKey,
+        queryFn: () => getCompanyPosts(ticker),
+        staleTime: 0,
+      })
+      let page = await readPage()
+      if (cacheReadRetry.current !== key || currentActivation.current !== key) return
+      // A lookup can finish between the account snapshot and queue read. Read
+      // once more for that gap, without polling or authorizing more collection.
+      if (page.account.runtime_state === 'validating' && page.operation === null) {
+        page = await readPage()
+      }
+      // A new request or activation owns its own work; late reads cannot replace it.
+      if (cacheReadRetry.current !== key || currentActivation.current !== key) return
+      // The directory refetch can still contain the account from before this read.
+      await queryClient.cancelQueries({ queryKey: companyAccountKey(ticker), exact: true })
+      if (cacheReadRetry.current !== key || currentActivation.current !== key) return
+      cacheReadRetry.current = null
+      queryClient.setQueryData(companyAccountKey(ticker), page.account)
+      if (activationOf(ticker, page.account, true) !== key) return
+      if (
+        page.operation && page.phase && ACTIVE_STATUSES.has(page.operation.status)
+        && !handledOperations.current.has(page.operation.id)
+      ) {
+        setWork({
+          operation: page.operation,
+          phase: page.phase,
+          activation: key,
+          collectAfterLookup: false,
+        })
+      }
+    } catch (caught) {
+      // A newer follow-up deliberately cancels the previous read, even within
+      // the same activation. That cancellation is not a collection failure.
+      if (isCancelledError(caught)) return
+      if (cacheReadRetry.current !== key || currentActivation.current !== key) return
+      setError(caught instanceof Error ? caught : new Error('Company posts cache read failed'))
+    }
+  }, [invalidate, queryClient, revision, setWork, ticker])
+
   const request = useCallback(
     async (kind: 'ensure' | 'refresh', key: string, expectedRevision: number) => {
       if (inFlight.current === key) return
       inFlight.current = key
+      cacheReadRetry.current = null
       setPendingActivation(key)
       setError(null)
       try {
@@ -93,7 +147,12 @@ export function useCompanyCollection({
           predicate: (query) => !(query.queryKey[3] === page.mapping_revision && query.queryKey[4] === 1 && query.queryKey[5] === 'newest' && query.queryKey[6] === 'all'),
         })
         if (page.operation && page.phase) {
-          setWork({ operation: page.operation, phase: page.phase, activation: key })
+          setWork({
+            operation: page.operation,
+            phase: page.phase,
+            activation: key,
+            collectAfterLookup: page.phase === 'account_lookup',
+          })
         } else {
           forceIntent.current = false
           setWork(null)
@@ -140,9 +199,12 @@ export function useCompanyCollection({
       if (currentActivation.current !== key) return
       setWork(null)
 
-      if (recorded.phase === 'posts_fetch' || operation.status !== 'succeeded') {
+      if (
+        recorded.phase === 'posts_fetch' || operation.status !== 'succeeded'
+        || !recorded.collectAfterLookup
+      ) {
         forceIntent.current = false
-        invalidate()
+        void refreshAfterOperation(key)
         return
       }
       // The lookup succeeded: re-read the directory (a duplicate merge may have moved
@@ -160,7 +222,7 @@ export function useCompanyCollection({
         })
         .catch(() => undefined)
     },
-    [invalidate, queryClient, request, setWork, ticker],
+    [queryClient, refreshAfterOperation, request, setWork, ticker],
   )
 
   const poll = useTwitterOperationPoll(work?.operation.id ?? null, onTerminal)
@@ -184,6 +246,9 @@ export function useCompanyCollection({
     error: error ?? poll.error,
     retry: () => {
       if (poll.isError) void poll.refetch()
+      else if (activation !== null && cacheReadRetry.current === activation) {
+        void refreshAfterOperation(activation)
+      }
       else refresh()
     },
   }

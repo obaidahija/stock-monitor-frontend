@@ -51,6 +51,7 @@ export function companyPage(
   const items = overrides.items ?? []
   return {
     account,
+    analysis_state: 'ready',
     items,
     total: items.length,
     page: 1,

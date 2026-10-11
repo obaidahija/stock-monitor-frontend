@@ -42,6 +42,12 @@ afterEach(() => {
   capabilities.loaded = true
 })
 
+test('identifies the official short-interest source in the listing', () => {
+  listing(squeezeList({ items: [squeezeItem({ short_interest_provider: 'cboe' })] }))
+  renderWithProviders(<ShortSqueezeSection />)
+  expect(screen.getByText('Short-interest source: Cboe')).toBeInTheDocument()
+})
+
 function listing(data: ReturnType<typeof squeezeList> | undefined, extra: object = {}) {
   vi.mocked(useShortSqueezes).mockReturnValue({
     data,
@@ -57,6 +63,23 @@ function listing(data: ReturnType<typeof squeezeList> | undefined, extra: object
 function LocationProbe() {
   return <output data-testid="location">{useLocation().search}</output>
 }
+
+test('shows report age as an advisory without marking matched figures unusable', () => {
+  listing(squeezeList({ items: [squeezeItem({ short_report_age_days: 24 })] }))
+  renderWithProviders(<ShortSqueezeSection />)
+
+  expect(screen.getByText(/Short-interest report date Sep 15, 2026.*24 days old/)).toBeInTheDocument()
+  expect(screen.getByText(/Older short-interest report: 24 days old/)).toBeInTheDocument()
+  expect(screen.getByText(/A recent fetch does not update its report date/)).toBeInTheDocument()
+  expect(screen.queryByText('Unusable')).not.toBeInTheDocument()
+})
+
+test('recent reports show their date and age without an age advisory', () => {
+  listing(squeezeList({ items: [squeezeItem({ short_report_age_days: 3 })] }))
+  renderWithProviders(<ShortSqueezeSection />)
+  expect(screen.getByText(/Short-interest report date Sep 15, 2026.*3 days old/)).toBeInTheDocument()
+  expect(screen.queryByText(/Older short-interest report:/)).not.toBeInTheDocument()
+})
 
 test('stays hidden until capabilities resolve', () => {
   capabilities.loaded = false

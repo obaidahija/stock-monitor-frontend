@@ -36,6 +36,32 @@ export function shortMetadataWarning(item: ShortSqueezeItemOut): string | null {
   return null
 }
 
+export function shortReportLabel(item: ShortSqueezeItemOut): string {
+  if (!item.short_report_date) return 'Short-interest report date unavailable'
+  const age = item.short_report_age_days
+  const ageLabel = age === null || age === undefined
+    ? ''
+    : ` · ${age} ${age === 1 ? 'day' : 'days'} old`
+  return `Short-interest report date ${formatDate(item.short_report_date)}${ageLabel}`
+}
+
+export function shortInterestSourceLabel(item: ShortSqueezeItemOut): string {
+  const provider = item.short_interest_provider
+  if (provider === 'nasdaq') return 'Short-interest source: Nasdaq'
+  if (provider === 'cboe') return 'Short-interest source: Cboe'
+  if (provider === 'yfinance') return 'Short-interest source: Yahoo Finance'
+  return 'Short-interest source unavailable'
+}
+
+/** An advisory about age, not a claim that a newer report is available. */
+export function shortReportAgeWarning(item: ShortSqueezeItemOut): string | null {
+  const age = item.short_report_age_days
+  if (!item.short_report_date || age === null || age === undefined || age < 21 || shortMetadataWarning(item)) {
+    return null
+  }
+  return `Older short-interest report: ${age} days old. A recent fetch does not update its report date.`
+}
+
 /**
  * Which price branch qualified the session; both are named when both passed.
  * Rule v2 needs a close at or above the prior high; stored v1 rows counted a touch.

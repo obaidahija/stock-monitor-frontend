@@ -218,6 +218,12 @@ export function ResearchPerformancePanel() {
                 <span className="text-muted-foreground">/</span>
                 <span>{data.coverage.evaluated} evaluated</span>
                 <span className="text-muted-foreground">/</span>
+                {data.coverage.recorded > data.coverage.matured && (
+                  <>
+                    <span>{data.coverage.recorded - data.coverage.matured} pending maturity</span>
+                    <span className="text-muted-foreground">/</span>
+                  </>
+                )}
                 {(data.coverage.awaiting_evaluation ?? 0) > 0 ? (
                   <>
                     <span>{data.coverage.awaiting_evaluation} awaiting evaluation</span>
@@ -235,7 +241,15 @@ export function ResearchPerformancePanel() {
                 {data.corrections > 0 && ` · ${data.corrections} corrected`}
                 {data.cohort.rule_version && ` · rule ${data.cohort.rule_version}`}
               </p>
-              {filters.source_kind === 'short_squeeze' && <p>{SCANNER_MEASUREMENT}</p>}
+              {filters.source_kind === 'short_squeeze' && (
+                <>
+                  <p>{SCANNER_MEASUREMENT}</p>
+                  <p>
+                    Recorded signals include future baseline sessions. Pending maturity means the
+                    measurement window is still open; returns are counted only after it closes.
+                  </p>
+                </>
+              )}
               <p>
                 Future close-to-close observations, not fills or trading performance. Costs:{' '}
                 {data.costs.name} ({data.costs.round_trip_bps / 100}% round trip, hypothetical;

@@ -23,6 +23,9 @@ import {
   formatShortFloat,
   readableReason,
   shortMetadataWarning,
+  shortReportAgeWarning,
+  shortReportLabel,
+  shortInterestSourceLabel,
 } from './short-squeeze-format'
 import { useShortSqueezeDetail } from './short-squeeze-hooks'
 
@@ -118,6 +121,7 @@ function DetailBody({ detail }: { detail: ShortSqueezeDetailOut }) {
   const { conditions } = detail
   const distance = closingDistance(detail)
   const metadataWarning = shortMetadataWarning(detail)
+  const ageWarning = shortReportAgeWarning(detail)
   return (
     <div className="space-y-4">
       <p className="text-muted-foreground text-xs">
@@ -136,6 +140,7 @@ function DetailBody({ detail }: { detail: ShortSqueezeDetailOut }) {
       </ul>
       <div className="text-muted-foreground space-y-1 text-xs">
         {metadataWarning && <p className="text-amber-700 dark:text-amber-400">{metadataWarning}</p>}
+        {ageWarning && <p className="text-amber-700 dark:text-amber-400">{ageWarning}</p>}
         {detail.short_float_source === 'derived_shares_short_over_float' && (
           <p>
             Estimated short float: {detail.shares_short?.toLocaleString('en-US')} shares short ÷{' '}
@@ -148,11 +153,22 @@ function DetailBody({ detail }: { detail: ShortSqueezeDetailOut }) {
         </p>
         <p>{completedSessionVolume(detail.relative_volume)}</p>
         <p>
-          Short data fetched {formatEasternDateTime(detail.short_metadata_fetched_at)} ·{' '}
-          {detail.short_report_date
-            ? `Short-interest report date ${formatDate(detail.short_report_date)}`
-            : 'Short-interest report date unavailable'}
+          Short data fetched {formatEasternDateTime(detail.short_metadata_fetched_at)}
         </p>
+        <p>{shortReportLabel(detail)}</p>
+        <p>
+          {detail.short_interest_source_url ? (
+            <a className="underline underline-offset-2" href={detail.short_interest_source_url} target="_blank" rel="noopener noreferrer">
+              {shortInterestSourceLabel(detail)}
+            </a>
+          ) : shortInterestSourceLabel(detail)}
+        </p>
+        {detail.short_average_daily_volume != null && (
+          <p>Report average daily volume {detail.short_average_daily_volume.toLocaleString('en-US')} · Days to cover as reported by the source.</p>
+        )}
+        {detail.float_metadata_fetched_at && (
+          <p>Float source: Yahoo Finance · fetched {formatEasternDateTime(detail.float_metadata_fetched_at)}</p>
+        )}
         {detail.quality_reasons.length > 0 && (
           <p>Data limits: {detail.quality_reasons.map(readableReason).join(', ')}</p>
         )}

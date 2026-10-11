@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getTwitterOperation } from '@/api/twitter'
+import { ApiError } from '@/lib/api-client'
 import type { TwitterOperationOut } from '@/types/api'
 
 const TERMINAL_STATUSES = new Set(['succeeded', 'failed'])
@@ -19,7 +20,10 @@ export function useTwitterOperationPoll(
     queryKey: ['twitter', 'operation', operationId],
     queryFn: () => getTwitterOperation(operationId as string),
     enabled: operationId != null,
-    refetchInterval: (q) => (q.state.data && TERMINAL_STATUSES.has(q.state.data.status) ? false : 2_000),
+    refetchInterval: (q) => {
+      if (q.state.error instanceof ApiError && q.state.error.status === 404) return false
+      return q.state.data && TERMINAL_STATUSES.has(q.state.data.status) ? false : 2_000
+    },
   })
 
   const firedForId = useRef<string | null>(null)

@@ -32,6 +32,33 @@ function detailReturns(data: ReturnType<typeof squeezeDetail> | undefined, extra
   } as never)
 }
 
+test('shows the official report source and the separate Yahoo float source', () => {
+  detailReturns(squeezeDetail({
+    short_interest_provider: 'nasdaq',
+    short_interest_source_url: 'https://www.nasdaq.com/market-activity/stocks/sqz/short-interest',
+    short_average_daily_volume: 335296,
+    float_metadata_fetched_at: '2026-10-09T18:00:00Z',
+    short_float_source: 'derived_shares_short_over_float',
+    shares_short: 3751092, float_shares: 28239538,
+  }))
+  renderWithProviders(<ShortSqueezeDetail evaluationId={1} open onOpenChange={vi.fn()} />)
+  expect(screen.getByRole('link', { name: 'Short-interest source: Nasdaq' })).toHaveAttribute(
+    'href', 'https://www.nasdaq.com/market-activity/stocks/sqz/short-interest',
+  )
+  expect(screen.getByText(/Float source: Yahoo Finance/)).toBeInTheDocument()
+  expect(screen.getByText(/Report average daily volume 335,296/)).toBeInTheDocument()
+  expect(screen.getByText(/Estimated short float:/)).toBeInTheDocument()
+})
+
+test('distinguishes an older report date from the snapshot fetch time', () => {
+  detailReturns(squeezeDetail({ short_report_age_days: 24 }))
+  renderWithProviders(<ShortSqueezeDetail evaluationId={1} open onOpenChange={vi.fn()} />)
+  expect(screen.getByText(/Short-interest report date Sep 15, 2026.*24 days old/)).toBeInTheDocument()
+  expect(screen.getByText(/Older short-interest report: 24 days old/)).toBeInTheDocument()
+  expect(screen.getByText(/Short data fetched/)).toBeInTheDocument()
+  expect(screen.getByText(/A recent fetch does not update its report date/)).toBeInTheDocument()
+})
+
 test('shows the condition checklist with dated provenance', () => {
   detailReturns(squeezeDetail())
   renderWithProviders(<ShortSqueezeDetail evaluationId={1} open onOpenChange={vi.fn()} />)

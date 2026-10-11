@@ -48,7 +48,13 @@ export function useCompanyPosts(
     queryKey: companyPostsKey(ticker, mappingRevision, page, sort, view),
     queryFn: () => getCompanyPosts(ticker, page, sort, view),
     enabled: enabled && ticker.length > 0,
-    refetchInterval: (query) => active && (query.state.data?.analysis_pending_count ?? 0) > 0 ? 3000 : false,
+    // Pending AI work is polled only while it can progress: with the local model
+    // unreachable or switched off, nothing changes until the next visit.
+    refetchInterval: (query) => {
+      const data = query.state.data
+      const progressing = (data?.analysis_state ?? 'ready') === 'ready' && (data?.analysis_pending_count ?? 0) > 0
+      return active && progressing ? 3000 : false
+    },
     placeholderData: (previous, previousQuery) => {
       const key = previousQuery?.queryKey
       return key?.[2] === ticker && key?.[3] === mappingRevision && key?.[5] === sort && key?.[6] === view ? previous : undefined
