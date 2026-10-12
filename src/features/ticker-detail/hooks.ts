@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { getSectorHeatmap } from '@/api/discover'
 import type { AnalysisExtras } from '@/api/stocks'
 import {
   askGoogleFinanceResearch,
@@ -253,4 +254,17 @@ export function useInsider(ticker: string, days = 90) {
     queryKey: ['stocks', ticker, 'insider', days],
     queryFn: () => getInsider(ticker, days),
   })
+}
+
+/** Shares the sector map's cached industry averages, refreshed while the detail page is open. */
+export function useIndustryPerformance(sector: string | null, industry: string | null) {
+  const query = useQuery({
+    queryKey: ['discover', 'universe', 'sectors'],
+    queryFn: getSectorHeatmap,
+    enabled: Boolean(sector && industry),
+    refetchInterval: 60_000,
+  })
+  return query.data?.items
+    .find((item) => item.sector === sector?.trim())
+    ?.industries?.find((item) => item.industry === industry?.trim()) ?? null
 }

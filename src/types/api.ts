@@ -10,6 +10,8 @@ export interface TrackedTickerOut {
   score: number | null
   lean: string | null
   score_updated_at: string | null
+  market_cap?: number | null
+  avg_volume_20d?: number | null
   sector: string | null
   industry: string | null
   is_archived: boolean
@@ -167,6 +169,9 @@ export interface PeerRankOut {
 }
 
 export interface QuoteOut {
+  pe_ratio?: number | null
+  volume?: number | null
+  previous_close?: number | null
   ticker: string
   price: number | null
   change_amount: number | null

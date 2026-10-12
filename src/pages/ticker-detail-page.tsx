@@ -143,7 +143,6 @@ export function TickerDetailPage() {
         meta={
           <div className="space-y-2">
             <TickerPriceHeader ticker={symbol} />
-            <TickerHeaderStats ticker={symbol} />
           </div>
         }
         actions={
@@ -162,6 +161,8 @@ export function TickerDetailPage() {
           </>
         }
       />
+
+      <TickerHeaderStats ticker={symbol} />
 
       <TickerDescription ticker={symbol} />
 
