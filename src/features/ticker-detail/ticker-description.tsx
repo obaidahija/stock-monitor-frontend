@@ -1,6 +1,8 @@
 import { useId, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { getTickerDescription } from '@/api/stocks'
+import { getTickerDescription, getTickerTags } from '@/api/stocks'
+import { Badge } from '@/components/ui/badge'
+import type { TickerTagTier } from '@/types/api'
 
 export function TickerDescription({ ticker }: { ticker: string }) {
   return <TickerDescriptionContent key={ticker} ticker={ticker} />
@@ -28,6 +30,7 @@ function TickerDescriptionContent({ ticker }: { ticker: string }) {
   return (
     <section aria-label={`About ${ticker}`} className="space-y-1.5">
       <h2 className="text-xs font-semibold">About {ticker}</h2>
+      <TickerTags ticker={ticker} />
       <p id={contentId} className="text-muted-foreground text-sm leading-relaxed [overflow-wrap:anywhere]">
         {expanded || !isLong ? description : preview}
       </p>
@@ -47,5 +50,47 @@ function TickerDescriptionContent({ ticker }: { ticker: string }) {
         {data.stale && <span>Cached description; refresh temporarily unavailable.</span>}
       </div>
     </section>
+  )
+}
+
+const TIER_LABEL: Record<TickerTagTier, string> = {
+  core: 'Core business',
+  product: 'Product or segment',
+  market: 'End market',
+  theme: 'Theme',
+}
+
+function TickerTags({ ticker }: { ticker: string }) {
+  const { data, isPending } = useQuery({
+    queryKey: ['ticker-tags', ticker],
+    queryFn: () => getTickerTags(ticker),
+    staleTime: (query) => query.state.data?.tags.length && !query.state.data.stale
+      ? 24 * 60 * 60 * 1000 : 60_000,
+    retry: false,
+  })
+  if (isPending) {
+    return (
+      <div aria-hidden="true" className="flex gap-1.5">
+        {[16, 20, 14].map((width) => (
+          <span key={width} className="bg-muted h-5 animate-pulse rounded-4xl" style={{ width: `${width * 4}px` }} />
+        ))}
+      </div>
+    )
+  }
+  if (!data?.tags.length) return null
+  return (
+    <ul aria-label={`${ticker} tags, most important first`} className="flex flex-wrap gap-1.5">
+      {data.tags.map((tag) => (
+        <li key={tag.label}>
+          <Badge
+            variant={tag.tier === 'theme' ? 'outline' : 'secondary'}
+            title={TIER_LABEL[tag.tier]}
+            className={tag.tier === 'core' ? 'font-semibold' : 'text-muted-foreground font-normal'}
+          >
+            {tag.label}
+          </Badge>
+        </li>
+      ))}
+    </ul>
   )
 }

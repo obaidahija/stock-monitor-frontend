@@ -22,6 +22,7 @@ import type {
   QuoteOut,
   EtfDescriptionOut,
   TickerDescriptionOut,
+  TickerTagsOut,
   RelatedEtfsOut,
   RelatedEtfRelevanceOut,
   ScoreHistoryPointOut,
@@ -61,6 +62,10 @@ export function getRelatedEtfDescription(ticker: string, etf: string) {
 
 export function getTickerDescription(ticker: string) {
   return apiClient.get<TickerDescriptionOut>(`/v1/stocks/${encodeURIComponent(ticker)}/description`)
+}
+
+export function getTickerTags(ticker: string) {
+  return apiClient.get<TickerTagsOut>(`/v1/stocks/${encodeURIComponent(ticker)}/tags`)
 }
 
 export function refreshRelatedEtfQuotes(ticker: string, tickers: string[]) {

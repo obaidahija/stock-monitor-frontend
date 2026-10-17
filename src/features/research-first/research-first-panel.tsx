@@ -15,7 +15,7 @@ import { FollowThroughControl } from '@/features/watchlists/follow-through-contr
 import { ManageListsDialog } from '@/features/watchlists/manage-lists-dialog'
 import { formatEasternDateTime } from '@/lib/format'
 import { formatSourceName } from '@/lib/labels'
-import { DigestLivePrice } from '@/features/digest/live-quotes'
+import { DigestLivePrice, DigestLiveQuotes } from '@/features/digest/live-quotes'
 import { getResearchFirst } from './api'
 import type { ResearchFirstItem, ResearchFirstReport } from './types'
 
@@ -245,6 +245,7 @@ function ResearchFirstPanel({ report, horizon, setHorizon, saved = false, pendin
                 onClick={(event) => openPanel(event.currentTarget, item.ticker)}
                 className="border-border bg-card hover:bg-accent focus-visible:ring-ring flex w-full min-w-0 flex-col gap-1 rounded-xl border px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 h-full">
                 <span className="font-semibold">{item.ticker}</span>
+                <DigestLivePrice ticker={item.ticker} compact />
                 <span className="w-full truncate text-sm">{item.headline}</span>
                 <span className="text-muted-foreground text-xs">Composite {item.composite_score === null ? 'unavailable' : `${item.composite_score.toFixed(0)}/100`}{item.lean && ` · ${item.lean}`}</span>
                 </button></TooltipTrigger>
@@ -328,8 +329,10 @@ export function DiscoverResearchFirst() {
     queryKey: ['research-first', horizon], queryFn: () => getResearchFirst(horizon),
     staleTime: 60_000, refetchInterval: 5 * 60_000,
   })
-  return <ResearchFirstPanel report={query.data} horizon={horizon} setHorizon={setHorizon}
+  return <DigestLiveQuotes tickers={query.data?.items.map((item) => item.ticker) ?? []}>
+    <ResearchFirstPanel report={query.data} horizon={horizon} setHorizon={setHorizon}
     pending={query.isPending} error={query.error} retry={() => void query.refetch()} />
+  </DigestLiveQuotes>
 }
 
 export function DigestResearchFirst({ snapshots, onVisibleTickersChange }: {

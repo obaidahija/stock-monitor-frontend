@@ -2468,6 +2468,22 @@ export interface EtfDescriptionOut {
 
 export type TickerDescriptionOut = EtfDescriptionOut
 
+export type TickerTagTier = 'core' | 'product' | 'market' | 'theme'
+
+export interface TickerTagOut {
+  label: string
+  tier: TickerTagTier
+}
+
+/** Ordered most important first: core, product, market, then theme. */
+export interface TickerTagsOut {
+  ticker: string
+  tags: TickerTagOut[]
+  generated_at: string | null
+  stale: boolean
+  source: SourceStatus
+}
+
 export type RelatedEtfRelevanceCategory = 'direct' | 'adjacent' | 'sector' | 'broad' | 'unknown'
 
 export interface RelatedEtfRelevanceItemOut {

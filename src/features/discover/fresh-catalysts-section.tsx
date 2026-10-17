@@ -13,6 +13,7 @@ import { FollowThroughControl } from '@/features/watchlists/follow-through-contr
 import { formatEasternDateTime, formatSignedPct } from '@/lib/format'
 import { humanizeLabel } from '@/lib/labels'
 import type { CatalystReactionOut, FreshCatalystOut } from '@/types/api'
+import { DigestLivePrice, DigestLiveQuotes } from '@/features/digest/live-quotes'
 import { useFreshCatalysts } from './hooks'
 import type { FreshCatalystParams } from '@/api/discover'
 
@@ -56,6 +57,7 @@ function CatalystRow({ item, horizon, trackingEnabled, highlighted, cardRef }: {
         <Link className="font-semibold hover:underline" to={`/stocks/${encodeURIComponent(item.ticker)}?tab=analysis&horizon_sessions=${horizon}`}>{item.ticker}</Link>
         <span className="text-muted-foreground text-xs">{CATEGORY_LABELS[item.event.category] ?? humanizeLabel(item.event.category)}</span>
       </div>
+      <DigestLivePrice ticker={item.ticker} />
       <p className="break-words text-sm">{item.event.headline}</p>
       <p className="text-muted-foreground text-xs">
         Published {item.event.published_at ? formatEasternDateTime(item.event.published_at) : 'time unknown'} · first seen {formatEasternDateTime(item.event.first_seen_at)}
@@ -166,6 +168,7 @@ export function FreshCatalystsSection() {
 
   const visible = previewQuery.isPlaceholderData ? [] : previewQuery.data?.items.slice(0, 3) ?? []
   return (
+    <DigestLiveQuotes tickers={[...visible, ...(open && !query.isPlaceholderData ? query.data?.items ?? [] : [])].map((item) => item.ticker)}>
     <section ref={sectionRef} className="space-y-2" aria-label="Fresh catalysts">
       <h2 className="font-semibold">Fresh catalysts</h2>
       <p className="text-muted-foreground text-xs">Recent material events and the price moves observed after them.</p>
@@ -183,6 +186,7 @@ export function FreshCatalystsSection() {
                 onClick={(event) => openPanel(event.currentTarget, item.candidate_id)}
                 className="border-border bg-card hover:bg-accent focus-visible:ring-ring flex h-full w-full min-w-0 flex-col gap-1 rounded-xl border px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2">
                 <span className="font-semibold">{item.ticker}</span>
+                <DigestLivePrice ticker={item.ticker} compact />
                 <span className="w-full truncate text-sm">{item.event.headline}</span>
                 <span className="text-muted-foreground text-xs">{reaction?.reaction_pct != null ? `${reaction.price_basis === 'completed_close' ? 'Completed close' : 'Quote'}: ${formatSignedPct(reaction.reaction_pct)}` : 'Price reaction pending'}
                   {' · '}{reaction?.price_basis === 'completed_close' ? reaction.volume_ratio === null ? 'Daily volume unavailable' : volumeLabel(reaction.volume_ratio) : 'Volume pending'}</span>
@@ -261,5 +265,6 @@ export function FreshCatalystsSection() {
         </SheetContent>
       </Sheet>
     </section>
+    </DigestLiveQuotes>
   )
 }

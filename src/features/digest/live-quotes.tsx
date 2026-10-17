@@ -24,12 +24,12 @@ export function DigestLiveQuotes({ tickers, children }: { tickers: string[]; chi
   </QuoteContext.Provider>
 }
 
-export function DigestLivePrice({ ticker }: { ticker: string }) {
+export function DigestLivePrice({ ticker, compact = false }: { ticker: string; compact?: boolean }) {
   const context = useContext(QuoteContext)
   if (!context) return null
   const quote = context.quotes.find((quote) => quote.ticker === ticker.toUpperCase())
   if (!quote || (quote.session_price ?? quote.price) === null) {
-    return <p className="text-muted-foreground text-xs">{context.pending ? 'Loading price…' : 'Price unavailable'}</p>
+    return <span className="text-muted-foreground text-xs">{context.pending ? 'Loading price…' : 'Price unavailable'}</span>
   }
   const extended = quote.market_session === 'pre_market' || quote.market_session === 'post_market' || quote.market_session === 'overnight'
   const price = quote.session_price ?? quote.price
@@ -37,6 +37,13 @@ export function DigestLivePrice({ ticker }: { ticker: string }) {
   const pct = extended ? quote.session_change_pct : quote.change_pct
   const time = quote.session_time ?? quote.regular_market_time
   const label = { pre_market: 'Premarket', post_market: 'After hours', overnight: 'Overnight', regular: 'Regular', closed: 'Closed' }[quote.market_session ?? 'closed']
+  if (compact) return <span className="flex flex-wrap items-baseline gap-x-2 tabular-nums" aria-label={`${ticker} current quote`}>
+    <span className="text-sm font-semibold">{formatCurrency(price)}</span>
+    <span className={cn('text-xs', (pct ?? amount ?? 0) < 0 ? 'text-red-600 dark:text-red-400' : (pct ?? amount ?? 0) > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground')}>
+      {amount !== null && `${amount > 0 ? '+' : ''}${formatCurrency(amount)} · `}{formatSignedPct(pct)}
+    </span>
+    <span className="text-muted-foreground w-full text-xs">{label}{time && ` · ${formatEasternDateTime(time)}`}{context.failed && ' · Refresh failed'}</span>
+  </span>
   return <div className="space-y-0.5 tabular-nums" aria-label={`${ticker} current quote`}>
     <div className="font-semibold">{formatCurrency(price)}</div>
     <div className={cn('text-sm', (pct ?? amount ?? 0) < 0 ? 'text-red-600 dark:text-red-400' : (pct ?? amount ?? 0) > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground')}>

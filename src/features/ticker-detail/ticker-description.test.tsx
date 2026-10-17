@@ -1,10 +1,10 @@
-import { cleanup, fireEvent, screen } from '@testing-library/react'
+import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import { getTickerDescription } from '@/api/stocks'
+import { getTickerDescription, getTickerTags } from '@/api/stocks'
 import { renderWithProviders } from '@/test/render'
 import { TickerDescription } from './ticker-description'
 
-vi.mock('@/api/stocks', () => ({ getTickerDescription: vi.fn() }))
+vi.mock('@/api/stocks', () => ({ getTickerDescription: vi.fn(), getTickerTags: vi.fn() }))
 
 const description = 'Dycom provides engineering and construction services for telecommunications infrastructure. '
   + 'Its work includes designing, building, installing and maintaining networks for communications providers. '
@@ -15,6 +15,10 @@ beforeEach(() => {
   vi.mocked(getTickerDescription).mockImplementation(async (ticker) => ({
     ticker, description, fetched_at: '2026-10-09T12:00:00Z', stale: false,
     source_name: 'Yahoo Finance', source_url: `https://finance.yahoo.com/quote/${ticker}/profile/`,
+  }))
+  vi.mocked(getTickerTags).mockImplementation(async (ticker) => ({
+    ticker, tags: [], generated_at: null, stale: false,
+    source: { name: 'ticker_tags', ok: true, fetched_at: null, error: null, latency_ms: null },
   }))
 })
 afterEach(cleanup)
@@ -59,4 +63,31 @@ test('omits an unavailable description without blocking the page', async () => {
   const view = renderWithProviders(<TickerDescription ticker="DY" />)
   await screen.findByRole('status')
   await vi.waitFor(() => expect(view.container).toBeEmptyDOMElement())
+})
+
+test('shows tags in the order the API ranked them, core business first', async () => {
+  vi.mocked(getTickerTags).mockResolvedValue({
+    ticker: 'DY',
+    tags: [
+      { label: 'Telecom Construction', tier: 'core' },
+      { label: 'Network Maintenance', tier: 'product' },
+      { label: 'Utilities', tier: 'market' },
+      { label: '5G', tier: 'theme' },
+    ],
+    generated_at: '2026-10-17T12:00:00Z', stale: false,
+    source: { name: 'ticker_tags', ok: true, fetched_at: null, error: null, latency_ms: null },
+  })
+  renderWithProviders(<TickerDescription ticker="DY" />)
+  const list = await screen.findByRole('list', { name: 'DY tags, most important first' })
+  const items = within(list).getAllByRole('listitem').map((item) => item.textContent)
+  expect(items).toEqual(['Telecom Construction', 'Network Maintenance', 'Utilities', '5G'])
+  expect(within(list).getByText('Telecom Construction')).toHaveAttribute('title', 'Core business')
+})
+
+test('keeps the description when tags are unavailable', async () => {
+  vi.mocked(getTickerTags).mockRejectedValue(new Error('down'))
+  renderWithProviders(<TickerDescription ticker="DY" />)
+  expect(await screen.findByRole('heading', { name: 'About DY' })).toBeInTheDocument()
+  await vi.waitFor(() => expect(getTickerTags).toHaveBeenCalled())
+  expect(screen.queryByRole('list')).not.toBeInTheDocument()
 })
