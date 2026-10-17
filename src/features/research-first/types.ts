@@ -33,6 +33,7 @@ export interface ResearchFirstItem {
   supporting_evidence: string[]
   risks: string[]
   data_limits: string[]
+  historical_context?: import('@/features/research/catalyst-evidence').HistoricalContext | null
 }
 
 export interface ResearchFirstReport {

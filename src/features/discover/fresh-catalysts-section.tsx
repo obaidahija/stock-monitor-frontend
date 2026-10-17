@@ -8,6 +8,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useResearchCapabilities } from '@/features/research/hooks'
 import { sameTimeVolumeLabel } from '@/features/research/intraday'
 import { IntradayControl } from '@/features/research/intraday-control'
+import { CatalystEvidencePanel } from '@/features/research/catalyst-evidence-panel'
 import { FollowThroughControl } from '@/features/watchlists/follow-through-control'
 import { formatEasternDateTime, formatSignedPct } from '@/lib/format'
 import { humanizeLabel } from '@/lib/labels'
@@ -83,6 +84,7 @@ function CatalystRow({ item, horizon, trackingEnabled, highlighted, cardRef }: {
         )}
         <FollowThroughControl ticker={item.ticker} origin={{ kind: 'catalyst', candidateId: item.candidate_id }} enabled={trackingEnabled} />
       </div>
+      <CatalystEvidencePanel candidateId={item.candidate_id} context={item.historical_context} />
     </li>
   )
 }

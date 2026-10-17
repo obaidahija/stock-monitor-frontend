@@ -10,6 +10,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ErrorState } from '@/components/shared/error-state'
 import { useResearchCapabilities } from '@/features/research/hooks'
+import { CatalystEvidencePanel } from '@/features/research/catalyst-evidence-panel'
 import { FollowThroughControl } from '@/features/watchlists/follow-through-control'
 import { ManageListsDialog } from '@/features/watchlists/manage-lists-dialog'
 import { formatEasternDateTime } from '@/lib/format'
@@ -134,6 +135,7 @@ function ResearchCard({ item, horizon, trackingEnabled, hiddenRisks }: {
             {item.data_limits.map((limit) => <li key={limit}>{limit}</li>)}
           </ul>
         </details>}
+        {item.candidate_id !== null && <CatalystEvidencePanel candidateId={item.candidate_id} context={item.historical_context} />}
         <details className="text-xs">
           <summary className="cursor-pointer">Why this rank?</summary>
           <div className="mt-2 flex flex-col gap-1 text-muted-foreground">

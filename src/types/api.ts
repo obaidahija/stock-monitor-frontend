@@ -666,6 +666,10 @@ export interface FreshCatalystOut {
     published_at: string | null
     first_seen_at: string
     time_status: 'eligible' | 'expired' | 'time_uncertain' | 'future_timestamp'
+    original_article_status?: 'unknown' | 'verified' | 'unavailable'
+    original_article_on?: string | null
+    issuer_event_status?: 'unknown' | 'verified' | 'unavailable'
+    issuer_event_on?: string | null
   }
   pre_event_close: number | null
   daily_reaction: CatalystReactionOut | null
@@ -674,6 +678,7 @@ export interface FreshCatalystOut {
   observation_id: number | null
   /** Optional intraday extension; null while it is switched off. */
   intraday?: CatalystIntradayOut | null
+  historical_context?: import('@/features/research/catalyst-evidence').HistoricalContext | null
 }
 
 export interface FreshCatalystsPage {
