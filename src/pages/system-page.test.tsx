@@ -1,5 +1,5 @@
-import { cleanup, screen } from '@testing-library/react'
-import { beforeEach, expect, test, vi } from 'vitest'
+import { cleanup, fireEvent, screen } from '@testing-library/react'
+import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { renderWithProviders } from '@/test/render'
 import { SystemPage } from './system-page'
 
@@ -16,6 +16,8 @@ vi.mock('@/features/ai-settings/ai-settings-form', () => ({
 beforeEach(() => {
   cleanup()
 })
+
+afterEach(() => vi.restoreAllMocks())
 
 test('shows health by default and keeps the tab out of the url', () => {
   renderWithProviders(<SystemPage />, ['/system'])
@@ -54,4 +56,29 @@ test('falls back to health for an unknown tab', () => {
   renderWithProviders(<SystemPage />, ['/system?tab=nonsense'])
 
   expect(screen.getByText('health panel')).toBeInTheDocument()
+})
+
+test('opens the archive from its deep link without requesting cleanup', async () => {
+  const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
+    generated_at: '2026-10-13T14:00:00Z', collections: [],
+  }), { status: 200 }))
+  renderWithProviders(<SystemPage />, ['/system?tab=archive'])
+
+  expect(screen.getByRole('tab', { name: 'Archive' })).toHaveAttribute('aria-selected', 'true')
+  expect(await screen.findByRole('heading', { name: 'Saved research' })).toBeInTheDocument()
+  expect(fetch).toHaveBeenCalledWith('/v1/research-archive', expect.objectContaining({
+    headers: expect.any(Headers),
+  }))
+  expect(fetch).toHaveBeenCalledTimes(1)
+})
+
+test('opens the archive with the tab control', async () => {
+  vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
+    generated_at: '2026-10-13T14:00:00Z', collections: [],
+  }), { status: 200 }))
+  renderWithProviders(<SystemPage />, ['/system'])
+
+  fireEvent.mouseDown(screen.getByRole('tab', { name: 'Archive' }))
+  expect(await screen.findByRole('heading', { name: 'Saved research' })).toBeInTheDocument()
+  expect(screen.queryByText('health panel')).not.toBeInTheDocument()
 })

@@ -135,6 +135,9 @@ function TrackRecordSummary({ trackRecord }: { trackRecord: TrackRecord }) {
 
 function NextEarningsCard({ next }: { next: EarningsEventOut }) {
   const countdown = countdownLabel(next.event_date)
+  const yahooDate = next.date_source === 'yfinance'
+  const dateRange = next.date_range_end && next.date_range_end !== next.event_date
+  const estimateSource = next.source === 'yfinance' ? '' : 'Finnhub '
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-3">
@@ -150,21 +153,43 @@ function NextEarningsCard({ next }: { next: EarningsEventOut }) {
               : 'bg-muted text-muted-foreground',
           )}
         >
-          {countdown.label}
+          {dateRange
+            ? easternDaysUntil(next.event_date) <= 0 ? 'Window open' : `Window starts: ${countdown.label.toLowerCase()}`
+            : countdown.label}
         </span>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
-          <span className="font-medium">{formatDate(next.event_date)}</span>
-          <span className="text-muted-foreground uppercase">{next.bmo_amc}</span>
+          <span className="font-medium">
+            {formatDate(next.event_date)}{dateRange && ` – ${formatDate(next.date_range_end)}`}
+          </span>
+          <span className="text-muted-foreground">
+            {next.bmo_amc === 'unknown' ? 'Timing unknown' : next.bmo_amc.toUpperCase()}
+          </span>
         </div>
+        <p className="text-muted-foreground text-xs">
+          {yahooDate ? (
+            <a className="underline underline-offset-2" href={`https://finance.yahoo.com/quote/${encodeURIComponent(next.ticker.replace(/\.([A-Z])$/, '-$1'))}/earnings/`} target="_blank" rel="noreferrer">
+              Yahoo Finance
+            </a>
+          ) : 'Finnhub'}
+          {' · Estimated date'}
+          {next.days_since_last_report != null && ` · ${next.days_since_last_report} days since the previous report`}
+        </p>
+        {next.date_conflict && next.finnhub_event_date && (
+          <p role="note" className="rounded-md bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+            Finnhub lists {formatDate(next.finnhub_event_date)}. Using Yahoo Finance’s date.
+            {next.finnhub_date_warning && ` ${next.finnhub_date_warning}`}
+          </p>
+        )}
+        {next.date_warning && <p role="note" className="text-xs text-amber-700 dark:text-amber-400">{next.date_warning}</p>}
         <div className="grid grid-cols-2 gap-3">
           <div className="border-border rounded-lg border px-3 py-2">
-            <p className="text-muted-foreground text-xs">EPS estimate</p>
+            <p className="text-muted-foreground text-xs">{estimateSource}EPS estimate</p>
             <p className="text-sm font-medium">{formatCurrency(next.eps_estimate)}</p>
           </div>
           <div className="border-border rounded-lg border px-3 py-2">
-            <p className="text-muted-foreground text-xs">Revenue estimate</p>
+            <p className="text-muted-foreground text-xs">{estimateSource}Revenue estimate</p>
             <p className="text-sm font-medium">{formatCompactCurrency(next.revenue_estimate)}</p>
           </div>
         </div>
@@ -282,6 +307,10 @@ export function EarningsTab({ ticker }: { ticker: string }) {
       onSuccess: (result) => {
         if (result.error) {
           toast.error(`Failed to refresh earnings for ${result.ticker}: ${result.error}`)
+        } else if (result.date_error) {
+          toast.warning('Yahoo dates could not be refreshed; showing available saved data.')
+        } else if (result.history_error) {
+          toast.warning('Yahoo date refreshed; earnings history could not be refreshed.')
         } else {
           toast.success(
             `Refreshed earnings for ${result.ticker}: ${result.new} new, ${result.updated} updated`,

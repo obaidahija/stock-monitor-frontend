@@ -161,6 +161,9 @@ export function useRefreshEarnings(ticker: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['earnings', ticker] })
       queryClient.invalidateQueries({ queryKey: ['earnings-reaction', ticker] })
+      queryClient.invalidateQueries({ queryKey: ['catalysts', ticker] })
+      queryClient.invalidateQueries({ queryKey: ['discover', 'universe'] })
+      queryClient.invalidateQueries({ queryKey: ['analysis', ticker] })
     },
   })
 }

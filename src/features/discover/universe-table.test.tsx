@@ -160,6 +160,42 @@ test('shows the industry tag beside the sector tag', () => {
   expect(screen.getByRole('button', { name: 'Energy' })).toBeInTheDocument()
 })
 
+test('attributes estimated earnings dates to Yahoo and marks source disagreement', () => {
+  renderTable([universeRow({
+    ticker: 'NBIS', next_earnings_date: '2026-11-10', next_earnings_source: 'yfinance',
+    next_earnings_date_status: 'estimated', next_earnings_date_conflict: true,
+  })])
+  expect(screen.getByText(/Yahoo estimate/)).toBeInTheDocument()
+  expect(screen.getByText(/Sources differ/)).toBeInTheDocument()
+})
+
+test.each([
+  ['2026-10-23T16:00:00Z', true],
+  ['2026-10-25T16:00:00Z', true],
+  ['2026-10-26T16:00:00Z', false],
+])('marks an earnings range urgent until its final New York day: %s', (now, open) => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(now))
+  renderTable([universeRow({
+    ticker: 'NBIS', next_earnings_date: '2026-10-21', next_earnings_date_range_end: '2026-10-25',
+    next_earnings_source: 'yfinance',
+  })])
+
+  const range = screen.getByText(/Next Oct 21, 2026.*Oct 25, 2026/)
+  if (open) {
+    expect(range).toHaveClass('text-amber-600')
+    expect(range).toHaveTextContent('· window open')
+    expect(screen.getByRole('link', { name: 'Check selected window' })).toHaveAttribute(
+      'href', '/stocks/NBIS?tab=analysis&horizon_sessions=5',
+    )
+  } else {
+    expect(range).not.toHaveClass('text-amber-600')
+    expect(screen.queryByText(/· window open/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Check selected window' })).not.toBeInTheDocument()
+  }
+  expect(screen.queryByText(/in -\d+d/)).not.toBeInTheDocument()
+})
+
 test('shows volume and float compactly with the exact number on hover', () => {
   renderTable([
     universeRow({ ticker: 'NVDA', volume: 1_082_683, short_percent_of_float: 2.0, float_shares: 280_964_657 }),

@@ -128,6 +128,10 @@ export interface InsiderOut {
 export interface UniverseTickerOut extends TrackedTickerOut {
   next_earnings_date: string | null
   next_earnings_bmo_amc: string | null
+  next_earnings_source?: string | null
+  next_earnings_date_status?: string | null
+  next_earnings_date_conflict?: boolean
+  next_earnings_date_range_end?: string | null
   last_earnings_result: EarningsResult | null
   last_earnings_surprise_pct: number | null
   is_reit: boolean
@@ -235,6 +239,15 @@ export interface EarningsEventOut {
   eps_actual: number | null
   revenue_estimate: number | null
   revenue_actual: number | null
+  source?: string
+  date_source?: string
+  date_status?: 'estimated' | 'reported'
+  date_range_end?: string | null
+  finnhub_event_date?: string | null
+  date_conflict?: boolean
+  days_since_last_report?: number | null
+  date_warning?: string | null
+  finnhub_date_warning?: string | null
   eps_comparison_available?: boolean
   eps_comparison_actual?: number | null
   eps_comparison_estimate?: number | null
@@ -309,6 +322,8 @@ export interface EarningsReactionOut {
 }
 
 export interface EarningsRefreshResult {
+  date_error?: string | null
+  history_error?: string | null
   ticker: string
   new: number
   updated: number
@@ -1237,6 +1252,8 @@ export interface DigestTopFiling {
 export interface DigestTopEarnings {
   event_date: string
   bmo_amc: string
+  date_range_end?: string | null
+  date_status?: 'estimated' | 'reported'
 }
 
 export interface DigestSentiment {

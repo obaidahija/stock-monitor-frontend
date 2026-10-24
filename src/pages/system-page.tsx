@@ -4,9 +4,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { HealthPanel } from '@/features/system/health-panel'
 import { JobsTable } from '@/features/system/jobs-table'
 import { ResearchHealthPanel } from '@/features/system/research-health-panel'
+import { ResearchArchivePanel } from '@/features/system/research-archive-panel'
 import { SignalPerformanceTab } from '@/features/system/signal-performance-tab'
 
-const SYSTEM_TABS = ['health', 'jobs', 'signals', 'research'] as const
+const SYSTEM_TABS = ['health', 'jobs', 'signals', 'research', 'archive'] as const
 
 export function SystemPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -42,14 +43,15 @@ export function SystemPage() {
     <div className="space-y-6">
       <PageHeader
         title="System"
-        description="Scheduler health, jobs, signal performance, and research evidence quality."
+        description="Scheduler health, jobs, signal performance, research evidence, and saved research."
       />
       <Tabs value={activeTab} onValueChange={handleTabChange}>
-        <TabsList>
+        <TabsList className="max-w-full justify-start overflow-x-auto">
           <TabsTrigger value="health">Health</TabsTrigger>
           <TabsTrigger value="jobs">Jobs</TabsTrigger>
           <TabsTrigger value="signals">Signals</TabsTrigger>
           <TabsTrigger value="research">Research health</TabsTrigger>
+          <TabsTrigger value="archive">Archive</TabsTrigger>
         </TabsList>
         <TabsContent value="health">
           <HealthPanel />
@@ -62,6 +64,9 @@ export function SystemPage() {
         </TabsContent>
         <TabsContent value="research">
           <ResearchHealthPanel />
+        </TabsContent>
+        <TabsContent value="archive">
+          <ResearchArchivePanel />
         </TabsContent>
       </Tabs>
     </div>

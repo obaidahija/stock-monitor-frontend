@@ -115,22 +115,33 @@ function EarningsCell({ item }: { item: UniverseTickerOut }) {
       {item.next_earnings_date &&
         (() => {
           const until = easternDaysUntil(item.next_earnings_date)
-          const soon = until >= 0 && until <= EARNINGS_WINDOW_DAYS
+          const rangeEnd = item.next_earnings_date_range_end ?? item.next_earnings_date
+          const untilEnd = easternDaysUntil(rangeEnd)
+          const soon = until <= EARNINGS_WINDOW_DAYS && untilEnd >= 0
+          const windowOpen = rangeEnd !== item.next_earnings_date && until <= 0 && untilEnd >= 0
           return (
             <>
             <p
-              title={soon ? 'Calendar days until earnings, using New York dates.' : undefined}
+              title={soon ? windowOpen ? 'Estimated earnings window is open, using New York dates.' : 'Calendar days until earnings, using New York dates.' : undefined}
               className={cn(
                 'text-xs whitespace-normal',
                 soon ? 'font-medium text-amber-600 dark:text-amber-400' : 'text-muted-foreground',
               )}
             >
               Next {formatDate(item.next_earnings_date)}
+              {item.next_earnings_date_range_end && item.next_earnings_date_range_end !== item.next_earnings_date &&
+                ` – ${formatDate(item.next_earnings_date_range_end)}`}
               {item.next_earnings_bmo_amc &&
                 item.next_earnings_bmo_amc !== 'unknown' &&
                 ` (${item.next_earnings_bmo_amc.toUpperCase()})`}
-              {soon && ` · ${until === 0 ? 'today' : `in ${until}d`}`}
+              {soon && ` · ${windowOpen ? 'window open' : until === 0 ? 'today' : `in ${until}d`}`}
             </p>
+            {item.next_earnings_source && (
+              <p className="text-muted-foreground text-xs">
+                {item.next_earnings_source === 'yfinance' ? 'Yahoo estimate' : 'Finnhub estimate'}
+                {item.next_earnings_date_conflict && <span> · Sources differ</span>}
+              </p>
+            )}
             {soon && <Link className="text-muted-foreground text-xs underline-offset-2 hover:underline" to={`/stocks/${encodeURIComponent(item.ticker)}?tab=analysis&horizon_sessions=5`}>Check selected window</Link>}
             </>
           )

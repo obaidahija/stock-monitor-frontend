@@ -15,12 +15,27 @@ function timingLabel(event: WindowEventOut): string {
   return formatEasternDateTime(event.start_at)
 }
 
+const RANGE_DATE = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'America/New_York', year: 'numeric', month: 'short', day: 'numeric',
+})
+
+function dateLabel(event: WindowEventOut): string {
+  const first = formatDate(event.local_date)
+  if (!event.timing_reasons.includes('earnings_date_range')) return first
+  // end_at is exclusive. Subtract an instant before formatting in New York,
+  // so DST and the viewer's timezone cannot move the included final day.
+  const end = Date.parse(event.end_at)
+  if (!Number.isFinite(end)) return first
+  const last = RANGE_DATE.format(new Date(end - 1))
+  return first === last ? first : `${first} – ${last}`
+}
+
 function EventRow({ event }: { event: WindowEventOut }) {
   return (
     <li className="min-w-0 border-l-2 border-amber-500/50 py-1 pl-3 text-sm">
       <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
         <strong className="break-words">{event.title}</strong>
-        <span className="text-muted-foreground">{formatDate(event.local_date)} · {timingLabel(event)}</span>
+        <span className="text-muted-foreground">{dateLabel(event)} · {timingLabel(event)}</span>
       </div>
       <p className="text-muted-foreground text-xs">
         {event.overlap === 'possible_overlap' ? 'Possible overlap' : event.overlap === 'after_expiry' ? 'After this window' : 'Inside window'}

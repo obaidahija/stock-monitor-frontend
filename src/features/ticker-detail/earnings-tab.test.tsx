@@ -140,3 +140,38 @@ test('omits the events card when only the earnings date is known', () => {
 
   expect(screen.queryByText('Other upcoming events')).not.toBeInTheDocument()
 })
+
+test('uses the Yahoo date and explains the conflicting short Finnhub interval', () => {
+  vi.useFakeTimers()
+  vi.setSystemTime(new Date('2026-10-22T16:00:00Z'))
+  renderTab([], {
+    ...summary,
+    ticker: 'NBIS',
+    next: {
+      ...summary.next!, ticker: 'NBIS', event_date: '2026-11-10',
+      source: 'finnhub', date_source: 'yfinance', date_status: 'estimated',
+      date_conflict: true, finnhub_event_date: '2026-10-22',
+      days_since_last_report: 90,
+      finnhub_date_warning: "Finnhub's date is only 71 days after the previous report.",
+    },
+  })
+  expect(screen.getByText('In 19 days')).toBeInTheDocument()
+  expect(screen.queryByText('Today')).not.toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Yahoo Finance' })).toHaveAttribute(
+    'href', 'https://finance.yahoo.com/quote/NBIS/earnings/',
+  )
+  expect(screen.getByText(/Estimated date/)).toBeInTheDocument()
+  expect(screen.getByText(/71 days/)).toBeInTheDocument()
+  expect(screen.getByText(/90 days since the previous report/)).toBeInTheDocument()
+  expect(screen.getByText(/Finnhub lists/)).toBeInTheDocument()
+})
+
+test('shows Yahoo ranges without claiming a precise report day', () => {
+  renderTab([], {
+    ...summary,
+    next: { ...summary.next!, date_source: 'yfinance', date_status: 'estimated',
+            date_range_end: '2026-11-21', bmo_amc: 'unknown' },
+  })
+  expect(screen.getByText(/Nov 17, 2026.*Nov 21, 2026/)).toBeInTheDocument()
+  expect(screen.getByText('Timing unknown')).toBeInTheDocument()
+})

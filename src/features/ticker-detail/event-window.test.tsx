@@ -1,7 +1,7 @@
 import { cleanup, screen } from '@testing-library/react'
 import { afterEach, expect, test } from 'vitest'
 import { renderWithProviders } from '@/test/render'
-import type { EventWindowOut } from '@/types/api'
+import type { EventWindowOut, WindowEventOut } from '@/types/api'
 import { EventWindowCard, eventWindowMessage } from './event-window'
 
 afterEach(cleanup)
@@ -22,6 +22,22 @@ const empty: EventWindowOut = {
 test('empty calendar never hides incomplete coverage', () => {
   expect(eventWindowMessage(0, 'unavailable')).toBe('Calendar coverage incomplete')
   expect(eventWindowMessage(0, 'complete')).toBe('No listed events found')
+})
+
+test.each([
+  ['2026-10-21', '2026-10-26T04:00:00Z', 'Oct 21, 2026 – Oct 25, 2026'],
+  ['2026-10-30', '2026-11-02T05:00:00Z', 'Oct 30, 2026 – Nov 1, 2026'],
+  ['2026-10-21', '2026-10-22T04:00:00Z', 'Oct 21, 2026'],
+])('renders inclusive New York dates from %s through exclusive %s', (start, end, label) => {
+  const event: WindowEventOut = {
+    canonical_key: 'earnings:NBIS', event_type: 'earnings', title: 'NBIS earnings',
+    local_date: start, start_at: `${start}T04:00:00Z`, end_at: end,
+    precision: 'date_only', overlap: 'possible_overlap', severity: 'high', status: 'scheduled',
+    verification: 'provider_estimated', source_name: 'yfinance', source_url: null,
+    timing_reasons: ['earnings_date_range'],
+  }
+  renderWithProviders(<EventWindowCard data={{ ...empty, events: [event] }} />)
+  expect(screen.getByText(`${label} · Time unknown`)).toBeInTheDocument()
 })
 
 test('keeps unknown timing, after-expiry and stale coverage explicit', () => {
