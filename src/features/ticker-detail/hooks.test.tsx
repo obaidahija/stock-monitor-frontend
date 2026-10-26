@@ -287,6 +287,83 @@ test('stale GET cannot overwrite refresh', async () => {
   expect(readSignal?.aborted).toBe(true)
 })
 
+test.each([
+  ['read first, timed', true, AT_1000],
+  ['refresh first, timed', false, AT_1000],
+  ['read first, untimed', true, null],
+  ['refresh first, untimed', false, null],
+] as const)('cancelled simultaneous GET does not discard a refresh: %s', async (_name, readFirst, time) => {
+  const read = deferred<QuoteOut>()
+  const refresh = deferred<QuoteOut>()
+  vi.mocked(getQuote).mockReturnValue(read.promise)
+  vi.mocked(refreshQuote).mockReturnValue(refresh.promise)
+  const client = quoteClient()
+  client.setQueryData(['quote', 'AAA'], quote('AAA', 1, time))
+  const { rerender } = render(withClient(client, <RefreshQuoteHarness ticker="AAA" />))
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh quote' }))
+  await waitFor(() => expect(refreshQuote).toHaveBeenCalledTimes(1))
+  rerender(withClient(client, <RefreshQuoteHarness ticker="AAA" read />))
+  await waitFor(() => expect(getQuote).toHaveBeenCalledTimes(1))
+
+  await act(async () => {
+    if (readFirst) {
+      read.resolve(quote('AAA', 3, time))
+      refresh.resolve(quote('AAA', 2, time))
+    } else {
+      refresh.resolve(quote('AAA', 2, time))
+      read.resolve(quote('AAA', 3, time))
+    }
+  })
+
+  expect(client.getQueryData(['quote', 'AAA'])).toMatchObject({ price: 2 })
+})
+
+test('a completed later GET wins an equal-time tie against an earlier refresh', async () => {
+  const read = deferred<QuoteOut>()
+  const refresh = deferred<QuoteOut>()
+  vi.mocked(getQuote).mockReturnValue(read.promise)
+  vi.mocked(refreshQuote).mockReturnValue(refresh.promise)
+  const client = quoteClient()
+  client.setQueryData(['quote', 'AAA'], quote('AAA', 1, AT_1000))
+  const { rerender } = render(withClient(client, <RefreshQuoteHarness ticker="AAA" />))
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh quote' }))
+  await waitFor(() => expect(refreshQuote).toHaveBeenCalledTimes(1))
+  rerender(withClient(client, <RefreshQuoteHarness ticker="AAA" read />))
+  await waitFor(() => expect(getQuote).toHaveBeenCalledTimes(1))
+  await act(async () => read.resolve(quote('AAA', 3, AT_1000)))
+  await waitFor(() => expect(client.getQueryData(['quote', 'AAA'])).toMatchObject({ price: 3 }))
+
+  await act(async () => refresh.resolve(quote('AAA', 2, AT_1000)))
+
+  expect(client.getQueryData(['quote', 'AAA'])).toMatchObject({ price: 3 })
+})
+
+test('a cancelled newer GET does not let an older refresh replace a committed quote', async () => {
+  const older = deferred<QuoteOut>()
+  const newer = deferred<QuoteOut>()
+  const read = deferred<QuoteOut>()
+  vi.mocked(refreshQuote).mockReturnValueOnce(older.promise).mockReturnValueOnce(newer.promise)
+  vi.mocked(getQuote).mockReturnValue(read.promise)
+  const client = quoteClient()
+  client.setQueryData(['quote', 'AAA'], quote('AAA', 1, AT_1000))
+  const { rerender } = render(withClient(client, <RefreshQuoteHarness ticker="AAA" />))
+  const button = screen.getByRole('button', { name: 'Refresh quote' })
+  fireEvent.click(button)
+  fireEvent.click(button)
+  await waitFor(() => expect(refreshQuote).toHaveBeenCalledTimes(2))
+  await act(async () => newer.resolve(quote('AAA', 3, AT_1000)))
+  await waitFor(() => expect(client.getQueryData(['quote', 'AAA'])).toMatchObject({ price: 3 }))
+  rerender(withClient(client, <RefreshQuoteHarness ticker="AAA" read />))
+  await waitFor(() => expect(getQuote).toHaveBeenCalledTimes(1))
+
+  await act(async () => {
+    read.resolve(quote('AAA', 4, AT_1000))
+    older.resolve(quote('AAA', 2, AT_1000))
+  })
+
+  expect(client.getQueryData(['quote', 'AAA'])).toMatchObject({ price: 3 })
+})
+
 test('a later GET with an older observation keeps the newer cached quote', async () => {
   vi.mocked(getQuote).mockResolvedValue(quote('AAA', 100, AT_1000))
   const client = quoteClient()
@@ -460,22 +537,17 @@ function AiReadAndRefresh({ ticker }: { ticker: string }) {
 
 test('late old AI report loses', async () => {
   const read = deferred<AiResearchOut>()
-  let readSignal: AbortSignal | undefined
-  vi.mocked(getAiResearch).mockImplementation((_ticker, signal) => {
-    readSignal = signal
-    return read.promise
-  })
+  vi.mocked(getAiResearch).mockReturnValue(read.promise)
   vi.mocked(refreshAiResearch).mockResolvedValue(aiReport('AAA', 'new', '2026-10-23T14:05:00Z'))
   const client = quoteClient()
   render(withClient(client, <AiReadAndRefresh ticker="AAA" />))
-  await waitFor(() => expect(getAiResearch).toHaveBeenCalledWith('AAA', expect.anything()))
+  await waitFor(() => expect(getAiResearch).toHaveBeenCalledWith('AAA'))
 
   fireEvent.click(screen.getByRole('button', { name: 'Refresh AI' }))
   await waitFor(() => expect(client.getQueryData(['ai-research', 'AAA'])).toMatchObject({ summary: 'new' }))
   await act(async () => read.resolve(aiReport('AAA', 'old', '2026-10-23T14:00:00Z')))
 
   expect(client.getQueryData(['ai-research', 'AAA'])).toMatchObject({ summary: 'new' })
-  expect(readSignal?.aborted).toBe(true)
 })
 
 test('a refresh publishes only reports newer than the cached one, to the microsecond', async () => {

@@ -2,6 +2,7 @@ import { Loader2, Pencil, Plus } from 'lucide-react'
 import { useEffect, useId, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { RewardRiskSummary } from '@/components/shared/reward-risk-summary'
 import {
   Dialog,
   DialogContent,
@@ -257,7 +258,7 @@ export function SetupFormDialog({
           </Button>
         </DialogTrigger>
       )}
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{setup ? 'Edit' : 'Create'} {ticker} setup</DialogTitle>
           <DialogDescription>
@@ -322,6 +323,13 @@ export function SetupFormDialog({
             </label>
           )}
         </div>
+
+        <RewardRiskSummary side={side} levels={{
+          entry_primary: primary === '' ? null : Number(primary),
+          entry_secondary: secondary === '' ? null : Number(secondary),
+          stop_loss: stop === '' ? null : Number(stop),
+          take_profit: target === '' ? null : Number(target),
+        }} />
 
         <p className="text-muted-foreground text-xs">
           Long: stop &lt; secondary ≤ primary &lt; target. Short: target &lt; primary ≤ secondary &lt; stop.

@@ -89,7 +89,7 @@ test('describes provider and cache dependent generation time without a fixed pro
   expect(screen.queryByText(/takes 20-60s/i)).not.toBeInTheDocument()
 })
 
-test('generation waits for the button and its read can be cancelled', async () => {
+test('generation waits for the button', async () => {
   vi.mocked(getAiResearch).mockResolvedValue(report('AAA', 'A summary'))
   renderWithProviders(<AiResearchTab ticker="AAA" />)
   await act(async () => {})
@@ -99,7 +99,7 @@ test('generation waits for the button and its read can be cancelled', async () =
 
   expect(await screen.findByText('A summary')).toBeInTheDocument()
   expect(getAiResearch).toHaveBeenCalledTimes(1)
-  expect(getAiResearch).toHaveBeenCalledWith('AAA', expect.any(AbortSignal))
+  expect(getAiResearch).toHaveBeenCalledWith('AAA')
 })
 
 test('back navigation cannot show B research on A', async () => {
@@ -142,6 +142,38 @@ test('leaving during generation never generates for the next ticker', async () =
   await act(async () => {})
 
   expect(screen.getByRole('button', { name: /Generate AI research/ })).toBeEnabled()
+  expect(requestedTickers()).toEqual(['AAA'])
+})
+
+test('returning to an unfinished generation keeps its progress and single request', async () => {
+  let finish!: (value: AiResearchOut) => void
+  vi.mocked(getAiResearch).mockReturnValue(new Promise((resolve) => { finish = resolve }))
+  const { rerender } = renderWithProviders(<AiResearchTab ticker="AAA" />)
+  clickGenerate()
+  expect(await screen.findByRole('button', { name: /Generating/ })).toBeDisabled()
+
+  rerender(<div>Another tab</div>)
+  rerender(<AiResearchTab ticker="AAA" />)
+
+  expect(screen.getByRole('button', { name: /Generating/ })).toBeDisabled()
+  await act(async () => finish(report('AAA', 'Completed after returning')))
+  expect(await screen.findByText('Completed after returning')).toBeInTheDocument()
+  expect(requestedTickers()).toEqual(['AAA'])
+})
+
+test('a generation completed on another ticker remains cached for its original ticker', async () => {
+  let finish!: (value: AiResearchOut) => void
+  vi.mocked(getAiResearch).mockReturnValue(new Promise((resolve) => { finish = resolve }))
+  const { rerender } = renderWithProviders(<AiResearchTab ticker="AAA" />)
+  clickGenerate()
+  expect(await screen.findByRole('button', { name: /Generating/ })).toBeDisabled()
+
+  rerender(<AiResearchTab ticker="BBB" />)
+  await act(async () => finish(report('AAA', 'Completed while viewing B')))
+  expect(screen.queryByText('Completed while viewing B')).not.toBeInTheDocument()
+  rerender(<AiResearchTab ticker="AAA" />)
+
+  expect(await screen.findByText('Completed while viewing B')).toBeInTheDocument()
   expect(requestedTickers()).toEqual(['AAA'])
 })
 

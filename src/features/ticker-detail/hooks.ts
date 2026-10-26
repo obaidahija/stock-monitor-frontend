@@ -39,8 +39,10 @@ import {
   isQuoteRefreshPending,
   issueQuoteRequest,
   normalizeQuoteTicker,
+  publishQuote,
   quoteQueryKey,
   reconcileQuote,
+  shareQuote,
   trackQuoteRefresh,
 } from './quote-version'
 
@@ -80,6 +82,9 @@ export function useQuote(ticker: string) {
       const sequence = issueQuoteRequest(queryClient, symbol)
       return reconcileQuote(queryClient, symbol, await getQuote(symbol, signal), sequence)
     },
+    structuralSharing: (current, incoming) => shareQuote(
+      queryClient, symbol, current as QuoteOut | undefined, incoming as QuoteOut,
+    ),
   })
 }
 
@@ -93,9 +98,7 @@ function refreshQuoteInto(queryClient: QueryClient, ticker: string): Promise<Quo
     // An outstanding read is older than this response: cancel it so its late
     // completion cannot overwrite what is published here.
     await queryClient.cancelQueries({ queryKey: quoteQueryKey(symbol), exact: true })
-    const quote = reconcileQuote(queryClient, symbol, incoming, sequence)
-    if (quote === incoming) queryClient.setQueryData(quoteQueryKey(symbol), quote)
-    return quote
+    return publishQuote(queryClient, symbol, incoming, sequence)
   })
 }
 
@@ -268,8 +271,11 @@ export function useAiResearch(ticker: string, enabled: boolean) {
   const key = aiResearchKey(ticker)
   return useQuery({
     queryKey: key,
-    queryFn: async ({ signal }) => {
-      const report = await getAiResearch(key[1], signal)
+    // This GET can start paid generation. Keep it alive after its last
+    // observer leaves so returning can follow the same request and result.
+    // Explicit refresh cancellation still prevents a late result publishing.
+    queryFn: async () => {
+      const report = await getAiResearch(key[1])
       assertAiReportIdentity(key[1], report)
       return preferredAiReport(report, queryClient.getQueryData<AiResearchOut>(key))
     },

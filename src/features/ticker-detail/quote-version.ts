@@ -69,7 +69,7 @@ export class QuoteIdentityError extends Error {
 
 interface QuoteRequests {
   issued: number
-  applied: number
+  versions: WeakMap<QuoteOut, number>
   refreshing: number
 }
 
@@ -86,7 +86,7 @@ function requestsFor(client: QueryClient, ticker: string): QuoteRequests {
   }
   let requests = byTicker.get(ticker)
   if (!requests) {
-    requests = { issued: 0, applied: 0, refreshing: 0 }
+    requests = { issued: 0, versions: new WeakMap(), refreshing: 0 }
     byTicker.set(ticker, requests)
   }
   return requests
@@ -106,6 +106,13 @@ export function assertQuoteIdentity(ticker: string, incoming: QuoteOut): void {
   }
 }
 
+function sameQuote(a: QuoteOut, b: QuoteOut): boolean {
+  // Query's structural sharing may clone a response before retaining it.
+  // Quote payloads are flat, so compare all fields rather than object identity.
+  const keys = Object.keys(a) as (keyof QuoteOut)[]
+  return keys.length === Object.keys(b).length && keys.every((key) => Object.is(a[key], b[key]))
+}
+
 /**
  * The quote the ticker's cache should hold once this response lands: the
  * response when it is newer, otherwise what is already cached.
@@ -119,11 +126,47 @@ export function reconcileQuote(
   assertQuoteIdentity(ticker, incoming)
   const requests = requestsFor(client, ticker)
   const current = client.getQueryData<QuoteOut>(quoteQueryKey(ticker))
-  if (!shouldAcceptQuote(incoming, current, { incoming: sequence, current: requests.applied })) {
+  // A GET can be cancelled after reconciliation but before Query publishes
+  // it, reverting to earlier data. Its sequence must not outrank that data.
+  const currentSequence = current ? requests.versions.get(current) ?? 0 : 0
+  if (!shouldAcceptQuote(incoming, current, { incoming: sequence, current: currentSequence })) {
     return current as QuoteOut
   }
-  requests.applied = sequence
+  requests.versions.set(incoming, sequence)
   return incoming
+}
+
+/** Preserve request order on the exact object Query retains, including an unchanged payload. */
+export function shareQuote(
+  client: QueryClient,
+  ticker: string,
+  current: QuoteOut | undefined,
+  incoming: QuoteOut,
+): QuoteOut {
+  const versions = requestsFor(client, ticker).versions
+  const sequence = versions.get(incoming)
+  const order = sequence === undefined ? undefined : {
+    incoming: sequence,
+    current: current ? versions.get(current) ?? 0 : 0,
+  }
+  if (!shouldAcceptQuote(incoming, current, order)) return current as QuoteOut
+  const retained = current && sameQuote(current, incoming) ? current : incoming
+  versions.set(retained, sequence ?? 0)
+  return retained
+}
+
+/** Publish a refresh and attach its order even when Query clones it without an active reader. */
+export function publishQuote(
+  client: QueryClient,
+  ticker: string,
+  incoming: QuoteOut,
+  sequence: number,
+): QuoteOut {
+  const quote = reconcileQuote(client, ticker, incoming, sequence)
+  if (quote !== incoming) return quote
+  const retained = client.setQueryData<QuoteOut>(quoteQueryKey(ticker), quote) ?? quote
+  if (sameQuote(retained, quote)) requestsFor(client, ticker).versions.set(retained, sequence)
+  return retained
 }
 
 export function isQuoteRefreshPending(client: QueryClient, ticker: string): boolean {

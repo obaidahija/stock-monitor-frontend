@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { RewardRiskSummary } from '@/components/shared/reward-risk-summary'
 import { formatCurrency } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { PriceReferenceOut } from '@/types/api'
@@ -45,6 +46,8 @@ function PriceReferenceGrid({
         {priceReference?.note && (
           <p className="text-muted-foreground text-sm">{priceReference.note}</p>
         )}
+        <RewardRiskSummary levels={priceReference}
+          comparison={{ label: 'Report price comparison', price: currentPrice }} />
         <p className="text-muted-foreground text-xs">
           Reference levels only, not a recommendation to buy or sell.
         </p>
@@ -185,6 +188,8 @@ export function PriceReferenceLadder({
         {priceReference?.note && (
           <p className="text-muted-foreground text-sm">{priceReference.note}</p>
         )}
+        <RewardRiskSummary levels={priceReference}
+          comparison={{ label: 'Report price comparison', price: currentPrice }} />
         <p className="text-muted-foreground text-xs">
           Reference levels only, not a recommendation to buy or sell.
         </p>

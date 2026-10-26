@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, test, vi } from 'vitest'
 import { ApiError } from '@/lib/api-client'
@@ -100,6 +100,32 @@ async function fillLevels(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText('Stop loss'), '90')
   await user.type(screen.getByLabelText('Take profit'), '120')
 }
+
+test('previews reward/risk as entries and stops change without saving', async () => {
+  const user = userEvent.setup()
+  render(<SetupFormDialog watchlistId={1} ticker="NVDA" setup={swingSetup} />)
+  await user.click(screen.getByRole('button', { name: /edit setup/i }))
+  const summary = within(screen.getByRole('group', { name: 'Primary entry reward/risk' }))
+  expect(summary.getByText('2.00 : 1')).toBeInTheDocument()
+  await user.clear(screen.getByLabelText('Primary entry'))
+  expect(summary.getByText(/Unavailable.*required/)).toBeInTheDocument()
+  await user.type(screen.getByLabelText('Primary entry'), '110')
+  expect(summary.getByText('0.50 : 1')).toBeInTheDocument()
+  await user.clear(screen.getByLabelText('Stop loss'))
+  await user.type(screen.getByLabelText('Stop loss'), '95')
+  expect(summary.getByText('0.67 : 1')).toBeInTheDocument()
+  expect(update.mutateAsync).not.toHaveBeenCalled()
+  expect(swingSetup.entry_primary).toBe(100)
+})
+
+test('the setup editor uses the selected short side in its preview', async () => {
+  const user = userEvent.setup()
+  render(<SetupFormDialog watchlistId={1} ticker="NVDA" setup={{ ...swingSetup, side: 'short', stop_loss: 104, take_profit: 88 }} />)
+  await user.click(screen.getByRole('button', { name: /edit setup/i }))
+  expect(screen.getByText('3.00 : 1')).toBeInTheDocument()
+  await user.selectOptions(screen.getByLabelText('Side'), 'long')
+  expect(screen.getByText(/Unavailable.*conflict with the setup side/)).toBeInTheDocument()
+})
 
 test('creates a swing setup with five sessions by default and no caller expiry', async () => {
   const user = userEvent.setup()

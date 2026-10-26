@@ -13,6 +13,7 @@ import { toast } from 'sonner'
 import { EmptyState } from '@/components/shared/empty-state'
 import { ErrorState } from '@/components/shared/error-state'
 import { PageHeader } from '@/components/shared/page-header'
+import { RewardRiskSummary } from '@/components/shared/reward-risk-summary'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -466,6 +467,9 @@ function ExpandedWatchlistDetails({ item }: { item: WatchlistItemOut }) {
           <p className="mt-0.5">{formatRelativeTime(item.quote_updated_at)}</p>
         </div>
       </div>
+
+      <RewardRiskSummary levels={setup} side={setup.side} accessibleLabel={`${item.ticker} reward/risk`}
+        comparison={{ label: 'Quoted price comparison', price: item.session_price ?? item.current_price }} />
 
       {eventWindow.data && <EventWindowCard data={eventWindow.data} title="Events in saved setup window" />}
       {eventWindow.isError && <p className="text-muted-foreground text-xs">Saved-window calendar unavailable.</p>}

@@ -129,6 +129,30 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
+test.each([false, true])('expanded setups keep saved entries separate from the session quote (phone=%s)', (phone) => {
+  if (phone) emulatePhone()
+  itemState.override = [{ ...items[0], current_price: 106, session_price: 107 }]
+  renderWithProviders(<WatchlistsPage />)
+  fireEvent.click(screen.getByRole('button', { name: 'Expand NVDA details' }))
+
+  expect(within(screen.getByRole('group', { name: 'Primary entry reward/risk' })).getByText('2.00 : 1')).toBeInTheDocument()
+  expect(within(screen.getByRole('group', { name: 'Secondary entry reward/risk' })).getByText('5.00 : 1')).toBeInTheDocument()
+  expect(within(screen.getByRole('group', { name: 'Quoted price comparison reward/risk' })).getByText('0.76 : 1')).toBeInTheDocument()
+  expect(items[0].current_setup?.entry_primary).toBe(100)
+})
+
+test('expanded summaries identify their ticker to screen-reader landmark navigation', () => {
+  itemState.override = [items[0], {
+    ...items[1],
+    current_setup: { ...items[0].current_setup!, id: 21, watchlist_item_id: 11, ticker: 'AAPL' },
+  }]
+  renderWithProviders(<WatchlistsPage />)
+  fireEvent.click(screen.getByRole('button', { name: 'Expand NVDA details' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Expand AAPL details' }))
+  expect(screen.getByRole('region', { name: 'NVDA reward/risk' })).toBeInTheDocument()
+  expect(screen.getByRole('region', { name: 'AAPL reward/risk' })).toBeInTheDocument()
+})
+
 test('keeps expired and favorite-only tickers visible and surfaces review state', () => {
   renderWithProviders(<WatchlistsPage />)
   fireEvent.click(screen.getByRole('button', { name: 'Expand NVDA details' }))
