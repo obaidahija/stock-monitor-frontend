@@ -1,11 +1,13 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { type QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as api from '@/api/reddit'
 import type {
   RedditFeedFilter,
   RedditListingSort,
+  RedditOperationOut,
   RedditSort,
   RedditTimeFilter,
 } from '@/types/api'
+import { useRedditOperationPoll } from './use-operation-poll'
 
 export const redditKeys = {
   root: ['reddit'] as const,
@@ -15,6 +17,10 @@ export const redditKeys = {
   subreddits: ['reddit', 'sources', 'subreddits'] as const,
   authors: ['reddit', 'sources', 'authors'] as const,
   thread: (postId: string) => ['reddit', 'thread', postId] as const,
+  // Client-only handles to the operation a search or thread refresh queued. The cache
+  // reads report only the latest *succeeded* operation, so the pending one lives here.
+  pendingSearch: (ticker: string) => ['reddit', 'pending-operation', 'search', ticker] as const,
+  pendingThread: (postId: string) => ['reddit', 'pending-operation', 'thread', postId] as const,
   topMentions: (limit: number) => ['reddit', 'top-mentions', limit] as const,
 }
 
@@ -116,7 +122,10 @@ export function useSearchRedditTicker() {
   return useMutation({
     mutationFn: ({ ticker, force }: { ticker: string; force: boolean }) =>
       api.searchRedditTicker(ticker, force),
-    onSuccess: (data, { ticker }) => client.setQueryData(redditKeys.search(ticker, 'signal'), data),
+    onSuccess: (data, { ticker }) => {
+      client.setQueryData(redditKeys.search(ticker, 'signal'), data)
+      rememberOperation(client, redditKeys.pendingSearch(ticker), data.operation)
+    },
   })
 }
 
@@ -131,6 +140,59 @@ export function useRefreshRedditThread() {
   const client = useQueryClient()
   return useMutation({
     mutationFn: ({ postId }: { postId: string }) => api.refreshRedditThread(postId),
-    onSuccess: (data, { postId }) => client.setQueryData(redditKeys.thread(postId), data),
+    onSuccess: (data, { postId }) => {
+      client.setQueryData(redditKeys.thread(postId), data)
+      rememberOperation(client, redditKeys.pendingThread(postId), data.operation)
+    },
   })
 }
+
+type PendingKey = readonly unknown[]
+
+// A response without an operation means nothing is pending (the cache was fresh), so
+// it also forgets an earlier failure. The operation itself seeds the poll's cache so its
+// progress shows before the first poll returns.
+function rememberOperation(client: QueryClient, key: PendingKey, operation: RedditOperationOut | null) {
+  if (operation) client.setQueryData(['reddit', 'operation', operation.id], operation)
+  client.setQueryData<string | null>(key, operation?.id ?? null)
+}
+
+function usePendingOperationId(key: PendingKey): string | null {
+  const { data } = useQuery<string | null>({
+    queryKey: key,
+    queryFn: () => null,
+    enabled: false,
+    staleTime: Infinity,
+    gcTime: Infinity,
+  })
+  return data ?? null
+}
+
+/**
+ * Follows the operation remembered under `key` to completion. Success (or the operation
+ * disappearing) forgets it and refreshes `scope`; a failure stays visible until a new
+ * operation replaces it. The followed operation is `null` once there is nothing pending.
+ */
+function useFollowedOperation(key: PendingKey, scope: readonly PendingKey[]) {
+  const client = useQueryClient()
+  const operationId = usePendingOperationId(key)
+  // A fresh callback each render is fine: the poll fires once per operation.
+  const poll = useRedditOperationPoll(operationId, (operation, id) => {
+    if (operation?.status === 'failed') return
+    if (client.getQueryData(key) === id) client.setQueryData<string | null>(key, null)
+    for (const queryKey of scope) void client.invalidateQueries({ queryKey })
+  })
+  const operation = operationId != null && poll.data?.id === operationId ? poll.data : null
+  return { operation: operation?.status === 'succeeded' ? null : operation }
+}
+
+/** The search a ticker queued, followed until its results (every sort) and the feed refresh. */
+export const useRedditSearchFollow = (ticker: string) =>
+  useFollowedOperation(redditKeys.pendingSearch(ticker), [
+    ['reddit', 'search', ticker],
+    ['reddit', 'feed'],
+  ])
+
+/** The discussion refresh a post queued, followed until that thread refreshes. */
+export const useRedditThreadFollow = (postId: string | null) =>
+  useFollowedOperation(redditKeys.pendingThread(postId ?? ''), [redditKeys.thread(postId ?? '')])

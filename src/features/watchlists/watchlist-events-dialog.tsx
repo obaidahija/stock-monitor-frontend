@@ -57,12 +57,20 @@ const LEVEL_LABELS: Record<WatchlistSetupLevel, string> = {
 // are set-once rather than per-alert bookkeeping.
 const RULE_META: Record<
   WatchlistRuleType,
-  { label: string; blurb: string; paramKey?: string; paramLabel?: string; paramDefault?: number }
+  {
+    label: string
+    blurb: string
+    paramKey?: string
+    paramLabel?: string
+    paramDefault?: number
+    /** The rule counts whole days, so a fraction is not a valid setting. */
+    paramWhole?: boolean
+  }
 > = {
   price: { label: 'Price threshold', blurb: 'Fires once when a live quote crosses your target.' },
   new_filing: {
     label: 'New filing',
-    blurb: 'A notable SEC filing (8-K and similar) appears for this ticker.',
+    blurb: "An SEC filing matching this rule's filters appears for this ticker.",
   },
   earnings_in_days: {
     label: 'Earnings approaching',
@@ -70,6 +78,7 @@ const RULE_META: Record<
     paramKey: 'days',
     paramLabel: 'Days ahead',
     paramDefault: 2,
+    paramWhole: true,
   },
   insider_cluster_buy: {
     label: 'Insider cluster buy',
@@ -83,8 +92,8 @@ const RULE_META: Record<
     paramDefault: 10,
   },
   new_pattern: {
-    label: 'Bullish chart pattern',
-    blurb: 'A bullish pattern was detected by the daily chart-pattern scan.',
+    label: 'Chart pattern',
+    blurb: "The daily scan detected a chart pattern matching this rule's filters.",
   },
   pct_change: {
     label: 'Big move',
@@ -197,12 +206,15 @@ export function WatchlistEventsDialog({ item }: { item: WatchlistItemOut }) {
     if (ruleType !== 'price') {
       const meta = RULE_META[ruleType]
       const value = Number(ruleNumber)
+      const params = editing?.rule_type === ruleType ? { ...editing.params } : {}
+      if (meta.paramKey && ruleNumber.trim() && Number.isFinite(value)) {
+        params[meta.paramKey] = value
+      } else if (meta.paramKey && !ruleNumber.trim()) {
+        delete params[meta.paramKey]
+      }
       return {
         rule_type: ruleType,
-        params:
-          meta.paramKey && ruleNumber.trim() && Number.isFinite(value)
-            ? { [meta.paramKey]: value }
-            : {},
+        params,
         message: message.trim() || undefined,
       }
     }
@@ -236,18 +248,18 @@ export function WatchlistEventsDialog({ item }: { item: WatchlistItemOut }) {
       }
       resetForm()
     } catch {
-      toast.error('Could not save this price event')
+      toast.error('Could not save this event')
     }
   }
 
   async function deleteEvent(event: WatchlistEventOut) {
-    if (!window.confirm(`Delete this ${item.ticker} price event?`)) return
+    if (!window.confirm(`Delete this ${item.ticker} event?`)) return
     try {
       await remove.mutateAsync(event.id)
       if (editing?.id === event.id) resetForm()
-      toast.success('Price event deleted')
+      toast.success('Event deleted')
     } catch {
-      toast.error('Could not delete this price event')
+      toast.error('Could not delete this event')
     }
   }
 
@@ -269,7 +281,19 @@ export function WatchlistEventsDialog({ item }: { item: WatchlistItemOut }) {
     }
   }
 
-  const formComplete = numericThreshold > 0 && telegram.data?.ready === true
+  // Each rule needs only its own inputs: a price rule its target, any other
+  // rule at most its one number -- blank keeps the server default, but an
+  // invalid value never submits.
+  const ruleMeta = RULE_META[ruleType]
+  const ruleValue = Number(ruleNumber)
+  const ruleNumberValid =
+    !ruleMeta.paramKey ||
+    ruleNumber.trim() === '' ||
+    (Number.isFinite(ruleValue) &&
+      ruleValue >= 0 &&
+      (!ruleMeta.paramWhole || Number.isInteger(ruleValue)))
+  const conditionComplete = ruleType === 'price' ? numericThreshold > 0 : ruleNumberValid
+  const formComplete = conditionComplete && telegram.data?.ready === true
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -278,8 +302,8 @@ export function WatchlistEventsDialog({ item }: { item: WatchlistItemOut }) {
           variant="ghost"
           size="icon-sm"
           className="relative"
-          aria-label={`Manage ${item.ticker} price events`}
-          title={`Manage ${item.ticker} price events`}
+          aria-label={`Manage ${item.ticker} events`}
+          title={`Manage ${item.ticker} events`}
         >
           <Bell />
           {item.active_event_count > 0 && (
@@ -294,9 +318,9 @@ export function WatchlistEventsDialog({ item }: { item: WatchlistItemOut }) {
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{item.ticker} price events</DialogTitle>
+          <DialogTitle>{item.ticker} events</DialogTitle>
           <DialogDescription>
-            Send one Telegram message when a live watchlist quote meets a condition.
+            Send a Telegram message when a watchlist alert rule matches.
           </DialogDescription>
         </DialogHeader>
 
@@ -314,7 +338,9 @@ export function WatchlistEventsDialog({ item }: { item: WatchlistItemOut }) {
             <h3 className="font-medium">
               {editing
                 ? editing.state === 'active' ? 'Edit event' : 'Edit and re-arm'
-                : 'New price event'}
+                : ruleType === 'price'
+                  ? 'New price event'
+                  : 'New event'}
             </h3>
             {editing && <Button variant="ghost" size="sm" onClick={resetForm}>New event</Button>}
           </div>
@@ -349,7 +375,7 @@ export function WatchlistEventsDialog({ item }: { item: WatchlistItemOut }) {
                 id={`event-param-${item.id}`}
                 type="number"
                 min="0"
-                step="any"
+                step={RULE_META[ruleType].paramWhole ? '1' : 'any'}
                 value={ruleNumber}
                 onChange={(e) => setRuleNumber(e.target.value)}
                 placeholder={String(RULE_META[ruleType].paramDefault ?? '')}
@@ -423,11 +449,13 @@ export function WatchlistEventsDialog({ item }: { item: WatchlistItemOut }) {
             />
           </div>
 
-          <p className="text-muted-foreground text-xs">
-            Current effective price: {formatCurrency(effectivePrice)}. Events trigger only on
-            fresh pre-market, regular, or post-market quotes.
-          </p>
-          {alreadyMet && (
+          {ruleType === 'price' && (
+            <p className="text-muted-foreground text-xs">
+              Current effective price: {formatCurrency(effectivePrice)}. Events trigger only on
+              fresh pre-market, regular, or post-market quotes.
+            </p>
+          )}
+          {ruleType === 'price' && alreadyMet && (
             <p className="text-amber-600 flex items-start gap-2 text-sm dark:text-amber-400">
               <AlertTriangle className="mt-0.5 size-4 shrink-0" />
               This condition is already true and will trigger on the next valid quote evaluation.
@@ -446,7 +474,7 @@ export function WatchlistEventsDialog({ item }: { item: WatchlistItemOut }) {
           {events.isPending && <p className="text-muted-foreground text-sm">Loading events…</p>}
           {events.data?.length === 0 && (
             <p className="text-muted-foreground rounded-lg border p-3 text-sm">
-              No price events have been defined for this watchlist item.
+              No events have been defined for this watchlist item.
             </p>
           )}
           {events.data?.map((event) => (

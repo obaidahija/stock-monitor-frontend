@@ -81,7 +81,7 @@ test('creates a setup-linked take-profit event', async () => {
   const user = userEvent.setup()
   render(<WatchlistEventsDialog item={item} />)
 
-  await user.click(screen.getByRole('button', { name: /manage nvda price events/i }))
+  await user.click(screen.getByRole('button', { name: /manage nvda events/i }))
   await user.click(screen.getByRole('button', { name: /take profit/i }))
 
   expect((screen.getByLabelText('Condition') as HTMLSelectElement).value).toBe('gte')
@@ -103,7 +103,7 @@ test('creates a setup-linked take-profit event', async () => {
 test('warns for an already-satisfied custom condition', async () => {
   const user = userEvent.setup()
   render(<WatchlistEventsDialog item={item} />)
-  await user.click(screen.getByRole('button', { name: /manage nvda price events/i }))
+  await user.click(screen.getByRole('button', { name: /manage nvda events/i }))
   await user.type(screen.getByLabelText('Target price'), '230')
 
   expect(screen.getByText(/condition is already true/i)).toBeTruthy()
@@ -113,7 +113,7 @@ test('blocks saving when Telegram is not configured', async () => {
   telegramReady = false
   const user = userEvent.setup()
   render(<WatchlistEventsDialog item={item} />)
-  await user.click(screen.getByRole('button', { name: /manage nvda price events/i }))
+  await user.click(screen.getByRole('button', { name: /manage nvda events/i }))
   await user.type(screen.getByLabelText('Target price'), '200')
 
   expect(screen.getByText(/set telegram_bot_token/i)).toBeTruthy()
@@ -160,7 +160,7 @@ test('shows a failed latest delivery and retries it', async () => {
   ]
   const user = userEvent.setup()
   render(<WatchlistEventsDialog item={item} />)
-  await user.click(screen.getByRole('button', { name: /manage nvda price events/i }))
+  await user.click(screen.getByRole('button', { name: /manage nvda events/i }))
   await user.click(screen.getByRole('button', { name: /retry delivery/i }))
 
   expect(retry).toHaveBeenCalledWith(30)
@@ -224,4 +224,172 @@ test('a non-price event renders without reading a null condition', async () => {
   // assertion to the rendered event row rather than the whole dialog.
   const headings = screen.getAllByText('New filing')
   expect(headings.some((el) => el.tagName !== 'OPTION')).toBe(true)
+})
+
+function nonPriceEvent(overrides: Partial<WatchlistEventOut> = {}): WatchlistEventOut {
+  return {
+    id: 50,
+    watchlist_item_id: 10,
+    ticker: 'NVDA',
+    event_type: 'price_threshold',
+    rule_type: 'earnings_in_days',
+    params: { days: 5 },
+    last_trigger_key: null,
+    state: 'active',
+    condition: null,
+    message: null,
+    activation_version: 1,
+    triggered_at: null,
+    disabled_at: null,
+    disabled_reason: null,
+    last_occurrence: null,
+    created_at: '2026-10-20T00:00:00Z',
+    updated_at: '2026-10-20T00:00:00Z',
+    ...overrides,
+  }
+}
+
+test('saves a new non-price rule with its own number and no threshold', async () => {
+  const user = userEvent.setup()
+  render(<WatchlistEventsDialog item={item} />)
+  await user.click(screen.getByRole('button', { name: /manage nvda events/i }))
+  await user.selectOptions(screen.getByLabelText(/alert on/i), 'earnings_in_days')
+
+  expect(screen.getByRole('heading', { name: 'New event' })).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Save event' }))
+
+  expect(create).toHaveBeenCalledWith({
+    itemId: 10,
+    body: { rule_type: 'earnings_in_days', params: { days: 2 }, message: undefined },
+  })
+})
+
+test('saves a zero-config rule', async () => {
+  const user = userEvent.setup()
+  render(<WatchlistEventsDialog item={item} />)
+  await user.click(screen.getByRole('button', { name: /manage nvda events/i }))
+  await user.selectOptions(screen.getByLabelText(/alert on/i), 'new_filing')
+  await user.click(screen.getByRole('button', { name: 'Save event' }))
+
+  expect(create).toHaveBeenCalledWith({
+    itemId: 10,
+    body: { rule_type: 'new_filing', params: {}, message: undefined },
+  })
+})
+
+test('edits an active non-price rule and keeps its params', async () => {
+  eventsData = [nonPriceEvent()]
+  const user = userEvent.setup()
+  render(<WatchlistEventsDialog item={item} />)
+  await user.click(screen.getByRole('button', { name: /manage nvda events/i }))
+  await user.click(screen.getByRole('button', { name: 'Edit event' }))
+
+  expect((screen.getByLabelText(/days ahead/i) as HTMLInputElement).value).toBe('5')
+  await user.click(screen.getByRole('button', { name: 'Save event' }))
+
+  expect(update).toHaveBeenCalledWith({
+    id: 50,
+    body: { rule_type: 'earnings_in_days', params: { days: 5 }, message: undefined },
+  })
+})
+
+test('re-arms a disabled non-price rule', async () => {
+  eventsData = [nonPriceEvent({ state: 'disabled', disabled_reason: 'paused' })]
+  const user = userEvent.setup()
+  render(<WatchlistEventsDialog item={item} />)
+  await user.click(screen.getByRole('button', { name: /manage nvda events/i }))
+  await user.click(screen.getByRole('button', { name: 'Edit and re-arm event' }))
+  await user.click(screen.getByRole('button', { name: 'Save and re-arm' }))
+
+  expect(rearm).toHaveBeenCalledWith({
+    id: 50,
+    body: { rule_type: 'earnings_in_days', params: { days: 5 }, message: undefined },
+  })
+})
+
+test.each(['active', 'disabled'] as const)('keeps filing filters when editing a %s rule message', async (state) => {
+  const params = { notable_only: false, form_types: ['10-K'] }
+  eventsData = [nonPriceEvent({ rule_type: 'new_filing', params, state })]
+  const user = userEvent.setup()
+  render(<WatchlistEventsDialog item={item} />)
+  await user.click(screen.getByRole('button', { name: /manage nvda events/i }))
+  await user.click(screen.getByRole('button', { name: state === 'active' ? 'Edit event' : 'Edit and re-arm event' }))
+  await user.type(screen.getByLabelText('Message'), 'Annual reports only')
+  await user.click(screen.getByRole('button', { name: state === 'active' ? 'Save event' : 'Save and re-arm' }))
+
+  expect(state === 'active' ? update : rearm).toHaveBeenCalledWith({
+    id: 50,
+    body: { rule_type: 'new_filing', params, message: 'Annual reports only' },
+  })
+})
+
+test('preserves a pattern rule bias and lookback when editing', async () => {
+  const params = { bias: 'bearish', lookback_days: 7 }
+  eventsData = [nonPriceEvent({ rule_type: 'new_pattern', params })]
+  const user = userEvent.setup()
+  render(<WatchlistEventsDialog item={item} />)
+  await user.click(screen.getByRole('button', { name: /manage nvda events/i }))
+  await user.click(screen.getByRole('button', { name: 'Edit event' }))
+  await user.click(screen.getByRole('button', { name: 'Save event' }))
+
+  expect(update).toHaveBeenCalledWith({
+    id: 50,
+    body: { rule_type: 'new_pattern', params, message: undefined },
+  })
+})
+
+test('drops incompatible filters when changing rule type', async () => {
+  eventsData = [nonPriceEvent({ rule_type: 'new_filing', params: { notable_only: false, form_types: ['10-K'] } })]
+  const user = userEvent.setup()
+  render(<WatchlistEventsDialog item={item} />)
+  await user.click(screen.getByRole('button', { name: /manage nvda events/i }))
+  await user.click(screen.getByRole('button', { name: 'Edit event' }))
+  await user.selectOptions(screen.getByLabelText(/alert on/i), 'new_pattern')
+  await user.click(screen.getByRole('button', { name: 'Save event' }))
+
+  expect(update).toHaveBeenCalledWith({ id: 50, body: { rule_type: 'new_pattern', params: {}, message: undefined } })
+})
+
+test('clearing an existing numeric setting restores the server default', async () => {
+  eventsData = [nonPriceEvent()]
+  const user = userEvent.setup()
+  render(<WatchlistEventsDialog item={item} />)
+  await user.click(screen.getByRole('button', { name: /manage nvda events/i }))
+  await user.click(screen.getByRole('button', { name: 'Edit event' }))
+  await user.clear(screen.getByLabelText(/days ahead/i))
+  await user.click(screen.getByRole('button', { name: 'Save event' }))
+
+  expect(update).toHaveBeenCalledWith({ id: 50, body: { rule_type: 'earnings_in_days', params: {}, message: undefined } })
+})
+
+test('describes filing and other non-price events without promising a quote trigger', async () => {
+  eventsData = [nonPriceEvent({ rule_type: 'new_filing', params: {} })]
+  const user = userEvent.setup()
+  render(<WatchlistEventsDialog item={item} />)
+  await user.click(screen.getByRole('button', { name: /manage nvda events/i }))
+  await user.click(screen.getByRole('button', { name: 'Edit event' }))
+
+  expect(screen.getByRole('heading', { name: 'NVDA events' })).toBeVisible()
+  expect(screen.getByText('Send a Telegram message when a watchlist alert rule matches.')).toBeVisible()
+})
+
+test('an invalid number for a rule keeps Save disabled', async () => {
+  const user = userEvent.setup()
+  render(<WatchlistEventsDialog item={item} />)
+  await user.click(screen.getByRole('button', { name: /manage nvda events/i }))
+  await user.selectOptions(screen.getByLabelText(/alert on/i), 'earnings_in_days')
+  await user.clear(screen.getByLabelText(/days ahead/i))
+  await user.type(screen.getByLabelText(/days ahead/i), '-3')
+
+  expect(screen.getByRole('button', { name: 'Save event' })).toBeDisabled()
+})
+
+test('a non-price rule still needs Telegram to be ready', async () => {
+  telegramReady = false
+  const user = userEvent.setup()
+  render(<WatchlistEventsDialog item={item} />)
+  await user.click(screen.getByRole('button', { name: /manage nvda events/i }))
+  await user.selectOptions(screen.getByLabelText(/alert on/i), 'new_filing')
+
+  expect(screen.getByRole('button', { name: 'Save event' })).toBeDisabled()
 })

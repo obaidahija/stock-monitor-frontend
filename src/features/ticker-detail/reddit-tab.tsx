@@ -1,14 +1,17 @@
 import { useState } from 'react'
 import { RefreshCw } from 'lucide-react'
-import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/shared/empty-state'
 import { ErrorState } from '@/components/shared/error-state'
 import { Skeleton } from '@/components/ui/skeleton'
 import { RedditPostCard } from '@/features/reddit/reddit-post-card'
 import { RedditPostDetailDialog } from '@/features/reddit/reddit-post-detail-dialog'
-import { useRedditSearch, useSearchRedditTicker } from '@/features/reddit/hooks'
-import { useRedditOperationPoll } from '@/features/reddit/use-operation-poll'
+import {
+  useRedditSearch,
+  useRedditSearchFollow,
+  useSearchRedditTicker,
+} from '@/features/reddit/hooks'
+import { OperationProgress } from '@/features/reddit/operation-progress'
 import { formatRelativeTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { RedditPostType } from '@/api/reddit'
@@ -34,7 +37,6 @@ export function RedditTab({ ticker }: { ticker: string }) {
   const [sort, setSort] = useState<RedditSort>('signal')
   const [postTypes, setPostTypes] = useState<RedditPostType[]>([])
   const [selectedPost, setSelectedPost] = useState<RedditPostOut | null>(null)
-  const queryClient = useQueryClient()
   const searchCache = useRedditSearch(ticker, sort)
   const search = useSearchRedditTicker()
   const items = searchCache.data?.items ?? []
@@ -52,12 +54,10 @@ export function RedditTab({ ticker }: { ticker: string }) {
     )
   }
 
-  const operationId = search.data?.operation?.id ?? null
-  const poll = useRedditOperationPoll(operationId, () => {
-    queryClient.invalidateQueries({ queryKey: ['reddit', 'search', ticker, sort] })
-  })
+  // Followed per ticker, so a search queued on another ticker page never refreshes this one.
+  const { operation } = useRedditSearchFollow(ticker)
   const isRefreshing =
-    search.isPending || poll.data?.status === 'queued' || poll.data?.status === 'running'
+    search.isPending || (operation !== null && operation.status !== 'failed')
 
   return (
     <div className="space-y-4">
@@ -108,6 +108,18 @@ export function RedditTab({ ticker }: { ticker: string }) {
         </div>
       </div>
 
+      <OperationProgress
+        operation={operation}
+        labels={{
+          queued: 'Reddit refresh queued…',
+          running: 'Collecting Reddit discussions…',
+          deferred: 'Reddit refresh waiting to retry…',
+        }}
+        failure="Reddit refresh failed"
+        retryLabel="Retry"
+        onRetry={() => search.mutate({ ticker, force: true })}
+        retrying={search.isPending}
+      />
       {searchCache.isPending && <Skeleton className="h-64 rounded-xl" />}
       {searchCache.isError && <ErrorState error={searchCache.error} />}
       {items.length === 0 && (

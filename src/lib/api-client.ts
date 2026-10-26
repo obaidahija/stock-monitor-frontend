@@ -50,7 +50,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const apiClient = {
-  get: <T>(path: string) => request<T>(path),
+  // A query's AbortSignal cancels the request itself, not just its result.
+  get: <T>(path: string, signal?: AbortSignal) => request<T>(path, signal ? { signal } : undefined),
   // Same as get, but also hands back the raw Response so callers can read
   // response headers (e.g. X-Total-Count for pagination) alongside the body.
   getWithResponse: <T>(path: string) => requestWithResponse<T>(path),

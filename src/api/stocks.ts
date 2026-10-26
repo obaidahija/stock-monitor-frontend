@@ -114,8 +114,8 @@ export function refreshEarnings(ticker: string) {
   )
 }
 
-export function getQuote(ticker: string) {
-  return apiClient.get<QuoteOut>(`/v1/stocks/${encodeURIComponent(ticker)}/quote`)
+export function getQuote(ticker: string, signal?: AbortSignal) {
+  return apiClient.get<QuoteOut>(`/v1/stocks/${encodeURIComponent(ticker)}/quote`, signal)
 }
 
 export function refreshQuote(ticker: string) {
@@ -190,8 +190,8 @@ export function getAnalystPriceTargetHistory(ticker: string, limit = 20) {
   )
 }
 
-export function getAiResearch(ticker: string) {
-  return apiClient.get<AiResearchOut>(`/v1/stocks/${encodeURIComponent(ticker)}/ai-research`)
+export function getAiResearch(ticker: string, signal?: AbortSignal) {
+  return apiClient.get<AiResearchOut>(`/v1/stocks/${encodeURIComponent(ticker)}/ai-research`, signal)
 }
 
 export function refreshAiResearch(ticker: string) {

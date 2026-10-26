@@ -27,6 +27,41 @@ test('explains the wait instead of showing an empty table', () => {
   expect(screen.getByText(/no outcomes have matured yet/i)).toBeInTheDocument()
 })
 
+test('explains excluded and pending history instead of an empty table', () => {
+  mockData = {
+    horizon_days: 5,
+    evaluated_count: 0,
+    by_lean: [],
+    by_score_bucket: [],
+    by_factor: [],
+    evaluation_version: 'signal-performance-v2',
+    legacy_excluded_count: 1240,
+    pending_count: 916,
+  }
+  render(<SignalPerformanceTab />)
+
+  expect(screen.getByText(/1,240 earlier results are excluded/)).toBeInTheDocument()
+  expect(screen.getByText(/916 observations are waiting/)).toBeInTheDocument()
+})
+
+test('notes excluded history beside a populated report', () => {
+  mockData = {
+    horizon_days: 20,
+    evaluated_count: 42,
+    by_lean: [{ lean: 'bullish', count: 42, hit_rate: 0.55, avg_excess_return_pct: 1.2 }],
+    by_score_bucket: [],
+    by_factor: [],
+    evaluation_version: 'signal-performance-v2',
+    legacy_excluded_count: 1,
+    pending_count: 0,
+  }
+  render(<SignalPerformanceTab />)
+
+  expect(screen.getByText(/1 earlier result is excluded/)).toBeInTheDocument()
+  expect(screen.queryByText(/observations are waiting/)).not.toBeInTheDocument()
+  expect(screen.getByText(/42 evaluated/)).toBeInTheDocument()
+})
+
 test('renders factor hit rates and the spread', () => {
   mockData = {
     horizon_days: 5,

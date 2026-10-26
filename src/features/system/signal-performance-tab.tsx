@@ -10,12 +10,39 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { formatNumber } from '@/lib/format'
+import type { SignalPerformanceOut } from '@/types/api'
 import { useSignalPerformance } from './hooks'
 import { ResearchPerformancePanel } from './research-performance-panel'
 
 const pct = (value: number | null) => (value === null ? '—' : `${(value * 100).toFixed(1)}%`)
 const signed = (value: number | null) =>
   value === null ? '—' : `${value >= 0 ? '+' : ''}${value.toFixed(2)}`
+
+/** Why rows are missing from the report, so a short table never reads as the whole history. */
+function ExcludedHistoryNote({ data, horizon }: { data: SignalPerformanceOut; horizon: number }) {
+  const legacy = data.legacy_excluded_count ?? 0
+  const pending = data.pending_count ?? 0
+  if (legacy === 0 && pending === 0) return null
+  return (
+    <div className="text-muted-foreground space-y-1 text-sm">
+      {legacy > 0 && (
+        <p>
+          {formatNumber(legacy)} earlier {legacy === 1 ? 'result is' : 'results are'} excluded:
+          the previous calculation could measure one session too many and mix pre- and
+          post-split prices. Only results measured over exact sessions on one adjusted price
+          series are shown.
+        </p>
+      )}
+      {pending > 0 && (
+        <p>
+          {formatNumber(pending)} {pending === 1 ? 'observation is' : 'observations are'} waiting
+          for {pending === 1 ? 'its' : 'their'} {horizon}-session window to close.
+        </p>
+      )}
+    </div>
+  )
+}
 
 type Dataset = 'legacy' | 'prospective'
 
@@ -59,6 +86,8 @@ function LegacySignalPerformance() {
           </TabsList>
         </Tabs>
       </div>
+
+      {data && <ExcludedHistoryNote data={data} horizon={horizon} />}
 
       {isLoading || !data || data.evaluated_count === 0 ? (
         <Card>

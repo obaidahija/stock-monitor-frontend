@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { getSectorHeatmap } from '@/api/discover'
 import type { AnalysisExtras } from '@/api/stocks'
 import {
@@ -27,7 +27,22 @@ import {
   refreshQuote,
   refreshUniverseScore,
 } from '@/api/stocks'
-import type { GoogleFinanceChatTurnIn, SentimentBucketGranularity } from '@/types/api'
+import type {
+  AiResearchOut,
+  GoogleFinanceChatTurnIn,
+  QuoteOut,
+  SentimentBucketGranularity,
+} from '@/types/api'
+import { isOlderPairReport } from './pairs/pair-report-version'
+import {
+  assertQuoteIdentity,
+  isQuoteRefreshPending,
+  issueQuoteRequest,
+  normalizeQuoteTicker,
+  quoteQueryKey,
+  reconcileQuote,
+  trackQuoteRefresh,
+} from './quote-version'
 
 export function useAnalysis(ticker: string, extras: AnalysisExtras = {}, enabled = true) {
   return useQuery({
@@ -54,20 +69,42 @@ export function useAnalystPriceTargetHistory(ticker: string) {
 const QUOTE_LIVE_REFRESH_INTERVAL_MS = 10_000
 
 export function useQuote(ticker: string) {
+  const queryClient = useQueryClient()
+  const symbol = normalizeQuoteTicker(ticker)
   return useQuery({
     // The initial load and every subsequent update while the page stays
     // open both go through useAutoRefreshQuote's live yfinance refresh
-    // below -- this query is cache-only (no queryFn refetch of its own).
-    queryKey: ['quote', ticker],
-    queryFn: () => getQuote(ticker),
+    // below -- this read only seeds the cache and never downgrades it.
+    queryKey: quoteQueryKey(symbol),
+    queryFn: async ({ signal }) => {
+      const sequence = issueQuoteRequest(queryClient, symbol)
+      return reconcileQuote(queryClient, symbol, await getQuote(symbol, signal), sequence)
+    },
+  })
+}
+
+/** Fetches a live quote and publishes it under the ticker it was requested for. */
+function refreshQuoteInto(queryClient: QueryClient, ticker: string): Promise<QuoteOut> {
+  const symbol = normalizeQuoteTicker(ticker)
+  return trackQuoteRefresh(queryClient, symbol, async () => {
+    const sequence = issueQuoteRequest(queryClient, symbol)
+    const incoming = await refreshQuote(symbol)
+    assertQuoteIdentity(symbol, incoming)
+    // An outstanding read is older than this response: cancel it so its late
+    // completion cannot overwrite what is published here.
+    await queryClient.cancelQueries({ queryKey: quoteQueryKey(symbol), exact: true })
+    const quote = reconcileQuote(queryClient, symbol, incoming, sequence)
+    if (quote === incoming) queryClient.setQueryData(quoteQueryKey(symbol), quote)
+    return quote
   })
 }
 
 export function useRefreshQuote(ticker: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: () => refreshQuote(ticker),
-    onSuccess: (quote) => queryClient.setQueryData(['quote', ticker], quote),
+    // The response is published under the ticker this call requested, never
+    // under whichever ticker is rendered when it lands.
+    mutationFn: (requested: string | void) => refreshQuoteInto(queryClient, requested ?? ticker),
   })
 }
 
@@ -75,17 +112,22 @@ export function useRefreshQuote(ticker: string) {
 // page is open, matching watchlist_price_sync's own cadence, instead of
 // waiting on the much slower scheduled price_sync job.
 export function useAutoRefreshQuote(ticker: string) {
-  const { mutate } = useRefreshQuote(ticker)
-  const mutateRef = useRef(mutate)
-  mutateRef.current = mutate
+  const queryClient = useQueryClient()
 
   useEffect(() => {
     if (!ticker) return
 
-    mutateRef.current()
-    const interval = setInterval(() => mutateRef.current(), QUOTE_LIVE_REFRESH_INTERVAL_MS)
+    const symbol = normalizeQuoteTicker(ticker)
+    const refresh = () => {
+      // One automatic refresh per ticker at a time: a slow response must not
+      // queue another request behind it on every interval.
+      if (isQuoteRefreshPending(queryClient, symbol)) return
+      refreshQuoteInto(queryClient, symbol).catch(() => undefined)
+    }
+    refresh()
+    const interval = setInterval(refresh, QUOTE_LIVE_REFRESH_INTERVAL_MS)
     return () => clearInterval(interval)
-  }, [ticker])
+  }, [queryClient, ticker])
 }
 
 export function useUniverseScore(ticker: string) {
@@ -201,19 +243,64 @@ export function useCatalysts(ticker: string) {
   return useQuery({ queryKey: ['catalysts', ticker], queryFn: () => getCatalysts(ticker) })
 }
 
+function aiResearchKey(ticker: string) {
+  return ['ai-research', ticker.trim().toUpperCase()] as const
+}
+
+function assertAiReportIdentity(ticker: string, report: AiResearchOut) {
+  if ((report.ticker ?? '').trim().toUpperCase() !== ticker) {
+    throw new Error(`An AI research report for ${report.ticker} answered a ${ticker} request`)
+  }
+}
+
+/**
+ * The report a ticker's cache keeps: a failed attempt never displaces a
+ * successful report, and otherwise the later generated_at wins.
+ */
+function preferredAiReport(incoming: AiResearchOut, current: AiResearchOut | undefined) {
+  if (!current) return incoming
+  if (incoming.source.ok !== current.source.ok) return incoming.source.ok ? incoming : current
+  return isOlderPairReport(incoming, current) ? current : incoming
+}
+
 export function useAiResearch(ticker: string, enabled: boolean) {
+  const queryClient = useQueryClient()
+  const key = aiResearchKey(ticker)
   return useQuery({
-    queryKey: ['ai-research', ticker],
-    queryFn: () => getAiResearch(ticker),
+    queryKey: key,
+    queryFn: async ({ signal }) => {
+      const report = await getAiResearch(key[1], signal)
+      assertAiReportIdentity(key[1], report)
+      return preferredAiReport(report, queryClient.getQueryData<AiResearchOut>(key))
+    },
     enabled,
+    // Generating may be paid and is always user initiated: a report is never
+    // requested again by focus or reconnect, and a failure waits for a retry.
+    staleTime: Infinity,
+    retry: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }
 
 export function useRefreshAiResearch(ticker: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: () => refreshAiResearch(ticker),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['ai-research', ticker] }),
+    mutationFn: async () => {
+      const requested = aiResearchKey(ticker)[1]
+      const report = await refreshAiResearch(requested)
+      assertAiReportIdentity(requested, report)
+      return report
+    },
+    onSuccess: async (report) => {
+      // A failed refresh is reported beside the existing report, never in its place.
+      if (!report.source.ok) return
+      // Published under the response's own ticker; a stale read is cancelled
+      // first so its late completion cannot overwrite this report.
+      const key = aiResearchKey(report.ticker)
+      await queryClient.cancelQueries({ queryKey: key, exact: true })
+      queryClient.setQueryData<AiResearchOut>(key, (current) => preferredAiReport(report, current))
+    },
   })
 }
 

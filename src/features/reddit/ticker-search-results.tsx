@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router'
 import type { RedditPostOut } from '@/types/api'
-import { useRedditSearch } from './hooks'
+import { useRedditSearch, useRedditSearchFollow, useSearchRedditTicker } from './hooks'
+import { OperationProgress } from './operation-progress'
 import { RedditPostCard } from './reddit-post-card'
 import { RedditPostDetailDialog } from './reddit-post-detail-dialog'
 
@@ -15,18 +16,35 @@ function TickerSearchSection({
   onSelectPost: (post: RedditPostOut) => void
 }) {
   const query = useRedditSearch(ticker)
+  const { operation } = useRedditSearchFollow(ticker)
+  const retry = useSearchRedditTicker()
+  const headingId = `reddit-ticker-search-${ticker}`
   return (
-    <div className="space-y-2">
+    <section className="space-y-2" aria-labelledby={headingId}>
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">${ticker}</h3>
+        <h3 id={headingId} className="text-sm font-semibold">
+          ${ticker}
+        </h3>
         <button type="button" className="text-muted-foreground text-xs underline" onClick={onClear}>
           Clear
         </button>
       </div>
+      <OperationProgress
+        operation={operation}
+        labels={{
+          queued: `Reddit search for $${ticker} queued…`,
+          running: `Searching Reddit for $${ticker}…`,
+          deferred: `Reddit search for $${ticker} waiting to retry…`,
+        }}
+        failure="Reddit search failed"
+        retryLabel="Retry search"
+        onRetry={() => retry.mutate({ ticker, force: true })}
+        retrying={retry.isPending}
+      />
       {query.data?.items.map((post) => (
         <RedditPostCard key={post.id} post={post} onSelect={onSelectPost} />
       ))}
-    </div>
+    </section>
   )
 }
 

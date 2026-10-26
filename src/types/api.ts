@@ -1349,10 +1349,27 @@ export interface TwitterHealthOut {
   queue: TwitterQueueCounts
 }
 
+export type SourceHealthState = 'healthy' | 'partial' | 'failed' | 'unknown'
+
+/**
+ * A provider's real fetch history. fetched_at is the last successful network
+ * fetch; the remaining fields are absent from a backend that predates them.
+ */
+export interface SourceHealthOut extends SourceStatus {
+  state?: SourceHealthState
+  last_attempt_at?: string | null
+  age_seconds?: number | null
+  attempted?: number | null
+  succeeded?: number | null
+  failed?: number | null
+  producer?: string | null
+  count_unit?: string | null
+}
+
 export interface HealthResponse {
   status: string
   scheduler_running: boolean
-  sources: SourceStatus[]
+  sources: SourceHealthOut[]
   twitter: TwitterHealthOut
 }
 
@@ -1972,6 +1989,12 @@ export interface SignalPerformanceOut {
   by_lean: LeanPerformanceOut[]
   by_score_bucket: ScoreBucketPerformanceOut[]
   by_factor: FactorPerformanceOut[]
+  /** Absent from a backend that predates exact-session evaluation. */
+  evaluation_version?: string | null
+  /** Earlier results from the previous calculation, kept but left out of the report. */
+  legacy_excluded_count?: number | null
+  /** Observations whose window has not been measured yet. */
+  pending_count?: number | null
 }
 
 export interface SectorRotationEntryOut {

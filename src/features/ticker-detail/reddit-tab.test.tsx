@@ -35,12 +35,10 @@ vi.mock('@/features/reddit/hooks', () => ({
     error: null,
   })),
   useSearchRedditTicker: vi.fn(() => ({ mutate, isPending: false, data: null })),
+  useRedditSearchFollow: vi.fn(() => ({ operation: null })),
   useRedditThread: vi.fn(() => ({ data: null })),
   useRefreshRedditThread: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
-}))
-
-vi.mock('@/features/reddit/use-operation-poll', () => ({
-  useRedditOperationPoll: vi.fn(() => ({ data: null })),
+  useRedditThreadFollow: vi.fn(() => ({ operation: null })),
 }))
 
 beforeEach(() => mutate.mockReset())
