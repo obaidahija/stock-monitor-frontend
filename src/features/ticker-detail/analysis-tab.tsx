@@ -6,6 +6,7 @@ import {
   Building2,
   CalendarClock,
   ChevronRight,
+  Coins,
   Globe2,
   Layers,
   LineChart,
@@ -84,6 +85,7 @@ const FACTOR_META: Record<string, { label: string; icon: LucideIcon }> = {
   reddit_sentiment: { label: 'Reddit sentiment', icon: MessagesSquare },
   sector: { label: 'Sector strength', icon: Layers },
   macro_sector_impact: { label: 'Macro impact', icon: Globe2 },
+  asset_exposure: { label: 'Asset exposure', icon: Coins },
   market_context: { label: 'Market context', icon: BarChart3 },
   chart_pattern: { label: 'Chart pattern', icon: LineChart },
 }

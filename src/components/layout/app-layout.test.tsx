@@ -5,6 +5,7 @@ import { renderWithProviders } from '@/test/render'
 import { AppLayout } from './app-layout'
 
 vi.mock('./ticker-search', () => ({ TickerSearch: () => null }))
+vi.mock('./market-assets-panel', () => ({ MarketAssetsPanel: () => null }))
 
 afterEach(cleanup)
 

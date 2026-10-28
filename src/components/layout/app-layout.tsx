@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { TickerSearch } from './ticker-search'
+import { MarketAssetsPanel } from './market-assets-panel'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Digest', end: true },
@@ -104,6 +105,12 @@ export function AppLayout() {
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-6">
+        <aside
+          aria-label="Market prices"
+          className="mb-6 min-[1664px]:fixed min-[1664px]:top-24 min-[1664px]:left-[calc(50%-51rem)] min-[1664px]:mb-0 min-[1664px]:max-h-[calc(100svh-7rem)] min-[1664px]:w-52 min-[1664px]:overflow-y-auto"
+        >
+          <MarketAssetsPanel />
+        </aside>
         <Outlet />
       </main>
     </div>

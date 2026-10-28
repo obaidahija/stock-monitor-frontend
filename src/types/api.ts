@@ -1,5 +1,19 @@
 // Mirrors app/schemas/*.py in the stock-monitor backend, field-for-field.
 
+export interface MarketAssetQuoteOut {
+  symbol: string
+  name: string
+  price: number | null
+  daily_change_pct: number | null
+  quoted_at: string | null
+  status: 'ok' | 'stale' | 'unavailable'
+}
+
+export interface MarketAssetsOut {
+  captured_at: string | null
+  assets: MarketAssetQuoteOut[]
+}
+
 export interface TrackedTickerOut {
   id: number
   ticker: string
