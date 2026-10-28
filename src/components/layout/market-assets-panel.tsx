@@ -24,12 +24,12 @@ function AssetQuote({ asset }: { asset: MarketAssetQuoteOut }) {
   const Direction = change === null || change === 0 ? Minus : change > 0 ? ArrowUpRight : ArrowDownRight
 
   return (
-    <div role="group" aria-label={asset.name} className="bg-card min-w-0 rounded-xl border border-border/80 p-3 shadow-sm">
+    <div role="group" aria-label={asset.name} className="bg-card min-w-0 rounded-lg border border-border/80 p-2.5">
       <div className="flex items-center gap-2">
-        <span className={cn('flex size-8 shrink-0 items-center justify-center rounded-lg', style?.color ?? 'bg-muted text-muted-foreground')}>
+        <span className={cn('flex size-6 shrink-0 items-center justify-center rounded-lg', style?.color ?? 'bg-muted text-muted-foreground')}>
           <Icon className="size-4" aria-hidden="true" />
         </span>
-        <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2">
           <a
             href={`https://finance.yahoo.com/quote/${encodeURIComponent(asset.symbol)}/`}
             target="_blank"
@@ -40,12 +40,12 @@ function AssetQuote({ asset }: { asset: MarketAssetQuoteOut }) {
             <ExternalLink className="text-muted-foreground size-3" aria-hidden="true" />
             <span className="sr-only"> (opens in a new tab)</span>
           </a>
-          <p className="text-muted-foreground mt-0.5 text-xs">{asset.symbol}</p>
+          <p className="text-muted-foreground text-[10px]">{asset.symbol}</p>
         </div>
         {asset.status === 'stale' && <Badge variant="outline">Stale</Badge>}
       </div>
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-        <span className="text-xl font-semibold tracking-tight tabular-nums">
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+        <span className="text-lg font-semibold tracking-tight tabular-nums">
           {formatCurrency(available ? asset.price : null)}
         </span>
         {available ? (
@@ -58,7 +58,7 @@ function AssetQuote({ asset }: { asset: MarketAssetQuoteOut }) {
           </span>
         ) : <span className="text-muted-foreground rounded-md bg-muted px-2 py-1 text-xs">Unavailable</span>}
       </div>
-      <div className="text-muted-foreground mt-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[11px]">
+      <div className="text-muted-foreground mt-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[10px]">
         <span>{style?.label ?? 'Market quote'}</span>
         {asset.quoted_at && (
           <time dateTime={asset.quoted_at} title={`Yahoo quote: ${formatTimestamp(asset.quoted_at)}`}>
@@ -89,7 +89,7 @@ export function MarketAssetsPanel() {
   })
 
   return (
-    <section aria-labelledby="market-prices-title" className="market-prices-panel space-y-3">
+    <section aria-labelledby="market-prices-title" className="market-prices-panel space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex min-w-0 flex-col gap-0.5">
           <h2 id="market-prices-title" className="text-sm font-semibold">Market prices</h2>
@@ -101,7 +101,7 @@ export function MarketAssetsPanel() {
       </div>
       {query.isPending ? (
         <div aria-label="Loading market prices" role="status" className="market-quotes-grid">
-          {[0, 1, 2].map((key) => <Skeleton key={key} className="h-32 rounded-xl" />)}
+          {[0, 1, 2].map((key) => <Skeleton key={key} className="h-24 rounded-lg" />)}
         </div>
       ) : query.isError && !query.data ? (
         <Alert>

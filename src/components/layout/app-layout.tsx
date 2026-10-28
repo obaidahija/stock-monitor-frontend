@@ -104,10 +104,10 @@ export function AppLayout() {
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-4 py-6 min-[1440px]:max-w-[1440px] min-[1440px]:grid min-[1440px]:grid-cols-[240px_minmax(0,1fr)] min-[1440px]:items-start min-[1440px]:gap-6">
+      <main className="mx-auto max-w-6xl px-4 py-6">
         <aside
           aria-label="Market prices"
-          className="mb-8 min-[1440px]:sticky min-[1440px]:top-24 min-[1440px]:mb-0 min-[1440px]:max-h-[calc(100svh-7rem)] min-[1440px]:overflow-y-auto min-[1440px]:px-1 min-[1440px]:pb-1"
+          className="mb-6 min-[1664px]:fixed min-[1664px]:top-24 min-[1664px]:left-[calc(50%-51rem)] min-[1664px]:mb-0 min-[1664px]:max-h-[calc(100svh-7rem)] min-[1664px]:w-52 min-[1664px]:overflow-y-auto"
         >
           <MarketAssetsPanel />
         </aside>
