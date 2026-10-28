@@ -18,6 +18,7 @@ const snapshot = {
 
 beforeEach(() => {
   vi.spyOn(apiClient, 'get').mockResolvedValue(structuredClone(snapshot))
+  vi.spyOn(apiClient, 'post').mockResolvedValue(structuredClone(snapshot))
 })
 afterEach(() => {
   cleanup()
@@ -100,4 +101,31 @@ test('one panel and cached prices remain available across different pages', asyn
   expect(screen.getAllByRole('complementary', { name: 'Market prices' })).toHaveLength(1)
   expect(screen.getByText('$80,628.04')).toBeInTheDocument()
   expect(apiClient.get).toHaveBeenCalledTimes(1)
+})
+
+test('manual refresh fetches provider prices and replaces the cached capture', async () => {
+  const user = userEvent.setup()
+  renderWithProviders(<AppLayout />)
+  await screen.findByText('$80,628.04')
+  expect(apiClient.get).toHaveBeenCalledTimes(1)
+
+  const updated = structuredClone(snapshot)
+  updated.assets[1].price = 81000
+  vi.mocked(apiClient.post).mockResolvedValue(updated)
+  await user.click(screen.getByRole('button', { name: 'Refresh market prices' }))
+
+  expect(await screen.findByText('$81,000.00')).toBeInTheDocument()
+  expect(apiClient.get).toHaveBeenCalledTimes(1)
+  expect(apiClient.post).toHaveBeenCalledExactlyOnceWith('/v1/market-assets/refresh')
+})
+
+
+test('a failed provider refresh keeps displayed prices and reports the error', async () => {
+  const user = userEvent.setup()
+  vi.mocked(apiClient.post).mockRejectedValue(new Error('network unavailable'))
+  renderWithProviders(<AppLayout />)
+  await screen.findByText('$80,628.04')
+  await user.click(screen.getByRole('button', { name: 'Refresh market prices' }))
+  expect(await screen.findByRole('status')).toHaveTextContent('Prices could not be updated')
+  expect(screen.getByText('$80,628.04')).toBeInTheDocument()
 })
