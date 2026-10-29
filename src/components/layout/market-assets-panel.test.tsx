@@ -5,6 +5,8 @@ import { apiClient } from '@/lib/api-client'
 import { renderWithProviders } from '@/test/render'
 import { AppLayout } from './app-layout'
 
+vi.mock('./market-asset-chart', () => ({ MarketAssetChart: ({ children }: { children: React.ReactNode }) => children }))
+
 vi.mock('./ticker-search', () => ({ TickerSearch: () => null }))
 
 const snapshot = {

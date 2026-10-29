@@ -1,3 +1,4 @@
+import { MarketAssetChart } from './market-asset-chart'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowDownRight, ArrowUpRight, Bitcoin, Coins, Droplets, ExternalLink, Minus, RefreshCw } from 'lucide-react'
 import { getMarketAssets, refreshMarketAssets } from '@/api/market-assets'
@@ -24,6 +25,7 @@ function AssetQuote({ asset }: { asset: MarketAssetQuoteOut }) {
   const Direction = change === null || change === 0 ? Minus : change > 0 ? ArrowUpRight : ArrowDownRight
 
   return (
+    <MarketAssetChart asset={asset}>
     <div role="group" aria-label={asset.name} className="bg-card min-w-0 rounded-lg border border-border/80 p-2.5">
       <div className="flex items-center gap-2">
         <span className={cn('flex size-6 shrink-0 items-center justify-center rounded-lg', style?.color ?? 'bg-muted text-muted-foreground')}>
@@ -67,6 +69,7 @@ function AssetQuote({ asset }: { asset: MarketAssetQuoteOut }) {
         )}
       </div>
     </div>
+    </MarketAssetChart>
   )
 }
 
@@ -79,6 +82,7 @@ export function MarketAssetsPanel() {
     },
     onSuccess: (data) => {
       queryClient.setQueryData(['market-assets'], data)
+      void queryClient.invalidateQueries({ queryKey: ['market-asset-history'] })
     },
   })
   const query = useQuery({

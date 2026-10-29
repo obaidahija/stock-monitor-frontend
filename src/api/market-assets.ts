@@ -10,3 +10,22 @@ export function getMarketAssets() {
 export function refreshMarketAssets() {
   return apiClient.post<MarketAssetsOut>('/v1/market-assets/refresh')
 }
+
+export type AssetHistoryPeriod = '1mo' | '3mo' | '1y'
+export interface AssetHistoryPoint {
+  date: string
+  open: number | null
+  high: number | null
+  low: number | null
+  close: number
+  volume: number | null
+}
+export interface AssetHistory {
+  symbol: string
+  period: AssetHistoryPeriod
+  points: AssetHistoryPoint[]
+}
+export function getMarketAssetHistory(symbol: string, period: AssetHistoryPeriod) {
+  const params = new URLSearchParams({ symbol, period })
+  return apiClient.get<AssetHistory>(`/v1/market-assets/history?${params}`)
+}
