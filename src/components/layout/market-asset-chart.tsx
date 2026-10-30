@@ -18,12 +18,16 @@ export function MarketAssetChart({ asset, children }: { asset: MarketAssetQuoteO
     queryKey: ['market-asset-history', asset.symbol, '1mo'],
     queryFn: () => getMarketAssetHistory(asset.symbol, '1mo'),
     staleTime: 300_000,
+    retry: false,
+    refetchOnWindowFocus: false,
   })
   const history = useQuery({
     queryKey: ['market-asset-history', asset.symbol, period],
     queryFn: () => getMarketAssetHistory(asset.symbol, period),
     enabled: open,
     staleTime: 300_000,
+    retry: false,
+    refetchOnWindowFocus: false,
   })
   const enter = () => { clearTimeout(timer.current); timer.current = setTimeout(() => setOpen(true), 300) }
   const leave = () => {
@@ -65,7 +69,7 @@ export function MarketAssetChart({ asset, children }: { asset: MarketAssetQuoteO
         <div className="flex gap-1" role="group" aria-label="History period">
           {(['1mo', '3mo', '1y'] as const).map((value) => <Button key={value} size="xs" variant={period === value ? 'secondary' : 'ghost'} aria-pressed={period === value} onClick={() => { pinned.current = true; setPeriod(value) }}>{value === '1mo' ? '1M' : value === '3mo' ? '3M' : '1Y'}</Button>)}
         </div>
-        {history.isPending ? <p role="status" className="text-muted-foreground py-16 text-center text-sm">Loading price history…</p> : history.isError ? <div role="alert" className="py-8 text-center"><p>History is temporarily unavailable.</p><Button variant="outline" size="sm" onClick={() => void history.refetch()}>Retry chart</Button></div> : <>
+        {history.isPending ? <p role="status" className="text-muted-foreground py-16 text-center text-sm">Loading price history…</p> : history.isError ? <div role="alert" className="py-8 text-center"><p>Yahoo history is temporarily unavailable. Try again in a minute.</p><Button variant="outline" size="sm" onClick={() => void history.refetch()}>Retry chart</Button></div> : <>
           <div className="h-48 w-full" aria-label="Interactive daily closing price chart">
             <ResponsiveContainer width="100%" height="100%"><AreaChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
               <CartesianGrid vertical={false} stroke="var(--border)" />

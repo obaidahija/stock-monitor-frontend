@@ -83,7 +83,6 @@ export function MarketAssetsPanel() {
     },
     onSuccess: (data) => {
       queryClient.setQueryData(['market-assets'], data)
-      void queryClient.invalidateQueries({ queryKey: ['market-asset-history'] })
     },
   })
   const query = useQuery({
