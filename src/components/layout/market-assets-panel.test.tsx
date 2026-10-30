@@ -1,4 +1,4 @@
-import { cleanup, screen, within } from '@testing-library/react'
+import { act, cleanup, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { apiClient } from '@/lib/api-client'
@@ -25,6 +25,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
+  vi.useRealTimers()
 })
 
 test('shows full USD prices, signed daily percentages and each source time', async () => {
@@ -130,4 +131,20 @@ test('a failed provider refresh keeps displayed prices and reports the error', a
   await user.click(screen.getByRole('button', { name: 'Refresh market prices' }))
   expect(await screen.findByRole('status')).toHaveTextContent('Prices could not be updated')
   expect(screen.getByText('$80,628.04')).toBeInTheDocument()
+})
+
+
+test('automatic polling fetches fresh provider quotes after thirty seconds', async () => {
+  vi.useFakeTimers()
+  vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+  renderWithProviders(<AppLayout />)
+  await act(async () => { await vi.advanceTimersByTimeAsync(100) })
+  const updated = structuredClone(snapshot)
+  updated.assets[1].price = 82000
+  vi.mocked(apiClient.post).mockResolvedValue(updated)
+  await act(async () => { await vi.advanceTimersByTimeAsync(30_000) })
+  await act(async () => { await vi.advanceTimersByTimeAsync(100) })
+  expect(apiClient.post).toHaveBeenCalledExactlyOnceWith('/v1/market-assets/refresh')
+  expect(apiClient.get).toHaveBeenCalledTimes(1)
+  expect(screen.getByText('$82,000.00')).toBeInTheDocument()
 })

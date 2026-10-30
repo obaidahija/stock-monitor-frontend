@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { MarketAssetChart } from './market-asset-chart'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowDownRight, ArrowUpRight, Bitcoin, Coins, Droplets, ExternalLink, Minus, RefreshCw } from 'lucide-react'
@@ -88,9 +89,18 @@ export function MarketAssetsPanel() {
   const query = useQuery({
     queryKey: ['market-assets'],
     queryFn: getMarketAssets,
-    staleTime: 60_000,
-    refetchInterval: refresh.isPending ? false : 60_000,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
   })
+
+  const { mutate: refreshQuotes, isPending: refreshing } = refresh
+  useEffect(() => {
+    if (refreshing) return
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible') refreshQuotes()
+    }, 30_000)
+    return () => clearInterval(timer)
+  }, [refreshQuotes, refreshing])
 
   return (
     <section aria-labelledby="market-prices-title" className="market-prices-panel space-y-2">
