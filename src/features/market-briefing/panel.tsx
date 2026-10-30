@@ -5,17 +5,13 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { Skeleton } from '@/components/ui/skeleton'
+import { DIRECTION_COLOR_CLASSES } from '@/lib/direction-colors'
 import { formatRelativeTime, formatTimestamp } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { BriefingIndustryImpact, BriefingSource, BriefingStory } from '@/types/api'
 import { useMarketBriefing, useRefreshMarketBriefing } from './hooks'
 
-const directionClasses: Record<BriefingIndustryImpact['direction'], string> = {
-  positive: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
-  negative: 'bg-red-500/10 text-red-700 dark:text-red-400',
-  mixed: 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
-  uncertain: 'bg-muted text-muted-foreground',
-}
+const directionClasses = DIRECTION_COLOR_CLASSES
 
 function ImpactCounts({ impacts }: { impacts: BriefingIndustryImpact[] }) {
   return <span className="flex flex-wrap gap-x-2 gap-y-0.5 text-[10px] font-medium">

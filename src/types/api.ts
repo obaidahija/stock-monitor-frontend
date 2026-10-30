@@ -1108,6 +1108,36 @@ export interface GoogleFinanceCompetitorsOut extends GoogleFinanceResearchOut {
   cached: boolean
 }
 
+export interface TickerNewsItem {
+  headline: string
+  summary: string
+  direction: 'positive' | 'negative' | 'mixed'
+  impact: 'high' | 'medium' | 'low'
+  impact_reason: string
+  reported_date: string
+  source_ids: number[]
+  evidence_quote: string
+}
+
+export interface TickerStockReaction {
+  move: 'up' | 'down' | 'flat' | 'mixed'
+  summary: string
+  source_ids: number[]
+  evidence_quote: string
+}
+
+export interface TickerNewsBriefOut {
+  snapshot_id: number | null
+  ticker: string
+  stock_reaction?: TickerStockReaction | null
+  items: TickerNewsItem[]
+  sources: BriefingSource[]
+  generated_at: string
+  cached: boolean
+  source: SourceStatus
+  caveat: string
+}
+
 export type WatchlistSetupSide = 'long' | 'short'
 export type WatchlistSetupHorizon = 'short_term' | 'long_term' | 'custom' | 'swing'
 export type WatchlistSetupSource = 'ai_managed' | 'manual'

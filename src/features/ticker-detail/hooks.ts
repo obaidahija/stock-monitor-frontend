@@ -16,6 +16,7 @@ import {
   getFilings,
   getInsider,
   getNews,
+  getNewsBrief,
   getQuote,
   getScoreHistory,
   getSentimentHistory,
@@ -24,6 +25,7 @@ import {
   refreshCompetitors,
   refreshEarnings,
   refreshNews,
+  refreshNewsBrief,
   refreshQuote,
   refreshUniverseScore,
 } from '@/api/stocks'
@@ -338,6 +340,27 @@ export function useRefreshCompetitors(ticker: string) {
       if (result.source.ok && result.snapshot_id !== null) {
         await queryClient.cancelQueries({ queryKey: ['google-finance-competitors', result.ticker] })
         queryClient.setQueryData(['google-finance-competitors', result.ticker], result)
+      }
+    },
+  })
+}
+
+export function useNewsBrief(ticker: string) {
+  return useQuery({
+    queryKey: ['ticker-news-brief', ticker.toUpperCase()],
+    // GET only reads the saved brief. Generating one requires an explicit POST.
+    queryFn: () => getNewsBrief(ticker),
+  })
+}
+
+export function useRefreshNewsBrief(ticker: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (forceRefresh: boolean) => refreshNewsBrief(ticker, forceRefresh),
+    onSuccess: async (result) => {
+      if (result.source.ok && result.snapshot_id !== null) {
+        await queryClient.cancelQueries({ queryKey: ['ticker-news-brief', result.ticker] })
+        queryClient.setQueryData(['ticker-news-brief', result.ticker], result)
       }
     },
   })

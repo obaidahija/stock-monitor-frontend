@@ -23,6 +23,7 @@ import type {
   EtfDescriptionOut,
   TickerDescriptionOut,
   TickerTagsOut,
+  TickerNewsBriefOut,
   RelatedEtfsOut,
   RelatedEtfRelevanceOut,
   ScoreHistoryPointOut,
@@ -220,6 +221,18 @@ export function getCompetitors(ticker: string) {
 export function refreshCompetitors(ticker: string, forceRefresh = false) {
   return apiClient.post<GoogleFinanceCompetitorsOut>(
     `/v1/stocks/${encodeURIComponent(ticker)}/competitors/research${forceRefresh ? '?force_refresh=true' : ''}`,
+  )
+}
+
+export function getNewsBrief(ticker: string) {
+  return apiClient.get<TickerNewsBriefOut | null>(
+    `/v1/stocks/${encodeURIComponent(ticker)}/news-brief`,
+  )
+}
+
+export function refreshNewsBrief(ticker: string, forceRefresh = false) {
+  return apiClient.post<TickerNewsBriefOut>(
+    `/v1/stocks/${encodeURIComponent(ticker)}/news-brief${forceRefresh ? '?force_refresh=true' : ''}`,
   )
 }
 

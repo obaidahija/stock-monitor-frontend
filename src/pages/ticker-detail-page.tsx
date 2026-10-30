@@ -9,6 +9,7 @@ import { PriceChart } from '@/features/ticker-detail/price-chart'
 import { PriceTargetChangeBanner } from '@/features/ticker-detail/price-target-change-banner'
 import { TickerPriceHeader } from '@/features/ticker-detail/ticker-price-header'
 import { RelatedEtfs } from '@/features/ticker-detail/related-etfs'
+import { NewsBrief } from '@/features/ticker-detail/news-brief'
 import { TickerDescription } from '@/features/ticker-detail/ticker-description'
 import { TickerHeaderStats } from '@/features/ticker-detail/ticker-header-stats'
 import { AiResearchTab } from '@/features/ticker-detail/ai-research/ai-research-tab'
@@ -165,6 +166,8 @@ export function TickerDetailPage() {
       <TickerHeaderStats ticker={symbol} />
 
       <TickerDescription ticker={symbol} />
+
+      <NewsBrief key={symbol} ticker={symbol} />
 
       <RelatedEtfs ticker={symbol} />
 

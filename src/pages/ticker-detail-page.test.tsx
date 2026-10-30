@@ -23,6 +23,9 @@ vi.mock('@/features/ticker-detail/ticker-price-header', () => ({ TickerPriceHead
 vi.mock('@/features/ticker-detail/related-etfs', () => ({
   RelatedEtfs: ({ ticker }: { ticker: string }) => <div>Related ETFs for {ticker}</div>,
 }))
+vi.mock('@/features/ticker-detail/news-brief', () => ({
+  NewsBrief: ({ ticker }: { ticker: string }) => <div>News impact for {ticker}</div>,
+}))
 vi.mock('@/features/ticker-detail/ticker-description', () => ({
   TickerDescription: ({ ticker }: { ticker: string }) => <div>About {ticker}</div>,
 }))
@@ -151,6 +154,15 @@ test('names the company beside the symbol', () => {
 
   expect(screen.getByText('NVIDIA Corporation')).toBeInTheDocument()
   expect(screen.getByText('Semiconductors')).toBeInTheDocument()
+})
+
+test('places the news impact brief between the company description and Related ETFs', () => {
+  renderAt('/stocks/NVDA')
+  const about = screen.getByText(/^About/)
+  const news = screen.getByText(/^News impact for/)
+  const etfs = screen.getByText(/^Related ETFs for/)
+  expect(about.compareDocumentPosition(news) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(news.compareDocumentPosition(etfs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 })
 
 test('only an active Social tab on Twitter mounts the Twitter content', async () => {
