@@ -22,6 +22,7 @@ const settings = {
     context_window_tokens: 131072,
   },
   summarization: { provider: 'ollama', model: 'qwen3:8b', context_window_tokens: 4096 },
+  filing_analysis: { provider: 'ollama', model: 'qwen3:8b', max_tokens: 1600, context_window_tokens: 4096 },
   macro_transmission: {
     provider: 'ollama',
     model: 'qwen3:8b',
@@ -142,6 +143,7 @@ test('saves research and summarization settings without sending secrets', async 
       model: 'qwen3:14b',
       context_window_tokens: 4096,
     },
+    filing_analysis: settings.filing_analysis,
     macro_transmission: {
       provider: 'ollama',
       model: 'qwen3:8b',

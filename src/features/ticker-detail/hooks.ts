@@ -239,7 +239,12 @@ export function useExtractNewsItem(ticker: string, clusterId: number | null) {
 }
 
 export function useFilings(ticker: string) {
-  return useQuery({ queryKey: ['filings', ticker], queryFn: () => getFilings(ticker) })
+  return useQuery({
+    queryKey: ['filings', ticker], queryFn: () => getFilings(ticker),
+    refetchInterval: (query) => query.state.data?.some((filing) =>
+      filing.analysis?.status === 'processing'
+    ) ? 30_000 : false,
+  })
 }
 
 export function useCatalysts(ticker: string) {

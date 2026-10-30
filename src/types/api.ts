@@ -230,7 +230,91 @@ export interface SectorHeatmapOut {
   unclassified_tickers: number
 }
 
+export interface FilingEvidence {
+  source_id: string
+  excerpt: string
+  source_url: string
+  section: string
+  content_hash: string
+}
+
+export interface FilingFinding {
+  topic: string
+  fact: string
+  why_it_matters: string
+  direction: 'positive' | 'negative' | 'neutral' | 'mixed' | 'unclear'
+  importance: 'low' | 'medium' | 'high'
+  evidence_quality: 'direct' | 'limited'
+  change: 'new' | 'changed' | 'repeated' | 'not_compared'
+  evidence: FilingEvidence
+  prior_evidence: FilingEvidence | null
+  numbers: { name: string; value: string; unit: string; period: string; comparison_basis: string; evidence: FilingEvidence }[]
+}
+
+export interface FilingKeyFact {
+  metric: string
+  label: string
+  value: string
+  currency: string | null
+  unit: string | null
+  period: string
+  period_end: string | null
+  period_kind: 'instant' | 'quarter' | 'year_to_date' | 'annual' | 'not_disclosed'
+  basis: 'reported' | 'gaap' | 'adjusted'
+  importance: 'low' | 'medium' | 'high'
+  warning: boolean
+  change: string | null
+  evidence: FilingEvidence[]
+  filing_id?: number
+  form_type?: string
+  filing_url?: string
+  accepted_at?: string
+}
+
+export interface FilingFinancialOverview {
+  ticker: string
+  facts: FilingKeyFact[]
+  missing_metrics: string[]
+  source: 'manually_analyzed_filings'
+}
+
+export interface FilingAnalysis {
+  key_facts?: FilingKeyFact[]
+  omitted_key_facts?: number
+  omitted_findings?: number
+  model_warning?: string | null
+  needs_highlights_update?: boolean
+  previous_analysis?: FilingAnalysis
+  status: 'not_analyzed' | 'pending' | 'processing' | 'completed' | 'partial' | 'failed' | 'unsupported'
+  summary?: string
+  direction?: FilingFinding['direction']
+  importance?: FilingFinding['importance']
+  evidence_quality?: 'direct' | 'limited'
+  findings?: FilingFinding[]
+  coverage?: {
+    partial: boolean
+    financial_selected_chars?: number
+    selected_chars: number
+    available_chars: number
+    comparison_status: string
+    comparison_kind: string
+    prior_accession: string | null
+    missing_documents?: { source_url: string; error_code: string }[]
+    document_discovery_complete: boolean
+    sections: { section: string; source_url: string }[]
+    excluded_sections: { section: string; source_url: string }[]
+  } | null
+  provider?: string | null
+  model?: string | null
+  version?: number
+  error_code?: string | null
+  attempts?: number
+  usage?: { calls: number; prompt_tokens: number; completion_tokens: number; cost_usd: string | null }
+}
+
 export interface FilingOut {
+  accepted_at?: string | null
+  analysis?: FilingAnalysis | null
   id: number
   ticker: string | null
   cik: string | null
@@ -938,6 +1022,7 @@ export interface BackgroundAiProfile {
 export interface AiSettingsOut {
   research: ResearchAiProfile
   summarization: SummarizationAiProfile
+  filing_analysis?: BackgroundAiProfile
   macro_transmission: BackgroundAiProfile
   providers: Record<
     AiProvider,
@@ -949,12 +1034,13 @@ export interface AiSettingsOut {
 export interface AiSettingsUpdate {
   research: ResearchAiProfile
   summarization: SummarizationAiProfile
+  filing_analysis?: BackgroundAiProfile
   macro_transmission: BackgroundAiProfile
 }
 
 // The three profiles that share the provider/model/max_tokens shape, keyed the
 // same way the API is.
-export type BackgroundAiProfileKey = 'macro_transmission'
+export type BackgroundAiProfileKey = 'macro_transmission' | 'filing_analysis'
 
 export interface OpenRouterModelOut {
   id: string
@@ -1252,6 +1338,7 @@ export interface DigestPremarket {
 }
 
 export interface DigestTopFiling {
+  analysis?: FilingAnalysis | null
   form_type: string
   filed_at: string
   url: string

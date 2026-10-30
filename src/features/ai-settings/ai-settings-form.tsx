@@ -68,6 +68,12 @@ const BACKGROUND_PROFILES: {
     description:
       'Powers macro sector-impact stance/magnitude resolution (Macro page → Sector impact).',
   },
+  {
+    key: 'filing_analysis',
+    noun: 'Filing analysis',
+    heading: 'SEC filing analysis',
+    description: 'Reads SEC disclosures and produces evidence-backed business research. Output tokens bound each analysis.',
+  },
 ]
 
 function slug(noun: string) {
@@ -408,6 +414,9 @@ function SettingsEditor({
     research: { ...initial.research },
     summarization: { ...initial.summarization },
     macro_transmission: { ...initial.macro_transmission },
+    filing_analysis: initial.filing_analysis
+      ? { ...initial.filing_analysis }
+      : { ...initial.summarization, max_tokens: 1600 },
   }))
   const update = useUpdateAiSettings()
   const researchModel = models.find((model) => model.id === form.research.model)
@@ -471,7 +480,7 @@ function SettingsEditor({
       [key]: {
         ...current[key],
         provider,
-        ...settingsForProvider(provider, initial[key]),
+        ...settingsForProvider(provider, initial[key] ?? initial.summarization),
       },
     }))
   }
@@ -678,10 +687,10 @@ function SettingsEditor({
           <BackgroundProfileCard
             key={profile.key}
             catalogFailed={catalogFailed}
-            configured={initial.providers[form[profile.key].provider].configured}
+            configured={initial.providers[(form[profile.key] ?? { ...form.summarization, max_tokens: 1600 }).provider].configured}
             models={models}
             profile={profile}
-            value={form[profile.key]}
+            value={(form[profile.key] ?? { ...form.summarization, max_tokens: 1600 })}
             onContextWindowChange={(context_window_tokens) =>
               setBackgroundField(profile.key, { context_window_tokens })
             }
@@ -694,7 +703,7 @@ function SettingsEditor({
                   : {
                       model: model.id,
                       context_window_tokens:
-                        model.context_length ?? form[profile.key].context_window_tokens,
+                        model.context_length ?? (form[profile.key] ?? { ...form.summarization, max_tokens: 1600 }).context_window_tokens,
                     },
               )
             }

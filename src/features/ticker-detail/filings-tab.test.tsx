@@ -16,6 +16,8 @@ const filings: FilingOut[] = [
   },
 ]
 
+vi.mock('./filing-financial-overview', () => ({ FilingFinancialOverviewPanel: () => null }))
+
 vi.mock('./hooks', () => ({
   useFilings: () => ({ data: filings, isPending: false, isError: false, error: null, refetch: vi.fn() }),
 }))

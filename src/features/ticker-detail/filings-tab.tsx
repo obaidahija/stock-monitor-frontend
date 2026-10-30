@@ -1,3 +1,5 @@
+import { FilingFinancialOverviewPanel } from './filing-financial-overview'
+import { FilingAnalysisView } from '@/components/shared/filing-analysis'
 import { ExternalLink } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -29,9 +31,11 @@ export function FilingsTab({ ticker }: { ticker: string }) {
 
   if (isPending) return <Skeleton className="h-64 rounded-xl" />
   if (isError) return <ErrorState error={error} onRetry={() => refetch()} />
-  if (!data || data.length === 0) return <EmptyState title="No recent filings" />
+  if (!data || data.length === 0) return <div className="space-y-4"><FilingFinancialOverviewPanel ticker={ticker} /><EmptyState title="No recent filings" /></div>
 
   return (
+    <div className="space-y-4">
+    <FilingFinancialOverviewPanel ticker={ticker} />
     <Table>
       <TableHeader>
         <TableRow>
@@ -52,8 +56,11 @@ export function FilingsTab({ ticker }: { ticker: string }) {
                 )}
               </div>
             </TableCell>
-            <TableCell className="text-muted-foreground">{formatTimestamp(filing.filed_at)}</TableCell>
-            <TableCell className="max-w-80 truncate">{filingDetail(filing)}</TableCell>
+            <TableCell className="text-muted-foreground">{formatTimestamp(filing.accepted_at ?? filing.filed_at)}</TableCell>
+            <TableCell className="min-w-72 max-w-xl whitespace-normal space-y-2">
+              <p>{filingDetail(filing)}</p>
+              <FilingAnalysisView analysis={filing.analysis} ticker={ticker} filingId={filing.id} />
+            </TableCell>
             <TableCell>
               <a href={filing.filing_url} target="_blank" rel="noreferrer">
                 <ExternalLink className="text-muted-foreground size-4 hover:text-foreground" />
@@ -63,5 +70,6 @@ export function FilingsTab({ ticker }: { ticker: string }) {
         ))}
       </TableBody>
     </Table>
+    </div>
   )
 }

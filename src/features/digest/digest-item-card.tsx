@@ -1,3 +1,4 @@
+import { FilingAnalysisView } from '@/components/shared/filing-analysis'
 import { Trash2 } from 'lucide-react'
 import { Link } from 'react-router'
 import { toast } from 'sonner'
@@ -132,6 +133,7 @@ export function DigestItemCard({ item }: { item: DigestItem }) {
             <FilingLink filing={item.top_filing} /> topic: {item.top_filing.prominence_reason}.
           </p>
         )}
+        <FilingAnalysisView analysis={item.top_filing?.analysis} />
         {item.supporting_filings && item.supporting_filings.length > 0 && (
           <details className="text-xs">
             <summary className="text-muted-foreground cursor-pointer">
@@ -143,6 +145,7 @@ export function DigestItemCard({ item }: { item: DigestItem }) {
                   <FilingLink filing={filing} /> · {formatTimestamp(filing.filed_at)}
                   {filing.item_codes && ` · Item codes: ${filing.item_codes}`}
                   {filing.prominence_reason && ` · ${filing.prominence_reason}`}
+                  <FilingAnalysisView analysis={filing.analysis} />
                 </li>
               ))}
             </ul>

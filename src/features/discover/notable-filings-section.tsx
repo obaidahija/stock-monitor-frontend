@@ -1,3 +1,4 @@
+import { FilingAnalysisView } from '@/components/shared/filing-analysis'
 import { ExternalLink } from 'lucide-react'
 import { Link } from 'react-router'
 import { Badge } from '@/components/ui/badge'
@@ -64,9 +65,10 @@ export function NotableFilingsSection() {
                     </TableCell>
                     <TableCell className="text-muted-foreground max-w-64 whitespace-normal">
                       {formatItemCodes(filing.item_codes) ?? '—'}
+                      <FilingAnalysisView analysis={filing.analysis} ticker={filing.ticker} filingId={filing.id} />
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {formatTimestamp(filing.filed_at)}
+                      {formatTimestamp(filing.accepted_at ?? filing.filed_at)}
                     </TableCell>
                     <TableCell>
                       <a href={filing.filing_url} target="_blank" rel="noreferrer">
