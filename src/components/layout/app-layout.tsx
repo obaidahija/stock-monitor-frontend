@@ -10,6 +10,7 @@ import {
 import { cn } from '@/lib/utils'
 import { TickerSearch } from './ticker-search'
 import { MarketAssetsPanel } from './market-assets-panel'
+import { MarketBriefingPanel } from '@/features/market-briefing/panel'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Digest', end: true },
@@ -104,14 +105,20 @@ export function AppLayout() {
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-4 py-6">
+      <main className="mx-auto max-w-6xl px-4 py-6 xl:max-[1664px]:grid xl:grid-cols-[minmax(0,1fr)_16rem] xl:items-start xl:gap-x-6 min-[1664px]:block">
         <aside
           aria-label="Market prices"
-          className="mb-6 min-[1664px]:fixed min-[1664px]:top-24 min-[1664px]:left-[calc(50%-51rem)] min-[1664px]:mb-0 min-[1664px]:max-h-[calc(100svh-7rem)] min-[1664px]:w-52 min-[1664px]:overflow-y-auto"
+          className="mb-6 min-w-0 xl:col-start-1 xl:row-start-1 min-[1664px]:fixed min-[1664px]:top-24 min-[1664px]:left-[calc(50%-51rem)] min-[1664px]:mb-0 min-[1664px]:max-h-[calc(100svh-7rem)] min-[1664px]:w-52 min-[1664px]:overflow-y-auto"
         >
           <MarketAssetsPanel />
         </aside>
-        <div className="min-w-0">
+        <aside
+          aria-label="Market briefing"
+          className="mb-6 min-w-0 xl:max-[1664px]:sticky xl:top-24 xl:col-start-2 xl:row-start-1 xl:row-span-2 xl:max-h-[calc(100svh-7rem)] xl:overflow-y-auto min-[1664px]:fixed min-[1664px]:right-[calc(50%-51rem)] min-[1664px]:mb-0 min-[1664px]:w-52"
+        >
+          <MarketBriefingPanel />
+        </aside>
+        <div className="min-w-0 xl:col-start-1 xl:row-start-2">
           <Outlet />
         </div>
       </main>

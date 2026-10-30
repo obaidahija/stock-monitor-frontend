@@ -12,6 +12,8 @@ vi.mock('@/pages/trending-page', () => ({ TrendingPage: () => <p>Trending view</
 vi.mock('@/pages/twitter-page', () => ({ TwitterPage: () => <p>Twitter view</p> }))
 vi.mock('@/pages/reddit-page', () => ({ RedditPage: () => <p>Reddit view</p> }))
 vi.mock('@/pages/research-page', () => ({ ResearchPage: () => <p>Research view</p> }))
+vi.mock('@/pages/digest-page', () => ({ DigestPage: () => <p>Digest view</p> }))
+vi.mock('@/features/market-briefing/panel', () => ({ MarketBriefingPanel: () => <p>Shared briefing panel</p> }))
 
 const twitterApi = vi.hoisted(() => ({ getTwitterAuth: vi.fn() }))
 const redditApi = vi.hoisted(() => ({ getRedditAuth: vi.fn() }))
@@ -134,4 +136,12 @@ test.each([
   renderApp(oldPath)
   expect(await screen.findByText(view)).toBeInTheDocument()
   expect(currentLocation()).toBe(newPath)
+})
+
+test('the former briefing page redirects home while the shared panel remains available', async () => {
+  renderApp('/briefing')
+  expect(await screen.findByText('Digest view')).toBeInTheDocument()
+  expect(currentLocation()).toBe('/')
+  expect(screen.getByRole('complementary', { name: 'Market briefing' })).toHaveTextContent('Shared briefing panel')
+  expect(screen.queryByRole('link', { name: 'Briefing' })).not.toBeInTheDocument()
 })

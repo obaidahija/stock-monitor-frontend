@@ -28,6 +28,7 @@ export function AppRoutes() {
         <Route path="/watchlists" element={<WatchlistsPage />} />
         <Route path="/social/:view?" element={<SocialPage />} />
         <Route path="/macro" element={<MacroPage />} />
+        <Route path="/briefing" element={<Navigate to="/" replace />} />
         <Route path="/events" element={<EventsPage />} />
         <Route path="/system" element={<SystemPage />} />
         <Route path="/settings" element={<SettingsPage />} />

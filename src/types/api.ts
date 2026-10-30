@@ -2647,3 +2647,47 @@ export interface RelatedEtfRelevanceOut {
   rubric_version: string
   fetched_at: string | null
 }
+
+export interface BriefingIndustryImpact {
+  industry: string
+  direction: 'positive' | 'negative' | 'mixed' | 'uncertain'
+  rationale: string
+}
+
+export interface BriefingStory {
+  headline: string
+  summary: string
+  significance: string
+  reported_date: string
+  reported_reaction: string | null
+  industry_impacts: BriefingIndustryImpact[]
+  source_ids: number[]
+  evidence_quote: string
+}
+
+export interface BriefingSource {
+  id: number
+  title: string
+  publisher: string | null
+  url: string
+}
+
+export interface MarketBriefingOut {
+  stories: BriefingStory[]
+  sources: BriefingSource[]
+  run_date: string | null
+  generated_at: string | null
+  refresh_active: boolean
+  active_run_id: string | null
+  stale: boolean
+  stale_reason: string | null
+  source_error: string | null
+  enabled: boolean
+  disclaimer: string
+}
+
+export interface MarketBriefingRefreshOut {
+  run_id: string
+  status: string
+  reused: boolean
+}

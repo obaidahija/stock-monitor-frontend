@@ -7,6 +7,8 @@ import { AppLayout } from './app-layout'
 
 vi.mock('./market-asset-chart', () => ({ MarketAssetChart: ({ children }: { children: React.ReactNode }) => children }))
 
+vi.mock('@/features/market-briefing/panel', () => ({ MarketBriefingPanel: () => null }))
+
 vi.mock('./ticker-search', () => ({ TickerSearch: () => null }))
 
 const snapshot = {
