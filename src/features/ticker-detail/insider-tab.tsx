@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
 import {
   Card,
   CardAction,
@@ -17,7 +19,14 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { PagedList } from '@/components/shared/paged-list'
-import { formatCompactNumber, formatMoneyAmount, formatNumber } from '@/lib/format'
+import { ErrorState } from '@/components/shared/error-state'
+import {
+  formatCompactNumber,
+  formatDate,
+  formatEasternDateTimeWithYear,
+  formatMoneyAmount,
+  formatNumber,
+} from '@/lib/format'
 import type { InsiderTransactionIntent, InsiderTransactionOut } from '@/types/api'
 import { useInsider } from './hooks'
 
@@ -96,10 +105,13 @@ function CoOwners({ owners }: { owners: NonNullable<InsiderTransactionOut['repor
 }
 
 export function InsiderTab({ ticker }: { ticker: string }) {
-  const { data, isLoading } = useInsider(ticker)
+  const { data, isPending, isError, error, refetch } = useInsider(ticker)
 
-  if (isLoading || !data) {
+  if (isPending) {
     return <p className="text-sm text-muted-foreground">Loading insider activity…</p>
+  }
+  if (!data) {
+    return <ErrorState error={error ?? new Error('Insider activity is unavailable.')} onRetry={() => refetch()} />
   }
 
   const { summary, transactions } = data
@@ -111,9 +123,17 @@ export function InsiderTab({ ticker }: { ticker: string }) {
 
   return (
     <div className="flex flex-col gap-4">
+      {isError ? (
+        <Alert>
+          <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
+            <span>Couldn’t refresh insider activity. Showing previously loaded activity.</span>
+            <Button variant="outline" size="sm" onClick={() => refetch()}>Retry</Button>
+          </AlertDescription>
+        </Alert>
+      ) : null}
       <Card size="sm">
         <CardHeader>
-          <CardTitle>Open-market activity · last {summary.lookback_days} days</CardTitle>
+          <CardTitle>Reported purchases and sales · last {summary.lookback_days} days</CardTitle>
           <CardAction className="flex gap-2">
             {summary.cluster_buy ? <Badge>Cluster buy</Badge> : null}
             {summary.officer_buying ? <Badge variant="secondary">Officer buying</Badge> : null}
@@ -137,18 +157,29 @@ export function InsiderTab({ ticker }: { ticker: string }) {
             <p className="tabular-nums"><Money value={summary.net_value_usd} signed /></p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Latest</p>
-            <p className="tabular-nums">{summary.latest_transaction_date ?? '—'}</p>
+            <p className="text-xs text-muted-foreground">Latest trade</p>
+            <p className="tabular-nums">{formatDate(summary.latest_transaction_date)}</p>
           </div>
         </CardContent>
-        {showsPlan ? (
-          <CardFooter className="text-xs text-muted-foreground">
+        <CardFooter className="flex flex-col items-start gap-2 text-xs text-muted-foreground">
+          <p>
+            {data.last_successful_sync_at ? (
+              <>
+                Last successful sync{' '}
+                <time dateTime={data.last_successful_sync_at}>
+                  {formatEasternDateTimeWithYear(data.last_successful_sync_at)}
+                </time>
+              </>
+            ) : <span>Last successful sync unavailable</span>}
+            {' · across tracked stocks'}
+          </p>
+          {showsPlan ? <p>
             Sales marked 10b5-1 were reported under a plan intended to satisfy Rule 10b5-1, so
             they carry less of a view on the stock than a discretionary sale. “Plan association
             unclear” means the filing set the plan checkbox without saying which of its
             transactions it covered.
-          </CardFooter>
-        ) : null}
+          </p> : null}
+        </CardFooter>
       </Card>
 
       {warnings.length > 0 ? (
@@ -185,13 +216,13 @@ export function InsiderTab({ ticker }: { ticker: string }) {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Date</TableHead>
+                        <TableHead>Trade date</TableHead>
                         <TableHead>Insider</TableHead>
-                        <TableHead>Type</TableHead>
+                        <TableHead>Type / security</TableHead>
                         <TableHead className="text-right">Shares</TableHead>
                         <TableHead className="text-right">Price</TableHead>
                         <TableHead className="text-right">Value</TableHead>
-                        <TableHead>Filing</TableHead>
+                        <TableHead>Public disclosure / filing</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -206,7 +237,11 @@ export function InsiderTab({ ticker }: { ticker: string }) {
                             className={transaction.is_superseded ? 'opacity-60' : undefined}
                           >
                             <TableCell className="tabular-nums">
-                              {transaction.transaction_date ?? '—'}
+                              {transaction.transaction_date ? (
+                                <time dateTime={transaction.transaction_date}>
+                                  {formatDate(transaction.transaction_date)}
+                                </time>
+                              ) : '—'}
                             </TableCell>
                             <TableCell>
                               <div>{transaction.insider_name}</div>
@@ -219,7 +254,7 @@ export function InsiderTab({ ticker }: { ticker: string }) {
                                 <CoOwners owners={transaction.reporting_owners} />
                               ) : null}
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="min-w-44 max-w-72 whitespace-normal">
                               <div className="flex flex-wrap items-center gap-1">
                                 <span>
                                   {transaction.transaction_code
@@ -238,6 +273,16 @@ export function InsiderTab({ ticker }: { ticker: string }) {
                                   <Badge variant="outline">Superseded</Badge>
                                 ) : null}
                               </div>
+                              {transaction.security_title ? (
+                                <div className="mt-1 text-xs text-muted-foreground">
+                                  {transaction.security_title}
+                                </div>
+                              ) : null}
+                              {transaction.is_derivative && transaction.underlying_security_title ? (
+                                <div className="text-xs text-muted-foreground">
+                                  Underlying: {transaction.underlying_security_title}
+                                </div>
+                              ) : null}
                               {intent === 'ten_b5_1' && transaction.plan_adoption_date ? (
                                 <div className="text-xs text-muted-foreground">
                                   Plan adopted {transaction.plan_adoption_date}
@@ -262,6 +307,20 @@ export function InsiderTab({ ticker }: { ticker: string }) {
                               <Money value={transaction.value_usd} />
                             </TableCell>
                             <TableCell>
+                              <div className="mb-1 text-xs text-muted-foreground">
+                                {transaction.accepted_at ? (
+                                  <time dateTime={transaction.accepted_at}>
+                                    {formatEasternDateTimeWithYear(transaction.accepted_at)}
+                                  </time>
+                                ) : transaction.filed_at ? (
+                                  <>
+                                    <time dateTime={transaction.filed_at.slice(0, 10)}>
+                                      {formatDate(transaction.filed_at.slice(0, 10))}
+                                    </time>
+                                    <div>Time unavailable</div>
+                                  </>
+                                ) : 'Disclosure unavailable'}
+                              </div>
                               {transaction.source_url ? (
                                 <a
                                   href={transaction.source_url}

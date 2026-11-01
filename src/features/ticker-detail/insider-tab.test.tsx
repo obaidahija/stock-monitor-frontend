@@ -1,14 +1,31 @@
 import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import type { InsiderOut, InsiderTransactionOut } from '@/types/api'
 import { InsiderTab } from './insider-tab'
 
 let mockData: InsiderOut | undefined
+let mockError: Error | null = null
+let mockIsPending = false
+const mockRefetch = vi.fn()
 
 vi.mock('./hooks', () => ({
-  useInsider: () => ({ data: mockData, isLoading: false }),
+  useInsider: () => ({
+    data: mockData,
+    isLoading: false,
+    isPending: mockIsPending,
+    isError: mockError !== null,
+    error: mockError,
+    refetch: mockRefetch,
+  }),
 }))
+
+beforeEach(() => {
+  mockData = undefined
+  mockError = null
+  mockIsPending = false
+  mockRefetch.mockReset()
+})
 
 afterEach(cleanup)
 
@@ -48,6 +65,114 @@ const BUY: InsiderTransactionOut = {
   filed_at: '2026-08-21T00:00:00Z',
   source_url: 'https://www.sec.gov/x.xml',
 }
+
+test('shows loading when the first request is paused offline', () => {
+  mockIsPending = true
+  render(<InsiderTab ticker="ABNB" />)
+
+  expect(screen.getByText(/loading insider activity/i)).toBeInTheDocument()
+  expect(screen.queryByText(/insider activity is unavailable/i)).not.toBeInTheDocument()
+})
+
+test('shows a failed request and recovers through Retry', async () => {
+  mockError = new Error('Insider service unavailable')
+  mockRefetch.mockImplementation(() => {
+    mockError = null
+    mockData = { ...EMPTY, transactions: [BUY] }
+  })
+  const { rerender } = render(<InsiderTab ticker="ABNB" />)
+
+  expect(screen.getByText('Insider service unavailable')).toBeInTheDocument()
+  expect(screen.queryByText(/loading insider activity/i)).not.toBeInTheDocument()
+  await userEvent.click(screen.getByRole('button', { name: 'Retry' }))
+  rerender(<InsiderTab ticker="ABNB" />)
+
+  expect(screen.getByText('Alice')).toBeInTheDocument()
+  expect(screen.queryByText('Insider service unavailable')).not.toBeInTheDocument()
+})
+
+test('keeps cached transactions visible when a background refresh fails', async () => {
+  mockData = { ...EMPTY, transactions: [BUY] }
+  mockError = new Error('Refresh failed')
+  mockRefetch.mockImplementation(() => { mockError = null })
+  const { rerender } = render(<InsiderTab ticker="ABNB" />)
+
+  expect(screen.getByText('Alice')).toBeInTheDocument()
+  expect(screen.getByRole('alert')).toHaveTextContent(/showing previously loaded activity/i)
+  await userEvent.click(screen.getByRole('button', { name: 'Retry' }))
+  rerender(<InsiderTab ticker="ABNB" />)
+
+  expect(screen.getByText('Alice')).toBeInTheDocument()
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+})
+
+test('distinguishes the trade date from the precise public disclosure in Eastern time', () => {
+  mockData = {
+    ...EMPTY,
+    transactions: [{
+      ...BUY,
+      transaction_date: '2026-08-28',
+      filed_at: '2026-08-30T00:00:00Z',
+      accepted_at: '2026-08-31T01:30:00Z',
+      security_title: 'Class C Capital Stock',
+      issuer_trading_symbol: 'GOOGL',
+    }],
+  }
+  render(<InsiderTab ticker="GOOG" />)
+
+  expect(screen.getByRole('columnheader', { name: 'Trade date' })).toBeInTheDocument()
+  expect(screen.getByText('Aug 28, 2026')).toBeInTheDocument()
+  expect(screen.getByText('Aug 30, 2026, 9:30 PM ET')).toHaveAttribute(
+    'dateTime', '2026-08-31T01:30:00Z',
+  )
+  expect(screen.getByText('Class C Capital Stock')).toBeInTheDocument()
+  expect(screen.queryByText('Time unavailable')).not.toBeInTheDocument()
+})
+
+test('shows the underlying class of a derivative without using its document symbol', () => {
+  mockData = {
+    ...EMPTY,
+    transactions: [{
+      ...BUY,
+      is_derivative: true,
+      security_title: 'Stock Option (right to buy)',
+      underlying_security_title: 'Class C Capital Stock',
+      issuer_trading_symbol: 'GOOGL',
+    }],
+  }
+  render(<InsiderTab ticker="GOOG" />)
+
+  expect(screen.getByText('Stock Option (right to buy)')).toBeInTheDocument()
+  expect(screen.getByText('Underlying: Class C Capital Stock')).toBeInTheDocument()
+})
+
+test('shows a filing date without inventing a public disclosure time', () => {
+  mockData = { ...EMPTY, transactions: [{ ...BUY, accepted_at: null }] }
+  render(<InsiderTab ticker="ABNB" />)
+
+  expect(screen.getByText('Aug 21, 2026')).toBeInTheDocument()
+  expect(screen.getByText('Time unavailable')).toBeInTheDocument()
+  expect(screen.queryByText(/9:29/)).not.toBeInTheDocument()
+})
+
+test('reports missing disclosure and sync evidence as unavailable', () => {
+  mockData = { ...EMPTY, transactions: [{ ...BUY, filed_at: null, accepted_at: null }] }
+  render(<InsiderTab ticker="ABNB" />)
+
+  expect(screen.getByText('Disclosure unavailable')).toBeInTheDocument()
+  expect(screen.getByText('Last successful sync unavailable')).toBeInTheDocument()
+})
+
+test('shows the recorded successful sync time independently of the latest trade', () => {
+  mockData = { ...EMPTY, last_successful_sync_at: '2026-08-31T08:15:00Z' }
+  render(<InsiderTab ticker="ABNB" />)
+
+  expect(screen.getByText('Aug 31, 2026, 4:15 AM ET')).toHaveAttribute(
+    'dateTime', '2026-08-31T08:15:00Z',
+  )
+  expect(screen.getByText(/across tracked stocks/i)).toBeInTheDocument()
+  expect(screen.getByText(/no insider transactions/i)).toBeInTheDocument()
+})
 
 test('explains the empty state', () => {
   mockData = EMPTY

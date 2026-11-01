@@ -97,6 +97,8 @@ export interface InsiderTransactionOut {
   // Additive provenance. Optional throughout: a generation-1 response omits
   // all of it and the table still renders.
   accession_number?: string | null
+  accepted_at?: string | null
+  underlying_security_title?: string | null
   issuer_trading_symbol?: string | null
   ticker_resolution_method?: string | null
   reporting_owners?: ReportingOwnerOut[] | null
@@ -137,6 +139,7 @@ export interface InsiderSummaryOut {
 export interface InsiderOut {
   summary: InsiderSummaryOut
   transactions: InsiderTransactionOut[]
+  last_successful_sync_at?: string | null
 }
 
 export interface UniverseTickerOut extends TrackedTickerOut {
