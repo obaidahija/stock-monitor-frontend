@@ -54,6 +54,7 @@ import { PeerRankLine } from './peer-rank-line'
 import { WindowRiskChip } from './window-risk-chip'
 import { EventWindowCard } from './event-window'
 import { ShortInterestCard } from './short-interest-card'
+import { FinancialHistory } from './fundamentals/financial-history'
 import { ACTION_BADGE_CLASSES, actionLabel, gradeText } from './analyst-action-labels'
 import {
   useAnalysis,
@@ -835,6 +836,7 @@ export function AnalysisTab({ ticker }: { ticker: string }) {
         </div>
       </div>
 
+      <FinancialHistory ticker={ticker} />
       {data.price_levels && <PriceLevelsCard priceLevels={data.price_levels} />}
       {data.analyst_detail && <AnalystDetailCard ticker={ticker} detail={data.analyst_detail} />}
       <ScoreHistoryChart ticker={ticker} />

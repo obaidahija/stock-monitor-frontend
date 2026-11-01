@@ -932,6 +932,7 @@ export interface PriceReferenceOut {
 }
 
 export interface AiResearchInputsOut {
+  sec_fundamentals?: import('./sec-fundamentals').SecFundamentalsInputs | null
   news_item_ids: number[]
   news_item_count: number
   twitter_post_ids: string[]

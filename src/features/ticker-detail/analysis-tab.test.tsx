@@ -89,6 +89,12 @@ test('does not render a forecast control in stock analysis', () => {
   )
 })
 
+test('renders financial history independently of the scored Fundamentals factor', () => {
+  renderAnalysisTab({ ...baseAnalysis, components: [{ name: 'fundamentals', score: 0.5, weight: 0.2, explanation: 'Scored Yahoo metrics' }] })
+  expect(screen.getByText('Fundamentals')).toBeInTheDocument()
+  expect(screen.getByText('Financial history')).toBeInTheDocument()
+})
+
 const baseAnalysis = {
   ticker: 'NVDA',
   lean: 'neutral',
