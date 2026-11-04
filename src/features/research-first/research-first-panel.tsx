@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router'
 import { ArrowUpRight, ListFilter } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -176,12 +177,15 @@ function ResearchHorizon({ horizon, setHorizon, label }: {
 
 const COMPACT_COUNT = 3
 
-function ResearchFirstPanel({ report, horizon, setHorizon, saved = false, pending = false, error, retry, onVisibleTickersChange }: {
+function ResearchFirstPanel({ report, horizon, setHorizon, saved = false, pending = false, error, retry, onVisibleTickersChange, onQuoteTickersChange }: {
   report?: ResearchFirstReport; horizon: number; setHorizon: (horizon: number) => void
   saved?: boolean; pending?: boolean; error?: Error | null; retry?: () => void
   /** The compact view's tickers for the selected horizon. Expansion does not
    * change them, so a page can budget its own cards around these three. */
   onVisibleTickersChange?: (tickers: string[]) => void
+  /** The selected window's mounted quote candidates, including the shortlist
+   * while its sheet is open. Other saved windows never enter this budget. */
+  onQuoteTickersChange?: (tickers: string[]) => void
 }) {
   const [open, setOpen] = useState(false)
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null)
@@ -217,11 +221,17 @@ function ResearchFirstPanel({ report, horizon, setHorizon, saved = false, pendin
   const capabilities = useResearchCapabilities()
   const items = report?.items ?? []
   const visible = items.slice(0, COMPACT_COUNT)
+  const coverageStatus = report?.coverage.status
+  const limitedCoverage = coverageStatus && !['complete', 'ok'].includes(coverageStatus)
   const shared = sharedRisks(items)
   const compactKey = items.slice(0, COMPACT_COUNT).map((item) => item.ticker).join(',')
   useEffect(() => {
     onVisibleTickersChange?.(compactKey ? compactKey.split(',') : [])
   }, [compactKey, onVisibleTickersChange])
+  const quoteKey = (open ? items : visible).map((item) => item.ticker).join(',')
+  useEffect(() => {
+    onQuoteTickersChange?.(quoteKey ? quoteKey.split(',') : [])
+  }, [quoteKey, onQuoteTickersChange])
   return (
     <section ref={sectionRef} aria-label="Research first" className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -229,6 +239,13 @@ function ResearchFirstPanel({ report, horizon, setHorizon, saved = false, pendin
         <ResearchHorizon horizon={horizon} setHorizon={setHorizon} label="Research horizon" />
       </div>
       <p className="text-muted-foreground text-xs">Top events to research for your selected window.</p>
+      {limitedCoverage && !pending && !error && <Alert>
+        <AlertTitle>News coverage: {coverageStatus}</AlertTitle>
+        <AlertDescription>
+          {saved ? `News coverage was ${coverageStatus} when this edition was captured.` : `News coverage is ${coverageStatus}.`}
+          {report?.coverage.reason && ` Coverage limit: ${report.coverage.reason.replaceAll('_', ' ')}.`}
+        </AlertDescription>
+      </Alert>}
       {pending && <div role="status" className="flex flex-col gap-2">
         <span className="text-muted-foreground text-sm">Finding research priorities…</span>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">{Array.from({ length: COMPACT_COUNT }, (_, index) => <Skeleton key={index} className="h-20 w-full rounded-xl" />)}</div>
@@ -335,11 +352,12 @@ export function DiscoverResearchFirst() {
   </DigestLiveQuotes>
 }
 
-export function DigestResearchFirst({ snapshots, onVisibleTickersChange }: {
+export function DigestResearchFirst({ snapshots, onVisibleTickersChange, onQuoteTickersChange }: {
   snapshots?: Record<string, ResearchFirstReport>
   onVisibleTickersChange?: (tickers: string[]) => void
+  onQuoteTickersChange?: (tickers: string[]) => void
 }) {
   const [horizon, setHorizon] = useHorizon()
   return <ResearchFirstPanel report={snapshots?.[String(horizon)]} horizon={horizon} setHorizon={setHorizon} saved
-    onVisibleTickersChange={onVisibleTickersChange} />
+    onVisibleTickersChange={onVisibleTickersChange} onQuoteTickersChange={onQuoteTickersChange} />
 }

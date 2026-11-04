@@ -10,6 +10,32 @@ Discover starts with **Research first**, a ten-stock research shortlist for the 
 and shows data limits and timing risks. The Morning Digest displays the snapshots saved
 when it was built; changing the window there selects another saved snapshot.
 
+The Digest's compact view keeps twelve signal cards in one responsive grid, with
+each card's section labelled. **Show all coverage** and stage, text, or **New only** filters browse at
+most 24 cards per page; filters and the selected historical date are preserved in
+the URL. Today's edition refreshes every minute, including the early-to-late
+transition, and follows the New York calendar date. Past editions remain saved
+snapshots; the separately labelled price quotes are current and refresh only for
+cards near the viewport and the selected Research First window. Viewport changes
+are batched for 200 ms; successful quotes are reused per symbol for 30 seconds,
+including when returning to Digest. A provider outage keeps the last useful
+price visible with **Cached quote · Refresh failed**, independently for each
+symbol. Stale Research First news coverage is visible beside the compact cards
+and describes the saved edition's capture-time limitation.
+
+**News volume** is filterable even in older saved editions that recorded it only
+as a section. **New only** shows entries with an explicit saved New label; it
+explains how many otherwise-matching entries have no recorded newness and offers
+**Remove New only filter** without clearing the search or stage selection.
+
+**Headlines** expands complete saved titles and, for newly built editions, source
+links and timestamps. Older editions retain their saved text without invented
+links. Hiding a ticker offers **Undo**; **Hidden tickers** lists active seven-day
+exclusions and restores them. On narrow screens the shared market widgets start
+behind **Market overview**. A failed or skipped manual build keeps the current
+edition visible and displays the error; successful builds open today's Intraday
+update. New headline-screening rules apply to new captures, preserving old editions.
+
 ## Short Squeeze Strategy (Discover)
 
 Below Fresh catalysts, **Short Squeeze Strategy** lists the latest completed session's matches for
@@ -79,8 +105,7 @@ npm run build
 ```
 
 The frontend never runs `rdt-cli` directly and never receives or stores Reddit browser
-credentials. Backend setup, recovery, retention, and read-only operational guidance live in the
-sibling backend's `docs/reddit-intelligence-runbook.md`.
+credentials.
 
 ## AI Settings and AI Research tab
 

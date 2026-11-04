@@ -85,3 +85,20 @@ test('changing the Research First tickers recomputes the exclusions', () => {
   expect(tickers(second.prominent)).not.toContain('T10')
   expect(second.prominent).toHaveLength(12)
 })
+
+test('a large earnings section cannot consume every compact slot', () => {
+  const items = [
+    item('FILE', 'filing'),
+    ...Array.from({ length: 20 }, (_, index) => item(`E${index}`, 'earnings')),
+    item('GAP'), item('INS', 'insider_buy'), item('SCORE', 'score_extreme'),
+  ]
+
+  const result = selectDigestPresentation(items, [], [])
+
+  expect(result.prominent).toHaveLength(12)
+  expect(tickers(result.prominent)).toContain('GAP')
+  expect(tickers(result.prominent)).toContain('INS')
+  expect(tickers(result.prominent)).toContain('SCORE')
+  expect(result.prominent[0].ticker).toBe('FILE')
+  expect([...result.prominent, ...result.remaining]).toHaveLength(items.length)
+})

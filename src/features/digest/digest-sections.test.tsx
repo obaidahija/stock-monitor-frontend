@@ -23,3 +23,9 @@ test('states the 8-K item caveat once per filing section', () => {
   expect(screen.getByText('AMFN')).toBeInTheDocument()
   expect(screen.getByText('KMX')).toBeInTheDocument()
 })
+
+test('labels the upcoming-earnings section', () => {
+  renderWithProviders(<DigestSections items={[item('NVDA', 'earnings_upcoming')]} />)
+
+  expect(screen.getByRole('heading', { name: /upcoming earnings/i })).toBeInTheDocument()
+})

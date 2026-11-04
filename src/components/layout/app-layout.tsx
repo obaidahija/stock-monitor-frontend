@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router'
 import { ChevronDown, Flame, LineChart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -8,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
+import { useMediaQuery } from '@/lib/use-media-query'
 import { TickerSearch } from './ticker-search'
 import { MarketAssetsPanel } from './market-assets-panel'
 import { MarketBriefingPanel } from '@/features/market-briefing/panel'
@@ -66,6 +68,9 @@ function CompactNavMenu() {
 }
 
 export function AppLayout() {
+  const narrow = useMediaQuery('(max-width: 1279px)')
+  const [overviewOpen, setOverviewOpen] = useState(false)
+  const showOverview = !narrow || overviewOpen
   return (
     <div className="bg-background text-foreground min-h-svh">
       <header className="border-border bg-background/95 sticky top-0 z-10 border-b backdrop-blur">
@@ -106,18 +111,26 @@ export function AppLayout() {
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-6 xl:max-[1664px]:grid xl:grid-cols-[minmax(0,1fr)_16rem] xl:items-start xl:gap-x-6 min-[1664px]:block">
+        {narrow && <Button variant="outline" size="sm" className="mb-4" aria-expanded={overviewOpen}
+          aria-controls="market-prices-overview market-briefing-overview" onClick={() => setOverviewOpen(!overviewOpen)}>
+          Market overview<ChevronDown data-icon="inline-end" className={cn(overviewOpen && 'rotate-180')} />
+        </Button>}
+        {showOverview && <>
         <aside
+          id="market-prices-overview"
           aria-label="Market prices"
           className="mb-6 min-w-0 xl:col-start-1 xl:row-start-1 min-[1664px]:fixed min-[1664px]:top-24 min-[1664px]:left-[calc(50%-51rem)] min-[1664px]:mb-0 min-[1664px]:max-h-[calc(100svh-7rem)] min-[1664px]:w-52 min-[1664px]:overflow-y-auto"
         >
           <MarketAssetsPanel />
         </aside>
         <aside
+          id="market-briefing-overview"
           aria-label="Market briefing"
           className="mb-6 min-w-0 xl:max-[1664px]:sticky xl:top-24 xl:col-start-2 xl:row-start-1 xl:row-span-2 xl:max-h-[calc(100svh-7rem)] xl:overflow-y-auto min-[1664px]:fixed min-[1664px]:right-[calc(50%-51rem)] min-[1664px]:mb-0 min-[1664px]:w-52"
         >
           <MarketBriefingPanel />
         </aside>
+        </>}
         <div className="min-w-0 xl:col-start-1 xl:row-start-2">
           <Outlet />
         </div>

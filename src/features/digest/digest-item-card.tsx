@@ -11,7 +11,8 @@ import { formatSignedPct, formatTimestamp } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { DigestItem, DigestTopFiling } from '@/types/api'
 import { DigestLivePrice } from './live-quotes'
-import { useDismissDigestItem } from './hooks'
+import { useDismissDigestItem, useRestoreDigestItem } from './hooks'
+import { HeadlineEvidence } from './headline-evidence'
 
 function safeUrl(url: string | undefined): string | null {
   return url && /^https?:\/\//i.test(url) ? url : null
@@ -31,12 +32,20 @@ function FilingLink({ filing }: { filing: DigestTopFiling }) {
 export function DigestItemCard({ item }: { item: DigestItem }) {
   const pattern = item.recent_pattern
   const dismissItem = useDismissDigestItem()
+  const restoreItem = useRestoreDigestItem()
 
-  function handleDismiss() {
-    dismissItem.mutate(item.ticker, {
-      onSuccess: () => toast.success(`${item.ticker} hidden from the digest for 7 days`),
-      onError: () => toast.error(`Failed to hide ${item.ticker}`),
-    })
+  async function handleDismiss() {
+    try {
+      await dismissItem.mutateAsync(item.ticker)
+      toast.success(`${item.ticker} hidden from the digest for 7 days`, {
+        action: { label: 'Undo', onClick: async () => {
+          try {
+            await restoreItem.mutateAsync(item.ticker)
+            toast.success(`${item.ticker} restored to digest coverage`)
+          } catch { toast.error(`Could not restore ${item.ticker}. Try Hidden tickers.`) }
+        } },
+      })
+    } catch { toast.error(`Failed to hide ${item.ticker}`) }
   }
 
   return (
@@ -73,7 +82,7 @@ export function DigestItemCard({ item }: { item: DigestItem }) {
                 variant="ghost"
                 size="icon-sm"
                 aria-label={`Hide ${item.ticker} from digest`}
-                className="cursor-pointer opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+                className="cursor-pointer transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 [@media(hover:none)]:opacity-100"
                 disabled={dismissItem.isPending}
                 onClick={handleDismiss}
               >
@@ -117,6 +126,8 @@ export function DigestItemCard({ item }: { item: DigestItem }) {
             {item.premarket_gap_pct !== null && (
               <span className="text-sky-600 dark:text-sky-400">
                 Premarket {formatSignedPct(item.premarket_gap_pct)}
+                {typeof item.premarket_gap_vs_spy_pct === 'number' &&
+                  ` (${formatSignedPct(item.premarket_gap_vs_spy_pct)} vs SPY)`}
               </span>
             )}
             {item.volume_ratio !== null && <span>{item.volume_ratio.toFixed(1)}× avg volume</span>}
@@ -151,15 +162,7 @@ export function DigestItemCard({ item }: { item: DigestItem }) {
             </ul>
           </details>
         )}
-        {item.headline_snippets.length > 0 && (
-          <ul className="text-muted-foreground space-y-1 text-sm">
-            {item.headline_snippets.map((headline, i) => (
-              <li key={i} className="truncate">
-                · {headline}
-              </li>
-            ))}
-          </ul>
-        )}
+        <HeadlineEvidence item={item} />
       </CardContent>
     </Card>
   )

@@ -8,7 +8,7 @@ vi.mock('./ticker-search', () => ({ TickerSearch: () => null }))
 vi.mock('./market-assets-panel', () => ({ MarketAssetsPanel: () => null }))
 vi.mock('@/features/market-briefing/panel', () => ({ MarketBriefingPanel: () => <span>Briefing panel</span> }))
 
-afterEach(cleanup)
+afterEach(() => { cleanup(); vi.unstubAllGlobals() })
 
 test('the compact page menu names the current page and lists every page', async () => {
   const user = userEvent.setup()
@@ -31,4 +31,23 @@ test('briefing is a shared sidebar rather than a navigation page', () => {
   renderWithProviders(<AppLayout />, ['/discover'])
   expect(screen.getByRole('complementary', { name: 'Market briefing' })).toHaveTextContent('Briefing panel')
   expect(screen.queryByRole('link', { name: 'Briefing' })).not.toBeInTheDocument()
+})
+
+test('narrow screens start with the market overview collapsed and can expand it', async () => {
+  const user = userEvent.setup()
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: query === '(max-width: 1279px)', media: query,
+    addEventListener: vi.fn(), removeEventListener: vi.fn(),
+  }))
+  renderWithProviders(<AppLayout />)
+
+  expect(screen.queryByRole('complementary', { name: 'Market briefing' })).not.toBeInTheDocument()
+  const overview = screen.getByRole('button', { name: 'Market overview' })
+  expect(overview).toHaveAttribute('aria-expanded', 'false')
+  await user.click(overview)
+
+  expect(overview).toHaveAttribute('aria-expanded', 'true')
+  expect(screen.getByRole('complementary', { name: 'Market briefing' })).toHaveTextContent('Briefing panel')
+  await user.click(overview)
+  expect(screen.queryByRole('complementary', { name: 'Market briefing' })).not.toBeInTheDocument()
 })

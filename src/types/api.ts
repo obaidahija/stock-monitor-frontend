@@ -205,6 +205,12 @@ export interface QuoteOut {
   session_time: string | null
 }
 
+/** Additive refresh evidence returned by the Digest batch endpoint. */
+export interface DigestQuoteOut extends QuoteOut {
+  refresh_status?: 'fresh' | 'cached' | 'unavailable'
+  refresh_error?: string | null
+}
+
 export interface IndustrySummaryOut {
   industry: string
   avg_change_pct: number | null
@@ -1408,6 +1414,19 @@ export interface ChartPatternDetail {
   price_end?: number
 }
 
+export interface DigestHeadline {
+  title: string
+  url: string | null
+  source: string | null
+  published_at: string | null
+}
+
+export interface DigestDismissal {
+  ticker: string
+  dismissed_at: string
+  expires_at: string
+}
+
 export interface DigestItem {
   ticker: string
   /** Section name; tier only orders sections. Absent on digests stored before sections. */
@@ -1420,6 +1439,9 @@ export interface DigestItem {
   stages: string[]
   premarket: DigestPremarket | null
   premarket_gap_pct: number | null
+  /** The premarket move minus SPY's; absent on older digests, null without a benchmark. */
+  premarket_gap_vs_spy_pct?: number | null
+  market_cap?: number | null
   volume_ratio: number | null
   pct_from_12wk_avg: number | null
   recent_pattern: ChartPatternDetail | null
@@ -1429,7 +1451,21 @@ export interface DigestItem {
   top_earnings: DigestTopEarnings | null
   news_count_24h: number
   headline_snippets: string[]
+  /** Source facts frozen with newer editions; absent on legacy snapshots. */
+  headlines?: DigestHeadline[]
   sentiment: DigestSentiment | null
+  insider?: Record<string, unknown> | null
+  mention_spike?: Record<string, unknown> | null
+}
+
+/** Status of one input the digest was built from. */
+export interface DigestSource {
+  name: string
+  ok: boolean
+  detail: string
+  count?: number
+  expected?: number
+  as_of?: string | null
 }
 
 export interface DigestPayload {
@@ -1437,6 +1473,8 @@ export interface DigestPayload {
   generated_at: string
   items: DigestItem[]
   research_first?: Record<string, import('@/features/research-first/types').ResearchFirstReport>
+  /** Absent on digests stored before input status was recorded. */
+  sources?: DigestSource[]
 }
 
 export type DigestEditionName = 'early' | 'late' | 'intraday' | 'legacy'

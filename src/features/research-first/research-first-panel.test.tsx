@@ -82,6 +82,22 @@ test('old digests explain how to obtain a shortlist', () => {
   expect(getResearchFirst).not.toHaveBeenCalled()
 })
 
+test('saved stale coverage is visible before opening priorities and follows the selected window', () => {
+  const stale = { ...report(5), coverage: { status: 'stale', reason: 'scan_overdue' } }
+  renderWithProviders(<DigestResearchFirst snapshots={{ '5': stale, '1': report(1) }} />)
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(screen.getByRole('alert')).toHaveTextContent(/stale.*captured/i)
+  expect(screen.getByRole('alert')).toHaveTextContent('scan overdue')
+  fireEvent.change(screen.getByLabelText('Research horizon'), { target: { value: '1' } })
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+})
+
+test('a legacy shortlist with unknown coverage does not invent a healthy or stale state', () => {
+  renderWithProviders(<DigestResearchFirst snapshots={{ '5': { ...report(), coverage: {} } }} />)
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'View ABC research priority' })).toBeVisible()
+})
+
 test('empty evidence is not filled with high-score guesses', async () => {
   vi.mocked(getResearchFirst).mockResolvedValue({ ...report(), items: [], eligible_tickers: 0 })
   renderWithProviders(<DiscoverResearchFirst />)
@@ -183,6 +199,32 @@ test('digest reports the first three cards of the selected horizon, independent 
 
   fireEvent.change(screen.getByLabelText('Panel research horizon'), { target: { value: '3' } })
   expect(onVisible).toHaveBeenLastCalledWith([])
+})
+
+test('digest quotes only the selected window, expanding its quote budget while the sheet is open', () => {
+  const onQuotes = vi.fn()
+  const five = report(5)
+  five.items = ['AAA', 'BBB', 'CCC', 'DDD', 'EEE', 'FFF', 'GGG', 'HHH', 'III', 'JJJ'].map((ticker, index) => ({
+    ...report(5, ticker).items[0], rank: index + 1,
+  }))
+  const one = report(1)
+  one.items = ['ONE', 'TWO', 'THREE', 'FOUR'].map((ticker, index) => ({
+    ...report(1, ticker).items[0], rank: index + 1,
+  }))
+  renderWithProviders(<DigestResearchFirst
+    snapshots={{ '5': five, '1': one, '7': report(7, 'OTHER') }} onQuoteTickersChange={onQuotes} />)
+  expect(onQuotes).toHaveBeenLastCalledWith(['AAA', 'BBB', 'CCC'])
+
+  openPriorities()
+  expect(onQuotes).toHaveBeenLastCalledWith(['AAA', 'BBB', 'CCC', 'DDD', 'EEE', 'FFF', 'GGG', 'HHH', 'III', 'JJJ'])
+  fireEvent.change(screen.getByLabelText('Panel research horizon'), { target: { value: '1' } })
+  expect(onQuotes).toHaveBeenLastCalledWith(['ONE', 'TWO', 'THREE', 'FOUR'])
+  fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+  expect(onQuotes).toHaveBeenLastCalledWith(['ONE', 'TWO', 'THREE'])
+
+  fireEvent.change(screen.getByLabelText('Research horizon'), { target: { value: '3' } })
+  expect(onQuotes).toHaveBeenLastCalledWith([])
+  expect(onQuotes.mock.calls.some(([tickers]) => tickers.includes('OTHER'))).toBe(false)
 })
 
 test('a watch line shared by every card is said once above the cards', () => {

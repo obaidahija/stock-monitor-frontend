@@ -1,6 +1,9 @@
 import { cleanup, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, expect, test } from 'vitest'
+import { afterEach, expect, test, vi } from 'vitest'
+import { Toaster, toast } from 'sonner'
+import { apiClient } from '@/lib/api-client'
+import { formatSignedPct } from '@/lib/format'
 import { renderWithProviders } from '@/test/render'
 import type { DigestItem, DigestTopFiling } from '@/types/api'
 import { DigestItemCard } from './digest-item-card'
@@ -34,7 +37,7 @@ const filing: DigestTopFiling = {
   prominence_reason: 'auditor change (4.01)',
 }
 
-afterEach(cleanup)
+afterEach(() => { cleanup(); toast.dismiss(); vi.restoreAllMocks() })
 
 test('expanded supporting filings retain every mixed item code with the source and topic', async () => {
   const user = userEvent.setup()
@@ -70,4 +73,63 @@ test('a supporting filing known only by its date shows no invented time', async 
   const fact = screen.getByRole('listitem')
   expect(fact).toHaveTextContent('Oct 1, 2026')
   expect(fact).not.toHaveTextContent('PM ET')
+})
+
+test('shows the premarket move relative to SPY when the digest has one', () => {
+  renderWithProviders(
+    <DigestItemCard
+      item={{
+        ...itemWithSupportingFiling(filing),
+        supporting_filings: [],
+        premarket_gap_pct: -6,
+        premarket_gap_vs_spy_pct: -4,
+      }}
+    />,
+  )
+
+  expect(screen.getByText(/vs SPY/)).toHaveTextContent(
+    `Premarket ${formatSignedPct(-6)} (${formatSignedPct(-4)} vs SPY)`,
+  )
+})
+
+test('legacy headlines can be expanded and read without inventing source links', async () => {
+  const user = userEvent.setup()
+  const title = 'A complete saved headline that should remain readable at any card width'
+  renderWithProviders(<DigestItemCard item={{ ...itemWithSupportingFiling(filing), supporting_filings: [], headline_snippets: [title] }} />)
+
+  await user.click(screen.getByText('Headlines (1)'))
+
+  expect(screen.getByText(title)).toBeVisible()
+  expect(screen.queryByRole('link', { name: title })).not.toBeInTheDocument()
+})
+
+test('new headlines expose saved sources but reject executable URLs', async () => {
+  const user = userEvent.setup()
+  renderWithProviders(<DigestItemCard item={{ ...itemWithSupportingFiling(filing), supporting_filings: [],
+    headline_snippets: ['Issuer announces agreement', 'Unsafe reference'], headlines: [
+      { title: 'Issuer announces agreement', url: 'https://example.com/agreement', source: 'Issuer newsroom', published_at: '2026-11-03T12:00:00Z' },
+      { title: 'Unsafe reference', url: 'javascript:alert(1)', source: null, published_at: null },
+    ],
+  }} />)
+
+  await user.click(screen.getByText('Headlines (2)'))
+
+  const source = screen.getByRole('link', { name: 'Issuer announces agreement' })
+  expect(source).toHaveAttribute('href', 'https://example.com/agreement')
+  expect(source).toHaveAttribute('rel', 'noopener noreferrer')
+  expect(screen.getByText(/Issuer newsroom/)).toHaveTextContent('Nov 3, 7:00 AM ET')
+  expect(screen.queryByRole('link', { name: 'Unsafe reference' })).not.toBeInTheDocument()
+})
+
+test('hiding a ticker offers Undo that restores its dismissal', async () => {
+  const user = userEvent.setup()
+  vi.spyOn(apiClient, 'delete').mockResolvedValue(undefined)
+  const restore = vi.spyOn(apiClient, 'post').mockResolvedValue(undefined)
+  renderWithProviders(<><DigestItemCard item={itemWithSupportingFiling(filing)} /><Toaster /></>)
+
+  await user.click(screen.getByRole('button', { name: 'Hide MIXED from digest' }))
+  await user.click(await screen.findByRole('button', { name: 'Undo' }))
+
+  expect(restore).toHaveBeenCalledWith('/v1/digest/MIXED/restore')
+  expect(await screen.findByText('MIXED restored to digest coverage')).toBeVisible()
 })

@@ -36,6 +36,8 @@ export const SECTION_META: Record<string, SectionMeta> = {
   pattern_extreme: { label: 'Pattern near 12-week low/high', icon: ArrowUpDown },
   recent_bullish_pattern: { label: 'Recent bullish pattern', icon: History },
   near_low: { label: 'Near 12-week low', icon: TrendingDown },
+  // Tracked tickers reporting within the next 2 sessions.
+  earnings_upcoming: { label: 'Upcoming earnings', icon: CalendarClock },
   news_volume: { label: 'News volume', icon: Newspaper },
   score_extreme: { label: 'Score leaders & laggards', icon: Star },
   // Routine 8-Ks (Reg FD, generic officer changes, unverified item codes):

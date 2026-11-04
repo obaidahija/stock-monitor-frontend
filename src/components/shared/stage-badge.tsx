@@ -84,6 +84,11 @@ export const STAGE_META: Record<string, { label: string; icon: LucideIcon; class
     icon: CalendarClock,
     className: 'bg-orange-500/15 text-orange-600 dark:text-orange-400',
   },
+  earnings_upcoming: {
+    label: 'Upcoming earnings',
+    icon: CalendarClock,
+    className: 'border border-orange-500/40 text-orange-600 dark:text-orange-400',
+  },
 }
 
 export function StageBadge({ stage }: { stage: string }) {

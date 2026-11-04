@@ -1,5 +1,5 @@
 import { apiClient, ApiError } from '@/lib/api-client'
-import type { DigestDeliveryOut, DigestItemOut, DigestOut } from '@/types/api'
+import type { DigestDeliveryOut, DigestDismissal, DigestItemOut, DigestOut } from '@/types/api'
 
 async function getEdition(path: string, date?: string): Promise<DigestOut | null> {
   try {
@@ -27,6 +27,14 @@ export function getTickerDigest(ticker: string) {
 
 export function dismissDigestItem(ticker: string) {
   return apiClient.delete<void>(`/v1/digest/${encodeURIComponent(ticker)}`)
+}
+
+export function getDigestDismissals() {
+  return apiClient.get<DigestDismissal[]>('/v1/digest/dismissals')
+}
+
+export function restoreDigestItem(ticker: string) {
+  return apiClient.post<void>(`/v1/digest/${encodeURIComponent(ticker)}/restore`)
 }
 
 /** `force` is deliberately not surfaced in the UI -- the manual slot's

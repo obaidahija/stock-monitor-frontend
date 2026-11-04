@@ -6,7 +6,23 @@ import type { DigestItem } from '@/types/api'
 const FILING_SECTIONS = new Set(['filing', 'other_filings'])
 
 /** Sections in payload order: the backend already ranked them. */
-export function DigestSections({ items }: { items: DigestItem[] }) {
+export function DigestSections({ items, compact = false }: { items: DigestItem[]; compact?: boolean }) {
+  if (compact) return <>
+    {items.some((item) => FILING_SECTIONS.has(sectionOf(item))) && <p className="text-muted-foreground text-xs">
+      8-K item codes name the disclosed topic, not its effect.
+    </p>}
+    <div className="grid items-start gap-4 sm:grid-cols-2 min-[1664px]:grid-cols-3">
+      {items.map((item) => {
+        const meta = sectionMeta(sectionOf(item))
+        return <section key={item.ticker} aria-label={`${item.ticker} · ${meta.label}`} className="flex min-w-0 flex-col gap-2">
+          <h2 className="text-muted-foreground flex items-center gap-2 text-xs font-medium">
+            <meta.icon className="size-3.5" aria-hidden="true" />{meta.label}
+          </h2>
+          <DigestItemCard item={item} />
+        </section>
+      })}
+    </div>
+  </>
   const grouped = new Map<string, DigestItem[]>()
   for (const item of items) {
     const section = sectionOf(item)

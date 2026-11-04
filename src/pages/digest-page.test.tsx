@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { cleanup, fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
@@ -47,6 +48,8 @@ let telegram: TelegramStatusOut
 let intraday: DigestOut | null
 let morningMeta: Partial<DigestOut>
 let researchFirst: DigestPayload['research_first']
+let sources: DigestPayload['sources']
+const liveQuoteTickers: string[][] = []
 const buildMutate = vi.fn()
 const digestCalls: string[] = []
 
@@ -60,7 +63,7 @@ vi.mock('@/features/digest/hooks', async (importOriginal) => ({
           ? {
               digest_date: '2026-09-06',
               generated_at: '2026-09-06T11:45:00Z',
-              payload: { digest_date: '2026-09-06', generated_at: '2026-09-06T11:45:00Z', items, research_first: researchFirst },
+              payload: { digest_date: '2026-09-06', generated_at: '2026-09-06T11:45:00Z', items, research_first: researchFirst, sources },
               ...morningMeta,
             }
           : intraday,
@@ -74,6 +77,14 @@ vi.mock('@/features/digest/hooks', async (importOriginal) => ({
   useSendMorningDigest: () => sendState,
 }))
 
+vi.mock('@/features/digest/live-quotes', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/digest/live-quotes')>()),
+  DigestLiveQuotes: ({ tickers, children }: { tickers: string[]; children: ReactNode }) => {
+    liveQuoteTickers.push([...tickers])
+    return <>{children}</>
+  },
+}))
+
 vi.mock('@/features/watchlists/hooks', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/features/watchlists/hooks')>()),
   useTelegramStatus: () => ({ data: telegram }),
@@ -84,6 +95,8 @@ beforeEach(() => {
   intraday = null
   morningMeta = { edition: 'late', snapshot_id: 7, capture_completed_at: '2026-09-06T13:06:00Z', preliminary: false }
   researchFirst = undefined
+  sources = undefined
+  liveQuoteTickers.length = 0
   buildMutate.mockReset()
   digestCalls.length = 0
   sendMutate.mockReset()
@@ -162,7 +175,7 @@ test('hides the scheduled-delivery note when the bursts are on', () => {
   expect(screen.queryByTestId('digest-schedule-note')).not.toBeInTheDocument()
 })
 
-test('shows score leaders and laggards as a labelled, expanded section', () => {
+test('keeps score leaders and laggards visible with their section labels in compact coverage', () => {
   // This section used to read "Tracked" and start collapsed, as if nothing in
   // it mattered; in a built digest it holds only the score extremes.
   items = [
@@ -183,7 +196,8 @@ test('shows score leaders and laggards as a labelled, expanded section', () => {
   ]
   renderWithProviders(<DigestPage />)
 
-  expect(screen.getByRole('heading', { name: /score leaders & laggards/i })).toBeInTheDocument()
+  expect(screen.getByRole('region', { name: 'TOPS · Score leaders & laggards' })).toBeInTheDocument()
+  expect(screen.getByRole('region', { name: 'LAGS · Score leaders & laggards' })).toBeInTheDocument()
   expect(screen.getByRole('link', { name: 'LAGS' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: /score laggard \(1\)/i })).toBeInTheDocument()
 })
@@ -324,7 +338,7 @@ test('a stage filter shows every match and clearing it restores the compact view
   await user.click(screen.getByRole('button', { name: /premarket gap \(15\)/i }))
 
   expect(screen.getByRole('link', { name: 'G00' })).toBeInTheDocument()
-  expect(screen.getByTestId('digest-coverage-count')).toHaveTextContent('Showing 15 of 15 tickers')
+  expect(screen.getByTestId('digest-coverage-count')).toHaveTextContent('Showing 15 of 15 matches')
   expect(screen.queryByRole('button', { name: /show all coverage/i })).not.toBeInTheDocument()
 
   await user.click(screen.getByRole('button', { name: 'Clear' }))
@@ -416,4 +430,45 @@ test('clearing a stage filter returns to the compact view even after expanding',
 
   expect(screen.getByTestId('digest-coverage-count')).toHaveTextContent('Showing 12 of 15 tickers')
   expect(screen.queryByRole('link', { name: 'G00' })).not.toBeInTheDocument()
+})
+
+test('polls quotes only for the cards on screen', async () => {
+  const user = userEvent.setup()
+  items = [
+    ...gappers(15),
+    digestItem({ ticker: 'RTN', section: 'other_filings', tier: 14, reasons: ['Reg FD'], stages: ['filing'] }),
+  ]
+  researchFirst = { '5': shortlist(['G00', 'G01', 'G02', 'R04']) }
+  renderWithProviders(<DigestPage />)
+
+  const initial = liveQuoteTickers.at(-1) ?? []
+  expect(initial).toContain('G03')
+  expect(initial).not.toContain('R04')
+  expect(initial).not.toContain('RTN')
+
+  await user.click(screen.getByRole('button', { name: /show all coverage/i }))
+  expect(liveQuoteTickers.at(-1)).toContain('RTN')
+})
+
+test('warns when the edition was built with missing data', () => {
+  sources = [
+    { name: 'premarket_quotes', ok: false, detail: '8 of 902 tracked tickers have a premarket quote' },
+    { name: 'scores', ok: true, detail: 'Scores updated 2026-09-06 05:40 ET' },
+  ]
+  renderWithProviders(<DigestPage />)
+
+  expect(screen.getByTestId('digest-data-gaps')).toHaveTextContent(
+    'Data gaps in this edition: 8 of 902 tracked tickers have a premarket quote',
+  )
+})
+
+test('shows no data-gap warning for healthy or older digests', () => {
+  sources = [{ name: 'scores', ok: true, detail: 'Scores updated 2026-09-06 05:40 ET' }]
+  renderWithProviders(<DigestPage />)
+  expect(screen.queryByTestId('digest-data-gaps')).not.toBeInTheDocument()
+
+  cleanup()
+  sources = undefined
+  renderWithProviders(<DigestPage />)
+  expect(screen.queryByTestId('digest-data-gaps')).not.toBeInTheDocument()
 })
