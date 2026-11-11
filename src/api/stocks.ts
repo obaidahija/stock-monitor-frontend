@@ -9,6 +9,8 @@ import type {
   EarningsReactionOut,
   EarningsRefreshResult,
   EarningsSummary,
+  EarningsReportsOut,
+  EarningsReportsRefreshResult,
   EventWindowOut,
   FilingOut,
   GoogleFinanceChatTurnIn,
@@ -84,6 +86,14 @@ export function getFilings(ticker: string, opts?: { form?: string; days?: number
   return apiClient.get<FilingOut[]>(
     `/v1/stocks/${encodeURIComponent(ticker)}/filings${qs ? `?${qs}` : ''}`,
   )
+}
+
+export function getEarningsReports(ticker: string) {
+  return apiClient.get<EarningsReportsOut>(`/v1/stocks/${encodeURIComponent(ticker)}/earnings/reports`)
+}
+
+export function refreshEarningsReports(ticker: string) {
+  return apiClient.post<EarningsReportsRefreshResult>(`/v1/stocks/${encodeURIComponent(ticker)}/earnings/reports/refresh`)
 }
 
 export function getEarnings(ticker: string) {

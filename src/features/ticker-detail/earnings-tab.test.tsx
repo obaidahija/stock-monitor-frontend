@@ -12,6 +12,7 @@ vi.mock('./hooks', () => ({
   useCatalysts: vi.fn(),
 }))
 vi.mock('./eps-trend-chart', () => ({ EpsTrendChart: () => null }))
+vi.mock('./earnings-reports', () => ({ EarningsReportsPanel: () => null }))
 vi.mock('./earnings-reaction-chart', () => ({ EarningsReactionChart: () => null }))
 vi.mock('./earnings-playbook-card', () => ({ EarningsPlaybookCard: () => null }))
 

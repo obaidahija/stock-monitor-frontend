@@ -260,6 +260,20 @@ export interface FilingFinding {
   numbers: { name: string; value: string; unit: string; period: string; comparison_basis: string; evidence: FilingEvidence }[]
 }
 
+export interface SecVerification {
+  status: 'pending' | 'matched' | 'differs' | 'not_tagged' | 'unavailable' | 'unsupported'
+  reason: string | null
+  sec_value: string | null
+  sec_value_scaled: string | null
+  concept: string | null
+  form: string | null
+  accession: string | null
+  filed: string | null
+  source_url: string | null
+  revised_value: string | null
+  revised_filing: { form: string; filed: string; accession: string; source_url: string } | null
+}
+
 export interface FilingKeyFact {
   metric: string
   label: string
@@ -278,6 +292,7 @@ export interface FilingKeyFact {
   form_type?: string
   filing_url?: string
   accepted_at?: string
+  sec_verification?: SecVerification
 }
 
 export interface FilingFinancialOverview {
@@ -302,6 +317,12 @@ export interface FilingAnalysis {
   findings?: FilingFinding[]
   coverage?: {
     partial: boolean
+    analysis_mode?: 'full_earnings_release'
+    source_text_complete?: boolean
+    verification_complete?: boolean
+    chunks_total?: number
+    chunks_processed?: number
+    failed_chunks?: number
     financial_selected_chars?: number
     selected_chars: number
     available_chars: number
@@ -379,6 +400,30 @@ export interface EarningsSummary {
   next: EarningsEventOut | null
   history: EarningsEventOut[]
   yfinance_snapshot: YfEarningsEventOut[]
+}
+
+export interface EarningsReportOut {
+  filing_id: number
+  accession_number: string
+  form_type: string
+  available_at: string
+  filing_url: string
+  guidance_status: 'identified' | 'not_identified' | 'pending' | 'unavailable'
+  analysis: FilingAnalysis
+}
+
+export interface EarningsReportsOut {
+  ticker: string
+  enabled: boolean
+  source: 'sec_edgar'
+  reports: EarningsReportOut[]
+}
+
+export interface EarningsReportsRefreshResult {
+  ticker: string
+  queued: number
+  filing_ids: number[]
+  error: string | null
 }
 
 export interface EarningsReactionSourceOut {

@@ -167,6 +167,13 @@ export function formatBucketDay(value: string | null | undefined): string {
 // EDGAR accepts filings until 22:00 ET, so a real acceptance time never lands exactly here.
 const MIDNIGHT_UTC = /T00:00(:00(\.0+)?)?(Z|\+00:00)$/
 
+export function formatFilingDate(value: string, options: Intl.DateTimeFormatOptions): string {
+  return new Date(value).toLocaleDateString('en-US', {
+    ...options,
+    timeZone: MIDNIGHT_UTC.test(value) ? 'UTC' : EASTERN,
+  })
+}
+
 export function formatTimestamp(value: string | null | undefined): string {
   if (!value) return '—'
   if (MIDNIGHT_UTC.test(value)) return UTC_DATE.format(new Date(value))

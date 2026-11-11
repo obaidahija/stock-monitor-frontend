@@ -22,6 +22,7 @@ vi.mock('./hooks', () => ({
 }))
 vi.mock('./earnings-playbook-card', () => ({ EarningsPlaybookCard: () => null }))
 vi.mock('./eps-trend-chart', () => ({ EpsTrendChart: () => null }))
+vi.mock('./earnings-reports', () => ({ EarningsReportsPanel: () => null }))
 afterEach(() => { cleanup(); state.available = true })
 
 it('shows the DB comparison with its source and discloses differing provider actuals', () => {

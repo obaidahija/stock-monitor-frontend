@@ -26,6 +26,7 @@ import { EarningsReactionChart } from './earnings-reaction-chart'
 import { EarningsPlaybookCard } from './earnings-playbook-card'
 import { chooseTrackRecord, type TrackRecord, type TrackRecordSource } from './earnings-track-record'
 import { useCatalysts, useEarnings, useEarningsReaction, useRefreshEarnings } from './hooks'
+import { EarningsReportsPanel } from './earnings-reports'
 import type { EarningsEventOut, EarningsResult } from '@/types/api'
 
 function toneClass(pct: number | null): string {
@@ -328,57 +329,61 @@ export function EarningsTab({ ticker }: { ticker: string }) {
     </Button>
   )
 
-  if (isPending) return <Skeleton className="h-72 rounded-xl" />
-  if (isError) return <ErrorState error={error} onRetry={() => refetch()} />
-  if (!data) return null
-
-  const trackRecord = chooseTrackRecord(data.history, data.yfinance_snapshot)
+  const trackRecord = data ? chooseTrackRecord(data.history, data.yfinance_snapshot) : null
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">{refreshButton}</div>
+      {isPending && <Skeleton className="h-72 rounded-xl" />}
+      {isError && <ErrorState error={error} onRetry={() => refetch()} />}
+      {data && !isPending && !isError && <>
+        <div className="flex justify-end">{refreshButton}</div>
 
-      {data.next ? (
-        <NextEarningsCard next={data.next} />
-      ) : (
-        <EmptyState
-          title="No upcoming earnings date known"
-          description="This may be an ETF or a ticker outside the tracked universe — try refreshing to check Finnhub directly."
-          action={refreshButton}
-        />
-      )}
+        {data.next ? (
+          <NextEarningsCard next={data.next} />
+        ) : (
+          <EmptyState
+            title="No upcoming earnings date known"
+            description="Refresh to check the latest earnings schedule."
+            action={refreshButton}
+          />
+        )}
+      </>}
 
-      <OtherUpcomingEvents ticker={ticker} />
+      <EarningsReportsPanel ticker={ticker} />
 
-      {/* Outside NextEarningsCard on purpose: a ticker with no known upcoming
-          date still has a track record worth showing, and nesting it there
-          hid it entirely whenever data.next was null. */}
-      {trackRecord && (
-        <Card>
-          <CardContent>
-            <TrackRecordSummary trackRecord={trackRecord} />
-          </CardContent>
-        </Card>
-      )}
+      {data && !isPending && !isError && <>
+        <OtherUpcomingEvents ticker={ticker} />
 
-      <EarningsPlaybookCard ticker={ticker} />
+        {/* Outside NextEarningsCard on purpose: a ticker with no known upcoming
+            date still has a track record worth showing, and nesting it there
+            hid it entirely whenever data.next was null. */}
+        {trackRecord && (
+          <Card>
+            <CardContent>
+              <TrackRecordSummary trackRecord={trackRecord} />
+            </CardContent>
+          </Card>
+        )}
 
-      {data.history.length > 0 && (
-        <div className="space-y-2">
-          <h3 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-            Recent quarters
-          </h3>
-          <div className={cn('grid gap-3', data.history.length > 1 && 'sm:grid-cols-2')}>
-            {data.history.map((event) => (
-              <HistoryQuarterCard key={event.id} event={event} />
-            ))}
+        <EarningsPlaybookCard ticker={ticker} />
+
+        {data.history.length > 0 && (
+          <div className="space-y-2">
+            <h3 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+              Provider history and comparisons
+            </h3>
+            <div className={cn('grid gap-3', data.history.length > 1 && 'sm:grid-cols-2')}>
+              {data.history.map((event) => (
+                <HistoryQuarterCard key={event.id} event={event} />
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <EpsTrendChart events={data.yfinance_snapshot} />
-      {reaction.isPending && <Skeleton className="h-80 rounded-xl" />}
-      {reaction.data && <EarningsReactionChart data={reaction.data} />}
+        <EpsTrendChart events={data.yfinance_snapshot} />
+        {reaction.isPending && <Skeleton className="h-80 rounded-xl" />}
+        {reaction.data && <EarningsReactionChart data={reaction.data} />}
+      </>}
     </div>
   )
 }

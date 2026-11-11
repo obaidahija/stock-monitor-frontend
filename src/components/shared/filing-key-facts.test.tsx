@@ -1,6 +1,6 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, expect, test } from 'vitest'
-import type { FilingKeyFact } from '@/types/api'
+import type { FilingKeyFact, SecVerification } from '@/types/api'
 import { FilingKeyFacts } from './filing-key-facts'
 
 export const debtFact: FilingKeyFact = {
@@ -36,4 +36,70 @@ test('limits initial panel to six facts and provides the remaining facts', () =>
   render(<FilingKeyFacts facts={Array.from({ length: 8 }, (_, i) => ({ ...debtFact, label: `Fact ${i}`, value: `${i}` }))} />)
   expect(screen.getByText('Show all facts (8)')).toBeInTheDocument()
   expect(screen.getByText('Fact 7').closest('details')).not.toHaveAttribute('open')
+})
+
+const epsFact: FilingKeyFact = {
+  ...debtFact, metric: 'eps', label: 'EPS', value: '(1.27)', unit: 'per share', period_kind: 'quarter',
+}
+const tenQ = 'https://www.sec.gov/Archives/edgar/data/1769628/000176962826000470/crwv-20260930.htm'
+function checked(status: SecVerification['status'], extra: Partial<SecVerification> = {}): FilingKeyFact {
+  return {
+    ...epsFact,
+    sec_verification: {
+      status, reason: null, sec_value: null, sec_value_scaled: null, concept: null, form: null,
+      accession: null, filed: null, source_url: null, revised_value: null, revised_filing: null, ...extra,
+    },
+  }
+}
+const found = { form: '10-Q', filed: '2026-11-10', source_url: tenQ, accession: '0001769628-26-000470' }
+
+test('a fact without a SEC check renders no verification line', () => {
+  render(<FilingKeyFacts facts={[epsFact]} />)
+  expect(screen.queryByText(/10-Q|SEC data/)).not.toBeInTheDocument()
+})
+
+test('pending facts say they await the 10-Q, or the 10-K for annual periods', () => {
+  render(<FilingKeyFacts facts={[checked('pending', { reason: 'awaiting_filing' }),
+    { ...checked('pending'), period_kind: 'annual', label: 'Annual EPS' }]} />)
+  expect(screen.getByText('Press release figure · awaiting 10-Q')).toBeInTheDocument()
+  expect(screen.getByText('Press release figure · awaiting 10-K')).toBeInTheDocument()
+})
+
+test('matched facts link the verifying filing', () => {
+  render(<FilingKeyFacts facts={[checked('matched', { ...found, sec_value: '-1.27', sec_value_scaled: '(1.27)' })]} />)
+  expect(screen.getByRole('link', { name: 'Verified against 10-Q filed Nov 10, 2026' })).toHaveAttribute('href', tenQ)
+  expect(screen.getByText('$(1.27) per share').tagName).toBe('STRONG')
+})
+
+test('a differing value shows the 10-Q figure as the headline and keeps the release figure', () => {
+  render(<FilingKeyFacts facts={[checked('differs', { ...found, sec_value: '-1.3', sec_value_scaled: '(1.30)' })]} />)
+  const amount = screen.getByText('$(1.30) per share')
+  expect(amount.tagName).toBe('STRONG')
+  expect(amount.closest('article')).toHaveClass('border-amber-500')
+  expect(screen.getByText('Press release reported $(1.27) per share; 10-Q reports $(1.30) per share')).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'SEC 10-Q filing' })).toHaveAttribute('href', tenQ)
+})
+
+test.each([
+  ['not_tagged', 'not_tagged', 'Not checked against SEC data · not tagged in the SEC filing'],
+  ['unavailable', 'awaiting_filing', 'Not checked against SEC data · no SEC filing found'],
+  ['unavailable', 'conflicting_sec_facts', 'Not checked against SEC data · SEC data conflicts'],
+  ['unsupported', 'non_gaap', 'Not checked against SEC data · non-GAAP figure'],
+  ['unsupported', 'period_kind_not_checked', 'Not checked against SEC data · year-to-date figure'],
+  ['unavailable', 'issuer_not_collected', 'Not checked against SEC data · issuer not collected'],
+  ['unavailable', 'collection_disabled', 'Not checked against SEC data · collection disabled'],
+  ['unsupported', 'not_us_gaap', 'Not checked against SEC data · not reported in US GAAP'],
+  ['unsupported', 'currency', 'Not checked against SEC data · currency'],
+] as const)('%s / %s explains why the value was not checked', (status, reason, text) => {
+  render(<FilingKeyFacts facts={[checked(status, { reason })]} />)
+  expect(screen.getByText(text)).toBeInTheDocument()
+})
+
+test('a later restatement is noted with its filing', () => {
+  render(<FilingKeyFacts facts={[checked('matched', {
+    ...found, sec_value: '-1.27', sec_value_scaled: '(1.27)', revised_value: '(1.25)',
+    revised_filing: { form: '10-K', filed: '2027-02-25', accession: 'x', source_url: 'https://www.sec.gov/10k.htm' },
+  })]} />)
+  expect(screen.getByRole('link', { name: 'Later revised to $(1.25) per share in 10-K filed Feb 25, 2027' }))
+    .toHaveAttribute('href', 'https://www.sec.gov/10k.htm')
 })
