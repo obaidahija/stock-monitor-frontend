@@ -22,6 +22,7 @@ const NAV_ITEMS = [
   { to: '/social', label: 'Social', accent: true },
   { to: '/macro', label: 'Macro' },
   { to: '/events', label: 'Events' },
+  { to: '/filings', label: 'Filings' },
   { to: '/system', label: 'System' },
   { to: '/settings', label: 'Settings' },
 ]

@@ -17,7 +17,7 @@ test('the compact page menu names the current page and lists every page', async 
   await user.click(screen.getByRole('button', { name: 'Pages: Social' }))
 
   expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
-    'Digest', 'Discover', 'Research', 'Watchlists', 'Social', 'Macro', 'Events', 'System', 'Settings',
+    'Digest', 'Discover', 'Research', 'Watchlists', 'Social', 'Macro', 'Events', 'Filings', 'System', 'Settings',
   ])
 })
 

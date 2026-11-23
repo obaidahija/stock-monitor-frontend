@@ -7,6 +7,7 @@ import { ResearchPage } from '@/pages/research-page'
 import { SocialPage } from '@/pages/social-page'
 import { MacroPage } from '@/pages/macro-page'
 import { EventsPage } from '@/pages/events-page'
+import { FilingsPage } from '@/pages/filings-page'
 import { SystemPage } from '@/pages/system-page'
 import { SettingsPage } from '@/pages/settings-page'
 import { WatchlistsPage } from '@/pages/watchlists-page'
@@ -30,6 +31,7 @@ export function AppRoutes() {
         <Route path="/macro" element={<MacroPage />} />
         <Route path="/briefing" element={<Navigate to="/" replace />} />
         <Route path="/events" element={<EventsPage />} />
+        <Route path="/filings" element={<FilingsPage />} />
         <Route path="/system" element={<SystemPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         {/* AI settings moved from the System page's AI tab to /settings; keep both old paths linkable. */}
