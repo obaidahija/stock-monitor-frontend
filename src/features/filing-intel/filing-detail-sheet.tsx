@@ -12,6 +12,7 @@ import type { FilingEventOut, FilingFactOut, FilingIntelFilingOut } from '@/type
 import { useCurrentPrices, useFiling, useFilingEpisodes } from './hooks'
 import { PriceTable } from './price-move'
 import { SignalReasons } from './signal-badge'
+import { MarketDisagreedBadge } from './market-disagreed'
 import {
   DIRECTION_CLASS,
   eventLabel,
@@ -335,6 +336,7 @@ export function FilingDetailSheet({
               <section className="space-y-2">
                 <h3 className="text-sm font-semibold">Positive or negative?</h3>
                 <SignalReasons signal={filing.signal} />
+                <MarketDisagreedBadge filing={filing} now={prices.data?.get(filing.ticker ?? '')} />
               </section>
               <ProcessTimeline filing={filing} />
               {filing.ticker && <Episode ticker={filing.ticker} accession={filing.accession} onOpen={onOpen} />}
