@@ -104,6 +104,7 @@ export function formatItem(item: Record<string, unknown>): string {
     const stance = item.stance ? ` (${String(item.stance)})` : ''
     return `${String(item.period)} ${String(item.metric)} ${bound}${formatMoneyAmount(item.value)}${stance}`
   }
+  if (typeof item.topic === 'string' && typeof item.score === 'number') return `${humanize(item.topic)} ${(item.score * 100).toFixed(0)}%`
   if (typeof item.coupon_pct === 'number' && item.maturity_year) return `${item.coupon_pct}% due ${String(item.maturity_year)}`
   if (item.number && item.description) return `${String(item.number)} ${String(item.description)}`
   return JSON.stringify(item)
@@ -166,6 +167,7 @@ export const SIGNAL_SOURCE_LABEL = {
   disclosed: 'Stated in the filing',
   results: 'Results vs consensus',
   tone: 'Text tone (FinBERT)',
+  offering: 'New shares offered',
 } as const
 
 export const KIND_LABEL = {
