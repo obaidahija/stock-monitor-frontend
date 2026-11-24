@@ -71,9 +71,12 @@ export type SignalSource = 'disclosed' | 'results' | 'tone' | 'offering'
 export type FilingKind = 'earnings' | 'guidance' | 'event' | 'periodic_report' | 'offering' | 'other'
 
 /** One positive/negative read per filing (app/filing_intel/signal.py). */
-/** A finding shown beside the label but not counted in it (guidance vs next-quarter consensus). */
+/**
+ * A finding shown beside the label but not counted in it: guidance vs next-quarter consensus,
+ * a full-year raise smaller than the quarter's beat, or a one-off inside this quarter's EPS.
+ */
 export interface SignalContextItem {
-  source: 'guidance_vs_consensus'
+  source: 'guidance_vs_consensus' | 'beat_vs_raise' | 'one_time_item'
   direction: 'positive' | 'negative' | 'neutral'
   detail: string
   evidence: string[]

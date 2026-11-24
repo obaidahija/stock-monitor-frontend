@@ -48,18 +48,25 @@ const CONTEXT_CLASS = {
   neutral: 'text-muted-foreground',
 } as const
 
-/** Guidance vs next-quarter consensus: shown with its numbers and quote, not counted. */
+const CONTEXT_SOURCE_LABEL = {
+  guidance_vs_consensus: 'Guidance vs consensus',
+  beat_vs_raise: 'Raise vs beat',
+  one_time_item: 'One-time item',
+} as const
+
+/** Context the label does not count, each with its numbers and the quoted sentence. */
 export function SignalContext({ signal }: { signal: FilingSignal | null }) {
   const items = signal?.context ?? []
   if (items.length === 0) return null
   return (
     <div className="space-y-1">
-      <p className="text-muted-foreground text-xs font-medium">Guidance vs consensus · not counted in the label</p>
+      <p className="text-muted-foreground text-xs font-medium">Also in the filing · not counted in the label</p>
       <ul className="space-y-1 text-sm">
         {items.map((item, index) => (
           <li key={index} className="flex gap-2">
             <span className={cn('font-medium', CONTEXT_CLASS[item.direction])}>{CONTEXT_MARK[item.direction]}</span>
             <div className="min-w-0">
+              <span className="text-muted-foreground">{CONTEXT_SOURCE_LABEL[item.source]}: </span>
               {item.detail}
               {item.evidence.map((quote, i) => (
                 <EvidenceQuote key={i} source={item.source} quote={quote} />
@@ -69,8 +76,8 @@ export function SignalContext({ signal }: { signal: FilingSignal | null }) {
         ))}
       </ul>
       <p className="text-muted-foreground text-xs">
-        Not yet validated: on past filings, EPS guidance more than 2% under consensus was followed by a fall 71% of the
-        time, but on only 14 filings.
+        Not yet validated, so not counted: EPS guidance more than 2% under consensus preceded a fall 71% of the time
+        (14 filings); a full-year raise smaller than the beat averaged -4.8% vs its sector (4 filings).
       </p>
     </div>
   )
@@ -78,7 +85,7 @@ export function SignalContext({ signal }: { signal: FilingSignal | null }) {
 
 /** A filing-row flag when next-quarter guidance sits below (or above) consensus. */
 export function GuidanceContextBadge({ signal }: { signal: FilingSignal | null }) {
-  const items = (signal?.context ?? []).filter((c) => c.direction !== 'neutral')
+  const items = (signal?.context ?? []).filter((c) => c.source === 'guidance_vs_consensus' && c.direction !== 'neutral')
   if (items.length === 0) return null
   const below = items.some((c) => c.direction === 'negative')
   const above = items.some((c) => c.direction === 'positive')

@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import type { FilingSignal } from '@/types/filing-intel'
 import { GuidanceContextBadge, SignalReasons } from './signal-badge'
@@ -27,11 +27,28 @@ const signal: FilingSignal = {
 }
 
 describe('guidance vs consensus context', () => {
+  it('labels raise-vs-beat and one-time items', () => {
+    const { container } = render(
+      <SignalReasons
+        signal={{
+          ...signal,
+          context: [
+            { source: 'beat_vs_raise', direction: 'negative', detail: 'about $0.36 lower for the rest of the year', evidence: [], counted: false },
+            { source: 'one_time_item', direction: 'neutral', detail: 'includes a $0.22 one-time benefit', evidence: [], counted: false },
+          ],
+        }}
+      />,
+    )
+    expect(within(container).getByText(/Raise vs beat:/)).toBeInTheDocument()
+    expect(within(container).getByText(/One-time item:/)).toBeInTheDocument()
+  })
+
   it('shows each comparison under the label, marked as not counted', () => {
-    render(<SignalReasons signal={signal} />)
-    expect(screen.getByText(/not counted in the label/i)).toBeInTheDocument()
-    expect(screen.getByText(/\$3\.82 vs \$3\.90 consensus/)).toBeInTheDocument()
-    expect(screen.getByText(/in line/)).toBeInTheDocument()
+    const view = within(render(<SignalReasons signal={signal} />).container)
+    expect(view.getAllByText(/Guidance vs consensus:/).length).toBe(2)
+    expect(view.getByText(/not counted in the label/i)).toBeInTheDocument()
+    expect(view.getByText(/\$3\.82 vs \$3\.90 consensus/)).toBeInTheDocument()
+    expect(view.getByText(/in line/)).toBeInTheDocument()
   })
 
   it('flags the row only when guidance is off consensus', () => {
