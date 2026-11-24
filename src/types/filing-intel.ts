@@ -77,7 +77,7 @@ export type FilingKind = 'earnings' | 'guidance' | 'event' | 'periodic_report' |
  * deal's stated terms (size vs market cap, cash, use of proceeds, expected close).
  */
 export interface SignalContextItem {
-  source: 'guidance_vs_consensus' | 'beat_vs_raise' | 'one_time_item' | 'deal_terms'
+  source: 'guidance_vs_consensus' | 'beat_vs_raise' | 'one_time_item' | 'deal_terms' | 'portfolio_change'
   direction: 'positive' | 'negative' | 'neutral'
   detail: string
   evidence: string[]
