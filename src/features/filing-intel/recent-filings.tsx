@@ -8,7 +8,7 @@ import { EmptyState } from '@/components/shared/empty-state'
 import { ErrorState } from '@/components/shared/error-state'
 import { useCurrentPrices, useRecentFilings } from './hooks'
 import { FilingRow } from './filing-row'
-import { COVERAGE_LABEL, humanize, TOPIC_OPTIONS } from './labels'
+import { COVERAGE_LABEL, humanize, KIND_LABEL, TOPIC_OPTIONS } from './labels'
 
 const HOURS = [
   { value: 24, label: '24h' },
@@ -18,6 +18,7 @@ const HOURS = [
 ]
 const FORMS = ['8-K', '10-Q', '10-K', '424B5']
 const ALL = 'all'
+const KIND_FILTERS = ['earnings', 'event', 'guidance', 'periodic_report', 'offering'] as const
 
 export function RecentFilings({ onOpenFiling }: { onOpenFiling: (accession: string) => void }) {
   const [hours, setHours] = useState(72)
@@ -25,17 +26,29 @@ export function RecentFilings({ onOpenFiling }: { onOpenFiling: (accession: stri
   const [topic, setTopic] = useState<string>(ALL)
   const [form, setForm] = useState<string>(ALL)
   const [coverage, setCoverage] = useState<string>(ALL)
+  const [kind, setKind] = useState<string>(ALL)
   const query = useRecentFilings({
     hours,
     ticker: ticker.trim().toUpperCase() || undefined,
     topic: topic === ALL ? undefined : topic,
     form: form === ALL ? undefined : form,
     coverage: coverage === ALL ? undefined : coverage,
+    kind: kind === ALL ? undefined : kind,
   })
   const prices = useCurrentPrices((query.data ?? []).map((f) => f.ticker ?? ''))
 
   return (
     <section className="space-y-4" aria-label="Recent filings">
+      <div className="flex flex-wrap gap-1" role="group" aria-label="Kind">
+        <Button size="sm" variant={kind === ALL ? 'default' : 'outline'} onClick={() => setKind(ALL)}>
+          All filings
+        </Button>
+        {KIND_FILTERS.map((value) => (
+          <Button key={value} size="sm" variant={kind === value ? 'default' : 'outline'} onClick={() => setKind(value)}>
+            {KIND_LABEL[value]}
+          </Button>
+        ))}
+      </div>
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex gap-1" role="group" aria-label="Lookback">
           {HOURS.map((option) => (

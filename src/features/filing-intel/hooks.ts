@@ -23,6 +23,7 @@ export function useRecentFilings(params: {
   topic?: string
   form?: string
   coverage?: string
+  kind?: string
 }) {
   return useQuery({
     queryKey: ['filing-intel', 'recent', params],

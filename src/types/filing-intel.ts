@@ -65,6 +65,9 @@ export type FilingFeatures = Record<string, string | number | boolean>
 
 export type SignalSource = 'disclosed' | 'results' | 'tone'
 
+/** earnings = Item 2.02 (or a 7.01/8.01 release reporting results); event = any other 8-K news. */
+export type FilingKind = 'earnings' | 'guidance' | 'event' | 'periodic_report' | 'offering' | 'other'
+
 /** One positive/negative read per filing (app/filing_intel/signal.py). */
 export interface FilingSignal {
   label: 'positive' | 'negative' | 'mixed'
@@ -109,6 +112,9 @@ export interface FilingIntelFilingOut {
   facts: FilingFactOut[]
   features: FilingFeatures
   signal: FilingSignal | null
+  kind: FilingKind | null
+  /** Separate news an earnings 8-K also carries, e.g. "executive change". */
+  other_events: string[]
 }
 
 export interface AnalyzeIn {

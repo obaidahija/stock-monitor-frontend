@@ -58,6 +58,8 @@ const SLS_FINAL: FilingIntelFilingOut = {
   ],
   facts: [],
   features: { feature_version: 1, form: '424B5', offering_dilution_pct: 5.66, offering_discount_pct: -27.58 },
+  kind: 'offering',
+  other_events: [],
   signal: {
     label: 'negative',
     strength: 'strong',
@@ -154,4 +156,12 @@ test('the signal shows on the row and its reasons in the panel', async () => {
   expect(screen.getByText('We are offering 11,538,462 shares of our common stock.')).toBeInTheDocument()
   expect(screen.getByText('Drove the tone · negative 0.93')).toBeInTheDocument()
   expect(screen.getByText('Pulls the other way · positive 0.81')).toBeInTheDocument()
+})
+
+test('rows show the filing kind and the kind filter narrows the feed', async () => {
+  const user = userEvent.setup()
+  renderWithProviders(<FilingsPage />, ['/filings?tab=recent'])
+  expect(screen.getByText('Offering', { selector: '[data-slot="badge"]' })).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Earnings' }))
+  expect(hooks.useRecentFilings).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'earnings' }))
 })

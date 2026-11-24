@@ -132,3 +132,24 @@ export const SIGNAL_SOURCE_LABEL = {
   results: 'Results vs consensus',
   tone: 'Text tone (FinBERT)',
 } as const
+
+export const KIND_LABEL = {
+  earnings: 'Earnings',
+  guidance: 'Guidance',
+  event: 'Event',
+  periodic_report: 'Periodic report',
+  offering: 'Offering',
+  other: 'Other',
+} as const
+
+export const KIND_CLASS: Record<keyof typeof KIND_LABEL, string> = {
+  earnings: 'bg-violet-500/15 text-violet-700 dark:text-violet-400 border-transparent',
+  guidance: 'bg-sky-500/15 text-sky-700 dark:text-sky-400 border-transparent',
+  event: 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-transparent',
+  periodic_report: 'bg-muted text-muted-foreground border-transparent',
+  offering: 'bg-orange-500/15 text-orange-700 dark:text-orange-400 border-transparent',
+  other: 'bg-muted text-muted-foreground border-transparent',
+}
+
+export const KIND_HINT =
+  'Earnings = Item 2.02 (or a 7.01/8.01 release that reports results). Event = any other 8-K news.'
