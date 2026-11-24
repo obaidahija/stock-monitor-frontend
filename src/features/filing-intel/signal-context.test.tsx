@@ -27,6 +27,23 @@ const signal: FilingSignal = {
 }
 
 describe('guidance vs consensus context', () => {
+  it('shows context even when nothing voted', () => {
+    const view = within(
+      render(
+        <SignalReasons
+          signal={{
+            label: null,
+            strength: null,
+            reasons: [],
+            context: [{ source: 'deal_terms', direction: 'neutral', detail: 'Sells for $1.40B in cash', evidence: [], counted: false }],
+            version: 4,
+          }}
+        />,
+      ).container,
+    )
+    expect(view.getByText(/Sells for \$1\.40B in cash/)).toBeInTheDocument()
+  })
+
   it('labels raise-vs-beat and one-time items', () => {
     const { container } = render(
       <SignalReasons
@@ -35,12 +52,14 @@ describe('guidance vs consensus context', () => {
           context: [
             { source: 'beat_vs_raise', direction: 'negative', detail: 'about $0.36 lower for the rest of the year', evidence: [], counted: false },
             { source: 'one_time_item', direction: 'neutral', detail: 'includes a $0.22 one-time benefit', evidence: [], counted: false },
+            { source: 'deal_terms', direction: 'neutral', detail: 'Sells for $1.40B in cash', evidence: [], counted: false },
           ],
         }}
       />,
     )
     expect(within(container).getByText(/Raise vs beat:/)).toBeInTheDocument()
     expect(within(container).getByText(/One-time item:/)).toBeInTheDocument()
+    expect(within(container).getByText(/Deal terms:/)).toBeInTheDocument()
   })
 
   it('shows each comparison under the label, marked as not counted', () => {

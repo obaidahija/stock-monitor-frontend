@@ -52,6 +52,7 @@ const CONTEXT_SOURCE_LABEL = {
   guidance_vs_consensus: 'Guidance vs consensus',
   beat_vs_raise: 'Raise vs beat',
   one_time_item: 'One-time item',
+  deal_terms: 'Deal terms',
 } as const
 
 /** Context the label does not count, each with its numbers and the quoted sentence. */
@@ -77,7 +78,8 @@ export function SignalContext({ signal }: { signal: FilingSignal | null }) {
       </ul>
       <p className="text-muted-foreground text-xs">
         Not yet validated, so not counted: EPS guidance more than 2% under consensus preceded a fall 71% of the time
-        (14 filings); a full-year raise smaller than the beat averaged -4.8% vs its sector (4 filings).
+        (14 filings); a full-year raise smaller than the beat averaged -4.8% vs its sector (4 filings); only 24% of
+        divestitures rose the next day (17 filings).
       </p>
     </div>
   )
