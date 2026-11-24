@@ -57,6 +57,23 @@ export const TOPIC_OPTIONS = [
   'contract_award',
   'litigation',
   'investor_presentation',
+  'shareholder_letter',
+  'long_term_targets',
+  'earnings_considerations',
+  'operating_update',
+  'treasury_holdings_update',
+  'regulatory_proceeding',
+  'investigation',
+  'cybersecurity_incident',
+  'capital_investment',
+  'strategic_investment',
+  'redomicile',
+  'debt_tender',
+  'shelf_takedown',
+  'exploration_results',
+  'compensation_action',
+  'earnings_call_transcript',
+  'pro_forma_financials',
 ] as const
 
 export function humanize(key: string): string {
@@ -77,11 +94,29 @@ const SHARE_KEYS = /(shares|headcount|registered_amount)/
 const PER_SHARE_KEYS = /(eps|per_share|price|last_close|exercise_price|surprise$)/
 
 /** One value formatted by what its key names: %, $, per-share $, share count, date, flag. */
+const BOUND: Record<string, string> = { 'at least': '≥', 'up to': '≤', over: '>', 'more than': '>' }
+
+/** One entry of a list field, in words: a milestone, a revenue target, a note series, an exhibit. */
+export function formatItem(item: Record<string, unknown>): string {
+  if (typeof item.kind === 'string' && typeof item.text === 'string') return `${humanize(item.kind)}: ${item.text}`
+  if (item.period && item.metric && typeof item.value === 'number') {
+    const bound = typeof item.bound === 'string' ? `${BOUND[item.bound] ?? item.bound} ` : ''
+    const stance = item.stance ? ` (${String(item.stance)})` : ''
+    return `${String(item.period)} ${String(item.metric)} ${bound}${formatMoneyAmount(item.value)}${stance}`
+  }
+  if (typeof item.coupon_pct === 'number' && item.maturity_year) return `${item.coupon_pct}% due ${String(item.maturity_year)}`
+  if (item.number && item.description) return `${String(item.number)} ${String(item.description)}`
+  return JSON.stringify(item)
+}
+
 export function formatValue(key: string, value: unknown): string {
   if (value === null || value === undefined) return '—'
   if (typeof value === 'boolean') return value ? 'Yes' : 'No'
   if (Array.isArray(value)) {
-    return value.map((v) => (typeof v === 'object' ? JSON.stringify(v) : String(v))).join(', ')
+    const objects = value.some((v) => typeof v === 'object' && v !== null)
+    return value
+      .map((v) => (typeof v === 'object' && v !== null ? formatItem(v as Record<string, unknown>) : String(v)))
+      .join(objects ? ' · ' : ', ')
   }
   if (typeof value === 'object') return JSON.stringify(value)
   if (typeof value === 'string') return value.replace(/_/g, ' ')
