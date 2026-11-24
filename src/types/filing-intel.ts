@@ -1,3 +1,5 @@
+import type { EarningsResultOut } from './earnings-release'
+
 // Mirrors app/filing_intel/schemas.py (/v1/filing-intel).
 
 export type ExpectedForm = '8-K 2.02' | '10-Q' | '10-K'
@@ -126,6 +128,10 @@ export interface FilingIntelFilingOut {
   kind: FilingKind | null
   /** Separate news an earnings 8-K also carries, e.g. "executive change". */
   other_events: string[]
+  /** Earnings release figures and any consensus snapshot saved with the extraction. */
+  earnings_result: EarningsResultOut | null
+  /** Its row in /v1/stocks/{ticker}/filings, for the on-demand analysis. */
+  filing_id?: number | null
 }
 
 export interface AnalyzeIn {

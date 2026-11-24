@@ -60,6 +60,8 @@ const SLS_FINAL: FilingIntelFilingOut = {
   features: { feature_version: 1, form: '424B5', offering_dilution_pct: 5.66, offering_discount_pct: -27.58 },
   kind: 'offering',
   other_events: [],
+  earnings_result: null,
+  filing_id: null,
   signal: {
     label: 'negative',
     strength: 'strong',
@@ -164,4 +166,68 @@ test('rows show the filing kind and the kind filter narrows the feed', async () 
   expect(screen.getByText('Offering', { selector: '[data-slot="badge"]' })).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Earnings' }))
   expect(hooks.useRecentFilings).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'earnings' }))
+})
+
+test('guidance stated without a range shows its text, not empty bounds', async () => {
+  const user = userEvent.setup()
+  const withGuidance: FilingIntelFilingOut = {
+    ...SLS_FINAL,
+    events: [
+      {
+        event_type: 'guidance',
+        item: '2.02',
+        topic: null,
+        direction: null,
+        method: 'rule',
+        fields: { text: 'Operating margin expansion of over 130 basis points', metric: 'operating_margin', period: 'fiscal 2027' },
+        evidence: [{ field: 'text', text: 'Operating margin expansion of over 130 basis points', document: null }],
+      },
+    ],
+  }
+  hooks.useFiling.mockImplementation((accession: string | null) =>
+    accession ? { isPending: false, isError: false, data: withGuidance } : { isPending: false, isError: false, data: undefined },
+  )
+  renderWithProviders(<FilingsPage />, ['/filings?tab=recent'])
+  await user.click(screen.getByText(/offering final, 11.54M sh/))
+  const card = (await screen.findByText(/Guidance: Operating margin/)).closest('div') as HTMLElement
+  expect(within(card).queryByText(/—/)).not.toBeInTheDocument()
+  expect(within(card).getAllByText(/over 130 basis points/).length).toBeGreaterThan(0)
+})
+
+test('point guidance preserves the release wording and is excluded from the range count', async () => {
+  const user = userEvent.setup()
+  const withGuidance: FilingIntelFilingOut = {
+    ...SLS_FINAL,
+    events: [
+      {
+        event_type: 'guidance',
+        item: '2.02',
+        topic: null,
+        direction: null,
+        method: 'rule',
+        fields: {
+          text: 'Diluted earnings per share of approximately $11.75', metric: 'eps', period: 'Fiscal Year 2026',
+          low: 11.75, high: 11.75, midpoint: 11.75, unit: 'USD/shares',
+        },
+        evidence: [{ field: 'text', text: 'Diluted earnings per share of approximately $11.75', document: null }],
+      },
+      {
+        event_type: 'guidance',
+        item: '2.02',
+        topic: null,
+        direction: null,
+        method: 'rule',
+        fields: { metric: 'adjusted_eps', low: 11, high: 12, midpoint: 11.5, unit: 'USD/shares' },
+        evidence: [],
+      },
+    ],
+  }
+  hooks.useRecentFilings.mockReturnValue({ isSuccess: true, data: [withGuidance] })
+  hooks.useFiling.mockReturnValue({ data: withGuidance })
+  renderWithProviders(<FilingsPage />, ['/filings?tab=recent'])
+
+  await user.click(screen.getByText(/offering final, 11.54M sh/))
+  const card = (await screen.findByText(/Guidance: Eps/)).closest('div') as HTMLElement
+  expect(within(card).getByText('Diluted earnings per share of approximately $11.75', { selector: 'p' })).toBeInTheDocument()
+  expect(screen.getByText('1 guidance range')).toBeInTheDocument()
 })

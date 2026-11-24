@@ -26,7 +26,6 @@ import { EarningsReactionChart } from './earnings-reaction-chart'
 import { EarningsPlaybookCard } from './earnings-playbook-card'
 import { chooseTrackRecord, type TrackRecord, type TrackRecordSource } from './earnings-track-record'
 import { useCatalysts, useEarnings, useEarningsReaction, useRefreshEarnings } from './hooks'
-import { EarningsReportsPanel } from './earnings-reports'
 import type { EarningsEventOut, EarningsResult } from '@/types/api'
 
 function toneClass(pct: number | null): string {
@@ -349,8 +348,6 @@ export function EarningsTab({ ticker }: { ticker: string }) {
         )}
       </>}
 
-      <EarningsReportsPanel ticker={ticker} />
-
       {data && !isPending && !isError && <>
         <OtherUpcomingEvents ticker={ticker} />
 
@@ -370,7 +367,7 @@ export function EarningsTab({ ticker }: { ticker: string }) {
         {data.history.length > 0 && (
           <div className="space-y-2">
             <h3 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-              Provider history and comparisons
+              Recent quarters
             </h3>
             <div className={cn('grid gap-3', data.history.length > 1 && 'sm:grid-cols-2')}>
               {data.history.map((event) => (

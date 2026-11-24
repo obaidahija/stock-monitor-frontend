@@ -8,7 +8,6 @@ function stub(name: string) {
 
 vi.mock('@/features/research-first/research-first-panel', () => ({ DiscoverResearchFirst: stub('research-first') }))
 vi.mock('@/features/discover/fresh-catalysts-section', () => ({ FreshCatalystsSection: stub('fresh-catalysts') }))
-vi.mock('@/features/discover/short-squeeze-section', () => ({ ShortSqueezeSection: stub('short-squeeze') }))
 vi.mock('@/features/discover/upcoming-macro-events', () => ({ UpcomingMacroEvents: stub('macro-events') }))
 vi.mock('@/features/discover/macro-attention-strip', () => ({ MacroAttentionStrip: stub('macro-attention') }))
 vi.mock('@/features/discover/social-buzz-strip', () => ({ SocialBuzzStrip: stub('social-buzz') }))

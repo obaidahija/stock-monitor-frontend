@@ -15,11 +15,11 @@ afterEach(() => {
 function row(overrides: Partial<ResearchObservationRowOut> = {}): ResearchObservationRowOut {
   return {
     observation_id: 1,
-    ticker: 'SQZ',
+    ticker: 'CAT',
     side: 'long',
     origin: null,
-    source_key: 'SQZ:2026-10-05',
-    rule_version: 'short-squeeze-daily-v1',
+    source_key: 'CAT:2026-10-05',
+    rule_version: 'catalyst-daily-v3',
     decision_at: '2026-10-05T20:46:00Z',
     decision_session: '2026-10-06',
     horizon_sessions: 5,
@@ -46,7 +46,6 @@ function row(overrides: Partial<ResearchObservationRowOut> = {}): ResearchObserv
     score: null,
     overall_score: null,
     lean: null,
-    signal_session: '2026-10-05',
     ...overrides,
   }
 }
@@ -59,21 +58,19 @@ function rows(items: ResearchObservationRowOut[]) {
   } as never)
 }
 
-const scannerFilters = { horizon_sessions: 5, source_kind: 'short_squeeze' } as const
+const catalystFilters = { horizon_sessions: 5, source_kind: 'catalyst' } as const
 
-test('scanner rows show the signal session apart from the measurement baseline', () => {
+test('rows show the measurement window, path and excursions', () => {
   rows([row()])
-  renderWithProviders(<ResearchObservationsTable filters={scannerFilters} />)
+  renderWithProviders(<ResearchObservationsTable filters={catalystFilters} />)
 
-  expect(screen.getByRole('columnheader', { name: 'Signal session' })).toBeInTheDocument()
-  const line = screen.getByRole('row', { name: /SQZ/ })
-  expect(line).toHaveTextContent('2026-10-05')
+  const line = screen.getByRole('row', { name: /CAT/ })
   expect(line).toHaveTextContent('2026-10-06 → 2026-10-13')
-  expect(line).toHaveTextContent('Stop/target order unavailable')
+  expect(line).toHaveTextContent('complete')
   expect(line).toHaveTextContent('Favorable +7.10% · adverse -1.20%')
 })
 
-test('a scanner row with missing path bars says so', () => {
+test('a row with missing path bars says so', () => {
   rows([
     row({
       favorable_move_pct: null,
@@ -82,17 +79,12 @@ test('a scanner row with missing path bars says so', () => {
       path_coverage: { expected_bars: 5, usable_bars: 3, status: 'incomplete' },
     }),
   ])
-  renderWithProviders(<ResearchObservationsTable filters={scannerFilters} />)
-  expect(screen.getByRole('row', { name: /SQZ/ })).toHaveTextContent('3/5 bars covered')
+  renderWithProviders(<ResearchObservationsTable filters={catalystFilters} />)
+  expect(screen.getByRole('row', { name: /CAT/ })).toHaveTextContent('3/5 bars covered')
 })
 
-test('other sources keep their columns, and rows from an older backend still render', () => {
-  const older = row({ ticker: 'CAT', target_stop_order: 'neither' })
-  delete (older as Partial<ResearchObservationRowOut>).signal_session
-  rows([older])
-  renderWithProviders(
-    <ResearchObservationsTable filters={{ horizon_sessions: 5, source_kind: 'catalyst' }} />,
-  )
-  expect(screen.queryByRole('columnheader', { name: 'Signal session' })).not.toBeInTheDocument()
+test('a known target/stop order is shown instead of the path status', () => {
+  rows([row({ target_stop_order: 'neither' })])
+  renderWithProviders(<ResearchObservationsTable filters={catalystFilters} />)
   expect(screen.getByRole('row', { name: /CAT/ })).toHaveTextContent('neither')
 })

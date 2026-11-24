@@ -10,6 +10,7 @@ import {
   COVERAGE_LABEL,
   DIRECTION_CLASS,
   eventLabel,
+  hasGuidanceRange,
   KIND_CLASS,
   KIND_HINT,
   KIND_LABEL,
@@ -28,7 +29,7 @@ export function FilingRow({
 }) {
   const items = filing.item_codes.filter((code) => code !== '9.01')
   const tags = filing.events.filter((e) => e.event_type !== 'guidance' && !(e.event_type === 'disclosure' && e.topic === 'unclassified'))
-  const guidance = filing.events.filter((e) => e.event_type === 'guidance').length
+  const guidance = filing.events.filter(hasGuidanceRange).length
   return (
     <button
       type="button"

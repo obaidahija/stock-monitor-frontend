@@ -12,7 +12,6 @@ vi.mock('./hooks', () => ({
   useCatalysts: vi.fn(),
 }))
 vi.mock('./eps-trend-chart', () => ({ EpsTrendChart: () => null }))
-vi.mock('./earnings-reports', () => ({ EarningsReportsPanel: () => null }))
 vi.mock('./earnings-reaction-chart', () => ({ EarningsReactionChart: () => null }))
 vi.mock('./earnings-playbook-card', () => ({ EarningsPlaybookCard: () => null }))
 
@@ -64,6 +63,14 @@ function renderTab(catalysts: CatalystOut[], data: EarningsSummary = summary) {
   vi.mocked(useCatalysts).mockReturnValue({ data: catalysts } as never)
   return renderWithProviders(<EarningsTab ticker={data.ticker} />)
 }
+
+test('keeps the original earnings history without SEC research', () => {
+  renderTab([])
+  expect(screen.getByText('Recent quarters')).toBeInTheDocument()
+  // The removed panel's heading and its refresh action.
+  expect(screen.queryByText('SEC earnings briefs')).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /Refresh SEC reports/ })).not.toBeInTheDocument()
+})
 
 function comparisonSummary(available: boolean): EarningsSummary {
   return {

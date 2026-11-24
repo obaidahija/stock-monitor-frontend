@@ -286,65 +286,30 @@ test('older backend responses still show the overall report during a staggered r
   expect(screen.queryByRole('region', { name: 'Score grading' })).not.toBeInTheDocument()
 })
 
-const scannerReport: ResearchPerformanceOut = {
-  ...report,
-  cohort: { ...report.cohort, source_kind: 'short_squeeze', rule_version: 'short-squeeze-daily-v1' },
-  collection_enabled: true,
-}
-
-test('selects_scanner_cohort_and_clears_follow_through_origin', () => {
+test('switching away from follow-through clears its origin filter', () => {
   mockReport({ data: report })
   renderWithProviders(<ResearchPerformancePanel />)
   fireEvent.change(screen.getByLabelText('Source'), { target: { value: 'follow_through' } })
   fireEvent.change(screen.getByLabelText('Origin'), { target: { value: 'setup' } })
 
-  fireEvent.change(screen.getByLabelText('Source'), { target: { value: 'short_squeeze' } })
+  fireEvent.change(screen.getByLabelText('Source'), { target: { value: 'catalyst' } })
 
   const lastFilters = vi.mocked(useResearchPerformance).mock.lastCall?.[0]
-  expect(lastFilters?.source_kind).toBe('short_squeeze')
+  expect(lastFilters?.source_kind).toBe('catalyst')
   expect(lastFilters?.origin).toBeUndefined()
   expect(lastFilters?.horizon_sessions).toBe(5)
   expect(screen.queryByLabelText('Origin')).not.toBeInTheDocument()
-  expect(screen.getByRole('option', { name: 'Short Squeeze Strategy' })).toBeInTheDocument()
+  expect(screen.queryByRole('option', { name: /short squeeze/i })).not.toBeInTheDocument()
 })
 
-test('the scanner cohort states when its measurement starts', () => {
-  mockReport({ data: scannerReport })
+test('exports the selected cohort', async () => {
+  mockReport({ data: report })
   renderWithProviders(<ResearchPerformancePanel />)
-  fireEvent.change(screen.getByLabelText('Source'), { target: { value: 'short_squeeze' } })
-
-  expect(
-    screen.getByText(
-      'Measured from the first regular close after discovery. The move between discovery and that close is excluded. Repeated observations and overlapping horizons may be correlated.',
-    ),
-  ).toBeInTheDocument()
-  expect(screen.getByText(/rule short-squeeze-daily-v1/)).toBeInTheDocument()
-  expect(screen.getByText('100 recorded')).toBeInTheDocument()
-})
-
-test('exports_the_selected_scanner_cohort', async () => {
-  mockReport({ data: scannerReport })
-  renderWithProviders(<ResearchPerformancePanel />)
-  fireEvent.change(screen.getByLabelText('Source'), { target: { value: 'short_squeeze' } })
+  fireEvent.change(screen.getByLabelText('Source'), { target: { value: 'catalyst' } })
   fireEvent.click(screen.getByRole('button', { name: /download csv/i }))
 
   expect(downloadResearchExport).toHaveBeenCalledWith(expect.objectContaining({
-    source_kind: 'short_squeeze', horizon_sessions: 5,
+    source_kind: 'catalyst', horizon_sessions: 5,
   }))
   expect(vi.mocked(downloadResearchExport).mock.lastCall?.[0]).not.toHaveProperty('origin')
-})
-
-test('scanner rows can be listed with their signal and baseline sessions', () => {
-  mockReport({ data: scannerReport })
-  renderWithProviders(<ResearchPerformancePanel />)
-  fireEvent.change(screen.getByLabelText('Source'), { target: { value: 'short_squeeze' } })
-  fireEvent.click(screen.getByRole('button', { name: /show recorded rows/i }))
-
-  expect(useResearchObservations).toHaveBeenLastCalledWith(
-    expect.objectContaining({ source_kind: 'short_squeeze' }),
-    1,
-    50,
-    true,
-  )
-  expect(vi.mocked(useResearchObservations).mock.lastCall?.[0]).not.toHaveProperty('status')
 })

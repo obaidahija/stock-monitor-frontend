@@ -13,12 +13,14 @@ import { useCurrentPrices, useFiling, useFilingEpisodes } from './hooks'
 import { PriceTable } from './price-move'
 import { SignalReasons } from './signal-badge'
 import { MarketDisagreedBadge } from './market-disagreed'
+import { EarningsPanel } from './earnings-panel'
 import {
   DIRECTION_CLASS,
   eventLabel,
   FEATURE_GROUPS,
   FEATURE_SKIP,
   formatValue,
+  hasGuidanceRange,
   humanize,
   sessionLabel,
 } from './labels'
@@ -113,14 +115,19 @@ function guidanceValue(event: FilingEventOut, key: 'low' | 'high' | 'midpoint'):
 
 function EventCard({ event }: { event: FilingEventOut }) {
   if (event.event_type === 'guidance') {
+    const { text, low, high, change } = event.fields
+    const statedValue = typeof text === 'string' ? text.trim() : ''
+    const point = typeof low === 'number' && low === high ? guidanceValue(event, 'low') : ''
     return (
       <div className="border-border rounded-md border p-3 text-sm">
         <p className="font-medium">
           Guidance: {humanize(String(event.fields.metric ?? ''))} {event.fields.period ? `(${event.fields.period})` : ''}
         </p>
         <p className="tabular-nums">
-          {guidanceValue(event, 'low')} – {guidanceValue(event, 'high')} · midpoint {guidanceValue(event, 'midpoint')}
-          {event.fields.change ? ` · ${String(event.fields.change)}` : ''}
+          {hasGuidanceRange(event)
+            ? `${guidanceValue(event, 'low')} – ${guidanceValue(event, 'high')} · midpoint ${guidanceValue(event, 'midpoint')}`
+            : statedValue || point}
+          {change ? ` · ${String(change)}` : ''}
         </p>
         {event.evidence[0] && <blockquote className="text-muted-foreground mt-1 border-l-2 pl-2 text-xs">{event.evidence[0].text}</blockquote>}
       </div>
@@ -352,6 +359,7 @@ export function FilingDetailSheet({
                   </div>
                 )}
               </section>
+              <EarningsPanel filing={filing} />
               <KeyNumbers facts={filing.facts} />
               <Features features={filing.features} />
               <p className="text-muted-foreground text-xs">

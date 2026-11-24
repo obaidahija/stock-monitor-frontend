@@ -87,6 +87,11 @@ export function eventLabel(event: FilingEventOut): string {
   return humanize(event.event_type)
 }
 
+export function hasGuidanceRange(event: FilingEventOut): boolean {
+  const { low, high } = event.fields
+  return event.event_type === 'guidance' && typeof low === 'number' && typeof high === 'number' && low < high
+}
+
 const MONEY_KEYS =
   /(revenue|income|profit|cash|debt|proceeds|principal|consideration|amount|charges?|market_cap|value|size|fee|offering$|expenses|capex|flow|equity|assets|liabilities|largest_amount|accordion_to|program_size|midpoint$|low$|high$)/
 // registered_amount is a count of securities (the fee exhibit's AmtSctiesRegd), not dollars.

@@ -260,20 +260,6 @@ export interface FilingFinding {
   numbers: { name: string; value: string; unit: string; period: string; comparison_basis: string; evidence: FilingEvidence }[]
 }
 
-export interface SecVerification {
-  status: 'pending' | 'matched' | 'differs' | 'not_tagged' | 'unavailable' | 'unsupported'
-  reason: string | null
-  sec_value: string | null
-  sec_value_scaled: string | null
-  concept: string | null
-  form: string | null
-  accession: string | null
-  filed: string | null
-  source_url: string | null
-  revised_value: string | null
-  revised_filing: { form: string; filed: string; accession: string; source_url: string } | null
-}
-
 export interface FilingKeyFact {
   metric: string
   label: string
@@ -287,12 +273,15 @@ export interface FilingKeyFact {
   importance: 'low' | 'medium' | 'high'
   warning: boolean
   change: string | null
+  /** The same table row one year earlier, and the change between the two values. */
+  prior_value?: string | null
+  prior_period?: string | null
+  yoy_change?: string | null
   evidence: FilingEvidence[]
   filing_id?: number
   form_type?: string
   filing_url?: string
   accepted_at?: string
-  sec_verification?: SecVerification
 }
 
 export interface FilingFinancialOverview {
@@ -400,30 +389,6 @@ export interface EarningsSummary {
   next: EarningsEventOut | null
   history: EarningsEventOut[]
   yfinance_snapshot: YfEarningsEventOut[]
-}
-
-export interface EarningsReportOut {
-  filing_id: number
-  accession_number: string
-  form_type: string
-  available_at: string
-  filing_url: string
-  guidance_status: 'identified' | 'not_identified' | 'pending' | 'unavailable'
-  analysis: FilingAnalysis
-}
-
-export interface EarningsReportsOut {
-  ticker: string
-  enabled: boolean
-  source: 'sec_edgar'
-  reports: EarningsReportOut[]
-}
-
-export interface EarningsReportsRefreshResult {
-  ticker: string
-  queued: number
-  filing_ids: number[]
-  error: string | null
 }
 
 export interface EarningsReactionSourceOut {
@@ -883,8 +848,6 @@ export interface ResearchCapabilitiesOut {
   follow_through_enabled: boolean
   event_window_v2_enabled: boolean
   research_intraday_enabled: boolean
-  /** Daily Short Squeeze scanner; absent from older backends, so read it as false. */
-  short_squeeze_scanner_enabled?: boolean
 }
 
 export type FollowThroughCreate =
@@ -1263,23 +1226,6 @@ export interface WatchlistSetupOut {
   created_at: string
   updated_at: string
   superseded_at: string | null
-  /** The Short Squeeze observation a manual setup was saved from, if any. */
-  strategy_observation_id?: number | null
-  /** Frozen copy of that observation's evidence; outlives the link. */
-  strategy_provenance?: StrategyProvenanceOut | null
-}
-
-export interface StrategyProvenanceOut {
-  observation_id: number
-  source_kind: string
-  rule_version: string
-  ticker?: string
-  signal_session: string | null
-  decision_at?: string
-  baseline_session?: string
-  input_hash?: string
-  conditions?: Record<string, unknown>
-  reference_prices?: Record<string, number | null>
 }
 
 export interface SetupWindowPreviewOut {
@@ -2295,27 +2241,7 @@ export interface SettingsOut {
 
 // --- Prospective research outcomes (/v1/research-performance) ---
 
-export type ResearchSourceKind = 'composite_daily' | 'catalyst' | 'follow_through' | 'short_squeeze'
-
-/** Optional scanner block; older backends omit it. */
-export interface ShortSqueezeMonitoringOut {
-  collection_enabled: boolean
-  latest_publication_id: number | null
-  latest_target_session: string | null
-  latest_published_at: string | null
-  latest_confirmed_at: string | null
-  coverage: {
-    evaluated: number
-    matched: number
-    incomplete: number
-    excluded: number
-    missing_reason_counts: Record<string, number>
-  } | null
-  corrections: number
-  observations_recorded: number
-  checkpoint_target_session: string | null
-  checkpoints: Record<string, number>
-}
+export type ResearchSourceKind = 'composite_daily' | 'catalyst' | 'follow_through'
 
 export interface ResearchMonitoringOut {
   generated_at: string
@@ -2368,7 +2294,6 @@ export interface ResearchMonitoringOut {
       manual_edits: number
     }
   }
-  short_squeeze?: ShortSqueezeMonitoringOut | null
 }
 export type ResearchSide = 'long' | 'short' | 'unassigned'
 export type ResearchOrigin = 'setup' | 'catalyst'
@@ -2516,8 +2441,6 @@ export interface ResearchObservationRowOut {
   score: number | null
   overall_score: number | null
   lean: string | null
-  /** Scanner rows only: the completed session the evidence describes. */
-  signal_session?: string | null
 }
 
 export interface ResearchObservationPageOut {
