@@ -69,11 +69,22 @@ export type SignalSource = 'disclosed' | 'results' | 'tone' | 'offering'
 export type FilingKind = 'earnings' | 'guidance' | 'event' | 'periodic_report' | 'offering' | 'other'
 
 /** One positive/negative read per filing (app/filing_intel/signal.py). */
+/** A finding shown beside the label but not counted in it (guidance vs next-quarter consensus). */
+export interface SignalContextItem {
+  source: 'guidance_vs_consensus'
+  direction: 'positive' | 'negative' | 'neutral'
+  detail: string
+  evidence: string[]
+  counted: false
+}
+
 export interface FilingSignal {
-  label: 'positive' | 'negative' | 'mixed'
-  strength: 'strong' | 'weighed' | 'single'
+  /** null when nothing voted but there is context to show. */
+  label: 'positive' | 'negative' | 'mixed' | null
+  strength: 'strong' | 'weighed' | 'single' | null
   /** Each reason with the evidence behind it: quoted sentences, or actual vs expected figures. */
   reasons: { source: SignalSource; direction: 'positive' | 'negative'; detail: string; evidence: string[] }[]
+  context?: SignalContextItem[]
   version: number
 }
 

@@ -3,7 +3,7 @@ import { formatEasternDateTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { FilingIntelFilingOut, QuoteOut } from '@/types/filing-intel'
 import { PriceMove } from './price-move'
-import { SignalBadge } from './signal-badge'
+import { GuidanceContextBadge, SignalBadge } from './signal-badge'
 import { MarketDisagreedBadge } from './market-disagreed'
 import {
   COVERAGE_HINT,
@@ -53,6 +53,7 @@ export function FilingRow({
           </Badge>
         ))}
         <SignalBadge signal={filing.signal} />
+        <GuidanceContextBadge signal={filing.signal} />
         <MarketDisagreedBadge filing={filing} now={now} />
         {filing.coverage === 'extended' && (
           <Badge variant="secondary" title={COVERAGE_HINT}>
