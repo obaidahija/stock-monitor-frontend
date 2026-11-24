@@ -136,7 +136,7 @@ test('a failed provider refresh keeps displayed prices and reports the error', a
 })
 
 
-test('automatic polling fetches fresh provider quotes after thirty seconds', async () => {
+test('automatic polling fetches fresh provider quotes after five minutes', async () => {
   vi.useFakeTimers()
   vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
   renderWithProviders(<AppLayout />)
@@ -144,7 +144,7 @@ test('automatic polling fetches fresh provider quotes after thirty seconds', asy
   const updated = structuredClone(snapshot)
   updated.assets[1].price = 82000
   vi.mocked(apiClient.post).mockResolvedValue(updated)
-  await act(async () => { await vi.advanceTimersByTimeAsync(30_000) })
+  await act(async () => { await vi.advanceTimersByTimeAsync(5 * 60_000) })
   await act(async () => { await vi.advanceTimersByTimeAsync(100) })
   expect(apiClient.post).toHaveBeenCalledExactlyOnceWith('/v1/market-assets/refresh')
   expect(apiClient.get).toHaveBeenCalledTimes(1)

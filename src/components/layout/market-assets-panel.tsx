@@ -97,7 +97,7 @@ export function MarketAssetsPanel() {
     if (refreshing) return
     const timer = setInterval(() => {
       if (document.visibilityState === 'visible') refreshQuotes()
-    }, 30_000)
+    }, 5 * 60_000)
     return () => clearInterval(timer)
   }, [refreshQuotes, refreshing])
 
