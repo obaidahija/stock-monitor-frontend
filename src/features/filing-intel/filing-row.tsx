@@ -53,6 +53,20 @@ export function FilingRow({
             + {name}
           </Badge>
         ))}
+        {filing.periodic_report && (
+          <Badge variant="outline" title="The quarterly report for these results; its figures are in this release's label">
+            + {filing.periodic_report.form} filed {formatEasternDateTime(filing.periodic_report.accepted_at)}
+          </Badge>
+        )}
+        {filing.follows_release && (
+          <Badge
+            className={cn(filing.follows_release.label && DIRECTION_CLASS[filing.follows_release.label])}
+            title="These results were already public in the release; the report repeats them, so it takes the release's label"
+          >
+            Results released in {filing.follows_release.form}
+            {filing.follows_release.label && ` · ${filing.follows_release.label}`}
+          </Badge>
+        )}
         <SignalBadge signal={filing.signal} />
         <GuidanceContextBadge signal={filing.signal} />
         <MarketDisagreedBadge filing={filing} now={now} />

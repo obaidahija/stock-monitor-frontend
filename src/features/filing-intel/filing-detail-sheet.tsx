@@ -342,7 +342,23 @@ export function FilingDetailSheet({
             <>
               <section className="space-y-2">
                 <h3 className="text-sm font-semibold">Positive or negative?</h3>
-                <SignalReasons signal={filing.signal} />
+                {filing.follows_release ? (
+                  <p className="text-sm">
+                    Results first released in the{' '}
+                    <button
+                      type="button"
+                      className="text-primary underline-offset-2 hover:underline"
+                      onClick={() => onOpen(filing.follows_release!.accession)}
+                    >
+                      {filing.follows_release.form} of {formatEasternDateTimeWithYear(filing.follows_release.accepted_at)}
+                    </button>
+                    {filing.follows_release.label ? ` — labelled ${filing.follows_release.label} there` : ''}. This
+                    report repeats those figures without the release's adjusted EPS, guidance or text, so it has no
+                    label of its own.
+                  </p>
+                ) : (
+                  <SignalReasons signal={filing.signal} />
+                )}
                 <MarketDisagreedBadge filing={filing} now={prices.data?.get(filing.ticker ?? '')} />
               </section>
               <ProcessTimeline filing={filing} />

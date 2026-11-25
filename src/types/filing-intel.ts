@@ -136,6 +136,18 @@ export interface FilingIntelFilingOut {
   earnings_result: EarningsResultOut | null
   /** Its row in /v1/stocks/{ticker}/filings, for the on-demand analysis. */
   filing_id?: number | null
+  /** A 10-Q/10-K filed after the issuer's results release: that release, whose label replaces its own. */
+  follows_release?: LinkedFiling | null
+  /** On a results release: the 10-Q/10-K that followed it (folded into this row). */
+  periodic_report?: LinkedFiling | null
+}
+
+export interface LinkedFiling {
+  accession: string
+  form: string
+  accepted_at: string | null
+  label: 'positive' | 'negative' | 'mixed' | null
+  strength: string | null
 }
 
 export interface AnalyzeIn {
