@@ -54,6 +54,7 @@ const CONTEXT_SOURCE_LABEL = {
   one_time_item: 'One-time item',
   deal_terms: 'Deal terms',
   portfolio_change: 'Portfolio change',
+  release_highlight: 'Release highlight',
 } as const
 
 /** Context the label does not count, each with its numbers and the quoted sentence. */
