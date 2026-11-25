@@ -17,6 +17,13 @@ import {
   KIND_LABEL,
 } from './labels'
 
+/** "10-K/A, 2 × 10-Q/A" */
+function amendmentForms(amendments: { form: string }[]): string {
+  const counts = new Map<string, number>()
+  for (const a of amendments) counts.set(a.form, (counts.get(a.form) ?? 0) + 1)
+  return [...counts].sort().map(([form, n]) => (n === 1 ? form : `${n} × ${form}`)).join(', ')
+}
+
 /** One filing as a clickable row: when, who, what form, the one-line summary, its event tags. */
 export function FilingRow({
   filing,
@@ -58,6 +65,15 @@ export function FilingRow({
         {filing.periodic_report && (
           <Badge variant="outline" title="The quarterly report for these results; its figures are in this release's label">
             + {filing.periodic_report.form} filed {formatEasternDateTime(filing.periodic_report.accepted_at)}
+          </Badge>
+        )}
+        {filing.amendments && filing.amendments.length > 0 && (
+          <Badge
+            className={DIRECTION_CLASS.negative}
+            title={filing.amendments.map((a) => `${a.form}: ${a.note ?? 'no restatement stated'}`).join('\n')}
+          >
+            + {amendmentForms(filing.amendments)}
+            {filing.amendments.some((a) => a.note) && ' (restated)'}
           </Badge>
         )}
         {filing.follows_release && (

@@ -77,7 +77,7 @@ export type FilingKind = 'earnings' | 'guidance' | 'event' | 'periodic_report' |
  * deal's stated terms (size vs market cap, cash, use of proceeds, expected close).
  */
 export interface SignalContextItem {
-  source: 'guidance_vs_consensus' | 'beat_vs_raise' | 'one_time_item' | 'deal_terms' | 'portfolio_change' | 'release_highlight'
+  source: 'guidance_vs_consensus' | 'beat_vs_raise' | 'one_time_item' | 'deal_terms' | 'portfolio_change' | 'release_highlight' | 'restatement' | 'segment_decline' | 'amendment'
   direction: 'positive' | 'negative' | 'neutral'
   detail: string
   evidence: string[]
@@ -146,6 +146,8 @@ export interface FilingIntelFilingOut {
   follows_release?: LinkedFiling | null
   /** On a results release: the 10-Q/10-K that followed it (folded into this row). */
   periodic_report?: LinkedFiling | null
+  /** On a results release: the 10-K/A and 10-Q/As filed with it, each with its note. */
+  amendments?: (LinkedFiling & { note: string | null })[]
 }
 
 export interface LinkedFiling {
