@@ -9,14 +9,17 @@ const MIN_MOVE_PCT = 2
  * Uses the first close after the filing, else the current price.
  */
 export function marketDisagreement(
-  filing: Pick<FilingIntelFilingOut, 'signal' | 'ref_close' | 'close_1d'>,
+  filing: Pick<FilingIntelFilingOut, 'signal' | 'ref_close' | 'close_1d' | 'pre_filing_price'>,
   now: QuoteOut | undefined,
 ): { move: number; basis: 'next close' | 'now' } | null {
   const label = filing.signal?.label
-  if (!filing.ref_close || (label !== 'positive' && label !== 'negative')) return null
+  // From the last price before the filing was public: a move already made on a press release
+  // that crossed the wire before EDGAR is not the market's answer to the filing.
+  const base = filing.pre_filing_price ?? filing.ref_close
+  if (!base || (label !== 'positive' && label !== 'negative')) return null
   const price = filing.close_1d ?? now?.price
   if (!price) return null
-  const move = (price / filing.ref_close - 1) * 100
+  const move = (price / base - 1) * 100
   const against = label === 'positive' ? move <= -MIN_MOVE_PCT : move >= MIN_MOVE_PCT
   return against ? { move, basis: filing.close_1d ? 'next close' : 'now' } : null
 }

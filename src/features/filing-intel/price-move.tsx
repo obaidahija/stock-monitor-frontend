@@ -33,15 +33,41 @@ type Prices = Pick<
   | 'close_1d_date'
   | 'close_5d'
   | 'close_5d_date'
+  | 'pre_filing_price'
+  | 'pre_filing_move_pct'
 >
 
 /**
- * Compact move line for a filing row. Moves are measured from the last close before the
- * filing was public (available for every filing, so history is comparable); the live
- * detection price is shown when the filing was caught live.
+ * Where moves after the filing start: the last price before it was public when known (the
+ * press release often crosses the wire before EDGAR accepts the 8-K), else the last close.
+ */
+export function moveBase(filing: Prices): number | null {
+  return filing.pre_filing_price ?? filing.ref_close ?? filing.detected_price
+}
+
+/** A move this large between the last close and the filing is shown as already priced in. */
+export const PRE_FILING_MOVE_PCT = 3
+
+function PreFilingMove({ filing }: { filing: Prices }) {
+  const move = filing.pre_filing_move_pct
+  if (move === null || move === undefined || Math.abs(move) < PRE_FILING_MOVE_PCT) return null
+  return (
+    <span
+      className="text-amber-700 dark:text-amber-400"
+      title="The stock had already moved this much before the filing reached EDGAR (the news came out first); moves after the filing are measured from the pre-filing price"
+    >
+      moved {move > 0 ? '+' : ''}
+      {move.toFixed(1)}% before the filing
+    </span>
+  )
+}
+
+/**
+ * Compact move line for a filing row. Moves are measured from the last price before the
+ * filing was public: the detection quote when it predates acceptance, else the last close.
  */
 export function PriceMove({ filing, now, className }: { filing: Prices; now: QuoteOut | undefined; className?: string }) {
-  const base = filing.ref_close ?? filing.detected_price
+  const base = moveBase(filing)
   return (
     <span className={cn('inline-flex flex-wrap items-baseline gap-x-2 text-xs tabular-nums', className)}>
       <span title={filing.ref_close_date ? `Last close before the filing (${filing.ref_close_date})` : undefined}>
@@ -59,6 +85,7 @@ export function PriceMove({ filing, now, className }: { filing: Prices; now: Quo
           <span className="text-muted-foreground">detected </span>${filing.detected_price.toFixed(2)}
         </span>
       )}
+      <PreFilingMove filing={filing} />
       <span title={filing.close_1d_date ? `First close after the filing (${filing.close_1d_date})` : 'Next close not in yet'}>
         <span className="text-muted-foreground">+1d </span>
         <Change value={pct(base, filing.close_1d)} />
@@ -78,11 +105,11 @@ export function PriceMove({ filing, now, className }: { filing: Prices; now: Quo
 
 /** The same numbers as a small table for the filing panel. */
 export function PriceTable({ filing, now }: { filing: Prices; now: QuoteOut | undefined }) {
-  const base = filing.ref_close ?? filing.detected_price
+  const base = moveBase(filing)
   const rows: [string, string | null, number | null | undefined][] = [
     ['Last close before the filing', filing.ref_close_date, filing.ref_close],
     ...(filing.detected_price !== null
-      ? ([[`At detection (${sessionLabel(filing.detected_price_session)})`, filing.detected_price_time ? formatEasternTime(filing.detected_price_time) : null, filing.detected_price]] as [string, string | null, number | null][])
+      ? ([[`${filing.pre_filing_price != null ? 'Before the filing, at detection' : 'At detection'} (${sessionLabel(filing.detected_price_session)})`, filing.detected_price_time ? formatEasternTime(filing.detected_price_time) : null, filing.detected_price]] as [string, string | null, number | null][])
       : []),
     ['First close after (+1 day)', filing.close_1d_date, filing.close_1d],
     ['Fifth close after (+5 days)', filing.close_5d_date, filing.close_5d],
@@ -97,7 +124,13 @@ export function PriceTable({ filing, now }: { filing: Prices; now: QuoteOut | un
             <td className="text-muted-foreground py-0.5 text-xs">{when ?? ''}</td>
             <td className="py-0.5 text-right">{price !== null && price !== undefined ? `$${price.toFixed(2)}` : '—'}</td>
             <td className="w-20 py-0.5 text-right">
-              {label.startsWith('Last close') ? '' : <Change value={pct(base, price ?? null)} />}
+              {label.startsWith('Last close') ? (
+                ''
+              ) : label.startsWith('Before the filing') ? (
+                <Change value={pct(filing.ref_close, price ?? null)} />
+              ) : (
+                <Change value={pct(base, price ?? null)} />
+              )}
             </td>
           </tr>
         ))}
