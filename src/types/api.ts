@@ -1418,6 +1418,23 @@ export interface DigestDismissal {
   expires_at: string
 }
 
+/** One positive Filing Intel filing on a digest item; opens the filing's detail view by accession. */
+export interface DigestIntelFiling {
+  accession: string
+  form: string
+  kind: 'earnings' | 'guidance' | 'event' | 'periodic_report' | 'offering' | 'other' | null
+  item_codes: string[]
+  accepted_at: string
+  label: 'positive'
+  strength: 'strong' | 'weighed' | 'single' | null
+  reasons: { direction: string | null; detail: string; short: string }[]
+  summary: string | null
+  detected_price: number | null
+  pre_filing_price: number | null
+  ref_close: number | null
+  url: string
+}
+
 export interface DigestItem {
   ticker: string
   /** Section name; tier only orders sections. Absent on digests stored before sections. */
@@ -1439,6 +1456,8 @@ export interface DigestItem {
   top_filing: DigestTopFiling | null
   /** Other notable filings in the same window, most substantive first. */
   supporting_filings?: DigestTopFiling[]
+  /** Filing Intel's positive filings since the previous close (newest first): the filing section. */
+  filing_intel?: DigestIntelFiling[]
   top_earnings: DigestTopEarnings | null
   news_count_24h: number
   headline_snippets: string[]

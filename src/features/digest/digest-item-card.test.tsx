@@ -133,3 +133,45 @@ test('hiding a ticker offers Undo that restores its dismissal', async () => {
   expect(restore).toHaveBeenCalledWith('/v1/digest/MIXED/restore')
   expect(await screen.findByText('MIXED restored to digest coverage')).toBeVisible()
 })
+
+test('a positive Filing Intel filing shows its reasons and opens its details on click', async () => {
+  const user = userEvent.setup()
+  const get = vi.spyOn(apiClient, 'get').mockReturnValue(new Promise(() => {}) as never)
+  const item: DigestItem = {
+    ...itemWithSupportingFiling(filing),
+    ticker: 'DLTR',
+    supporting_filings: [],
+    reasons: ['Positive earnings 8-K 2026-11-24 06:30 ET: Guidance raised · EPS beat +$0.24'],
+    filing_intel: [
+      {
+        accession: '0000935703-26-000136',
+        form: '8-K',
+        kind: 'earnings',
+        item_codes: ['2.02', '7.01', '9.01'],
+        accepted_at: '2026-11-24T11:30:42Z',
+        label: 'positive',
+        strength: 'weighed',
+        reasons: [
+          { direction: 'positive', detail: 'guidance raised', short: 'Guidance raised' },
+          { direction: 'negative', detail: 'revenue -1.2% vs consensus', short: 'Revenue miss -1.2%' },
+        ],
+        summary: null,
+        detected_price: 146,
+        pre_filing_price: null,
+        ref_close: 139.1,
+        url: 'https://www.sec.gov/x',
+      },
+    ],
+  }
+  renderWithProviders(<DigestItemCard item={item} />)
+
+  const row = screen.getByRole('button', { name: /Positive.*Earnings.*8-K · 2\.02, 7\.01/ })
+  expect(row).toHaveTextContent('✅ Guidance raised')
+  expect(row).toHaveTextContent('❌ Revenue miss -1.2%')
+  expect(row).toHaveTextContent('$146.00')
+  // The reason line repeats the row, so it is not printed twice.
+  expect(screen.queryByText(/^Positive earnings 8-K/)).toBeNull()
+
+  await user.click(row)
+  expect(get.mock.calls.some(([url]) => String(url).includes('/filing-intel/filings/0000935703-26-000136'))).toBe(true)
+})

@@ -9,7 +9,11 @@ import { SentimentBadge } from '@/components/shared/sentiment-badge'
 import { StageBadge } from '@/components/shared/stage-badge'
 import { formatSignedPct, formatTimestamp } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import type { DigestItem, DigestTopFiling } from '@/types/api'
+import { useState } from 'react'
+import { Badge } from '@/components/ui/badge'
+import { FilingDetailSheet } from '@/features/filing-intel/filing-detail-sheet'
+import { DIRECTION_CLASS, KIND_CLASS, KIND_LABEL } from '@/features/filing-intel/labels'
+import type { DigestIntelFiling, DigestItem, DigestTopFiling } from '@/types/api'
 import { DigestLivePrice } from './live-quotes'
 import { useDismissDigestItem, useRestoreDigestItem } from './hooks'
 import { HeadlineEvidence } from './headline-evidence'
@@ -29,8 +33,52 @@ function FilingLink({ filing }: { filing: DigestTopFiling }) {
   )
 }
 
+/** A positive Filing Intel filing: one clickable line that opens its detail view. */
+function IntelFilingRow({ filing, onOpen }: { filing: DigestIntelFiling; onOpen: (accession: string) => void }) {
+  const items = filing.item_codes.filter((code) => code !== '9.01')
+  const price = filing.pre_filing_price ?? filing.detected_price
+  const good = filing.reasons.filter((r) => r.direction === 'positive').map((r) => r.short)
+  const bad = filing.reasons.filter((r) => r.direction === 'negative').map((r) => r.short)
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(filing.accession)}
+      className="hover:bg-muted/50 border-border flex w-full flex-col gap-1 rounded-md border px-3 py-2 text-left"
+      title="Open the filing's details"
+    >
+      <span className="flex flex-wrap items-center gap-1.5 text-xs">
+        <Badge className={DIRECTION_CLASS.positive}>{filing.strength === 'strong' ? 'Strong positive' : 'Positive'}</Badge>
+        {filing.kind && <Badge className={KIND_CLASS[filing.kind]}>{KIND_LABEL[filing.kind]}</Badge>}
+        <Badge variant="outline">
+          {filing.form}
+          {items.length > 0 && ` · ${items.join(', ')}`}
+        </Badge>
+        <span className="text-muted-foreground tabular-nums">{formatTimestamp(filing.accepted_at)}</span>
+        {price !== null && (
+          <span className="ml-auto font-semibold tabular-nums">
+            ${price.toFixed(2)}
+            {filing.ref_close ? (
+              <span className={cn('ml-1 font-normal', price >= filing.ref_close ? 'text-emerald-600' : 'text-red-600')}>
+                {formatSignedPct((price / filing.ref_close - 1) * 100)}
+              </span>
+            ) : null}
+          </span>
+        )}
+      </span>
+      {good.length > 0 && <span className="text-sm">✅ {good.slice(0, 3).join(' · ')}</span>}
+      {bad.length > 0 && <span className="text-muted-foreground text-xs">❌ {bad.slice(0, 2).join(' · ')}</span>}
+    </button>
+  )
+}
+
 export function DigestItemCard({ item }: { item: DigestItem }) {
   const pattern = item.recent_pattern
+  const [openFiling, setOpenFiling] = useState<string | null>(null)
+  const intelFilings = item.filing_intel ?? []
+  // The filing rows below say what the filing-section reason lines say, in more detail.
+  const reasons = intelFilings.length
+    ? item.reasons.filter((r) => !/^(Strong positive|Positive) /.test(r))
+    : item.reasons
   const dismissItem = useDismissDigestItem()
   const restoreItem = useRestoreDigestItem()
 
@@ -134,7 +182,19 @@ export function DigestItemCard({ item }: { item: DigestItem }) {
           </div>
         )}
 
-        {item.reasons.map((reason, i) => (
+        {intelFilings.length > 0 && (
+          <div className="space-y-1.5">
+            {intelFilings.map((filing) => (
+              <IntelFilingRow key={filing.accession} filing={filing} onOpen={setOpenFiling} />
+            ))}
+            <FilingDetailSheet
+              accession={openFiling}
+              onOpenChange={(open) => !open && setOpenFiling(null)}
+              onOpen={setOpenFiling}
+            />
+          </div>
+        )}
+        {reasons.map((reason, i) => (
           <p key={i} className="text-sm">
             {reason}
           </p>
