@@ -120,6 +120,8 @@ export interface FilingIntelFilingOut {
   /** Daily closes around the filing: last close before it was public, first and fifth after. */
   ref_close: number | null
   ref_close_date: string | null
+  /** The reference close came from the detection quote; the evening closes job confirms it. */
+  ref_close_provisional?: boolean
   close_1d: number | null
   close_1d_date: string | null
   close_5d: number | null
@@ -130,6 +132,10 @@ export interface FilingIntelFilingOut {
   pre_filing_price?: number | null
   /** Move from the last close to that price, %. */
   pre_filing_move_pct?: number | null
+  /** The price at filing every later move is measured from, and its source. */
+  entry_price?: number | null
+  entry_price_time?: string | null
+  entry_price_source?: 'pre_filing_quote' | 'detection_quote' | 'last_trade_before' | null
   url: string
   events: FilingEventOut[]
   facts: FilingFactOut[]
@@ -179,4 +185,18 @@ export interface FilingEpisodeOut {
   start: string
   end: string
   filings: { accession: string; form: string; accepted_at: string; summary: string | null }[]
+}
+
+/** Prices around a filing for its chart (GET /v1/filing-intel/filings/{accession}/chart). */
+export interface PricePoint {
+  t: string
+  price: number
+  session: 'pre' | 'regular' | 'post'
+}
+
+export interface PriceSeriesOut {
+  ticker: string
+  interval: '5m' | '1d'
+  accepted_at: string
+  points: PricePoint[]
 }

@@ -6,6 +6,7 @@ import {
   getRecentFilings,
   getUpcomingFilings,
   getCurrentPrices,
+  getFilingChart,
 } from '@/api/filing-intel'
 
 export function useUpcomingFilings(days: number, form?: string) {
@@ -64,13 +65,33 @@ export function useAnalyzeFilings() {
 }
 
 /** Current price per ticker (the backend caches a minute); keyed by ticker. */
+/** The prices endpoint answers at most this many tickers per request. */
+export const PRICE_BATCH = 200
+
 export function useCurrentPrices(tickers: string[]) {
   const unique = [...new Set(tickers.filter(Boolean))].sort()
   return useQuery({
     queryKey: ['filing-intel', 'prices', unique],
-    queryFn: () => getCurrentPrices(unique),
+    // A 500-row page holds more tickers than one request answers: ask in batches and merge,
+    // or every ticker after the 200th (alphabetically) showed no "Now" price.
+    queryFn: async () => {
+      const batches = []
+      for (let i = 0; i < unique.length; i += PRICE_BATCH) batches.push(unique.slice(i, i + PRICE_BATCH))
+      return (await Promise.all(batches.map((batch) => getCurrentPrices(batch)))).flat()
+    },
     enabled: unique.length > 0,
     refetchInterval: 60_000,
     select: (quotes) => new Map(quotes.map((q) => [q.ticker, q])),
+  })
+}
+
+/** Prices around a filing; "auto" is 5-minute bars for recent filings, daily closes otherwise. */
+export function useFilingChart(accession: string | null, interval: 'auto' | '5m' | '1d') {
+  return useQuery({
+    queryKey: ['filing-intel', 'chart', accession, interval],
+    queryFn: () => getFilingChart(accession as string, interval),
+    enabled: accession !== null,
+    staleTime: 5 * 60_000,
+    retry: false,
   })
 }

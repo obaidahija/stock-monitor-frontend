@@ -5,6 +5,7 @@ import type {
   ExpectedFilingOut,
   FilingEpisodeOut,
   FilingIntelFilingOut,
+  PriceSeriesOut,
   QuoteOut,
 } from '@/types/filing-intel'
 
@@ -50,4 +51,10 @@ export function analyzeFilings(body: AnalyzeIn) {
 
 export function getCurrentPrices(tickers: string[]) {
   return apiClient.get<QuoteOut[]>(`/v1/filing-intel/prices${query({ tickers: tickers.join(',') })}`)
+}
+
+export function getFilingChart(accession: string, interval: 'auto' | '5m' | '1d' = 'auto') {
+  return apiClient.get<PriceSeriesOut>(
+    `/v1/filing-intel/filings/${encodeURIComponent(accession)}/chart${query({ interval })}`,
+  )
 }

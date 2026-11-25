@@ -6,7 +6,7 @@ export function MarketDisagreedBadge({
   filing,
   now,
 }: {
-  filing: Pick<FilingIntelFilingOut, 'signal' | 'ref_close' | 'close_1d' | 'pre_filing_price'>
+  filing: Pick<FilingIntelFilingOut, 'signal' | 'ref_close' | 'close_1d' | 'pre_filing_price' | 'detected_price' | 'entry_price'>
   now: QuoteOut | undefined
 }) {
   const result = marketDisagreement(filing, now)

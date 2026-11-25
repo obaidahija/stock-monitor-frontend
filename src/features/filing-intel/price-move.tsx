@@ -2,6 +2,7 @@ import { cn } from '@/lib/utils'
 import { formatEasternTime } from '@/lib/format'
 import type { FilingIntelFilingOut, QuoteOut } from '@/types/filing-intel'
 import { sessionLabel } from './labels'
+import { entryPrice } from './price-chart-model'
 
 function pct(from: number | null, to: number | null | undefined): number | null {
   return from && to ? (to / from - 1) * 100 : null
@@ -35,6 +36,9 @@ type Prices = Pick<
   | 'close_5d_date'
   | 'pre_filing_price'
   | 'pre_filing_move_pct'
+  | 'entry_price'
+  | 'entry_price_time'
+  | 'entry_price_source'
 >
 
 /**
@@ -42,7 +46,7 @@ type Prices = Pick<
  * press release often crosses the wire before EDGAR accepts the 8-K), else the last close.
  */
 export function moveBase(filing: Prices): number | null {
-  return filing.pre_filing_price ?? filing.ref_close ?? filing.detected_price
+  return entryPrice(filing)
 }
 
 /** A move this large between the last close and the filing is shown as already priced in. */
@@ -62,9 +66,15 @@ function PreFilingMove({ filing }: { filing: Prices }) {
   )
 }
 
+const ENTRY_SOURCE: Record<string, string> = {
+  pre_filing_quote: 'quote just before EDGAR accepted the filing',
+  detection_quote: 'quote when the filing was caught',
+  last_trade_before: 'last 5-minute trade before the filing (not caught live)',
+}
+
 /**
- * Compact move line for a filing row. Moves are measured from the last price before the
- * filing was public: the detection quote when it predates acceptance, else the last close.
+ * Compact move line for a filing row: the last close, the price at filing (the entry), and the
+ * moves after it measured from that entry.
  */
 export function PriceMove({ filing, now, className }: { filing: Prices; now: QuoteOut | undefined; className?: string }) {
   const base = moveBase(filing)
@@ -74,15 +84,13 @@ export function PriceMove({ filing, now, className }: { filing: Prices; now: Quo
         <span className="text-muted-foreground">before </span>
         {filing.ref_close !== null ? `$${filing.ref_close.toFixed(2)}` : '—'}
       </span>
-      {filing.detected_price !== null && (
+      {base !== null && base !== filing.ref_close && (
         <span
-          title={
-            filing.detected_price_time
-              ? `${sessionLabel(filing.detected_price_session)} quote at detection, ${formatEasternTime(filing.detected_price_time)}`
-              : undefined
-          }
+          title={`Price at filing, what the moves after it are measured from: ${
+            ENTRY_SOURCE[filing.entry_price_source ?? ''] ?? 'price at filing'
+          }${filing.entry_price_time ? `, ${formatEasternTime(filing.entry_price_time)}` : ''}`}
         >
-          <span className="text-muted-foreground">detected </span>${filing.detected_price.toFixed(2)}
+          <span className="text-muted-foreground">at filing </span>${base.toFixed(2)}
         </span>
       )}
       <PreFilingMove filing={filing} />

@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 import type { FilingEventOut, FilingFactOut, FilingIntelFilingOut } from '@/types/filing-intel'
 import { useCurrentPrices, useFiling, useFilingEpisodes } from './hooks'
 import { PriceTable } from './price-move'
+import { FilingPriceChart } from './price-chart'
 import { SignalReasons } from './signal-badge'
 import { MarketCapBadge } from './market-cap'
 import { MarketDisagreedBadge } from './market-disagreed'
@@ -334,8 +335,14 @@ export function FilingDetailSheet({
         </SheetHeader>
         <div className="space-y-6 px-4 pb-8">
           {filing?.ticker && (
-            <div className="border-border bg-card rounded-lg border px-4 py-3">
-              <PriceTable filing={filing} now={prices.data?.get(filing.ticker)} />
+            <div className="border-border bg-card space-y-2 rounded-lg border px-4 py-3">
+              <FilingPriceChart filing={filing} now={prices.data?.get(filing.ticker)} />
+              <details className="text-sm">
+                <summary className="text-muted-foreground cursor-pointer text-xs">Exact prices and times</summary>
+                <div className="pt-2">
+                  <PriceTable filing={filing} now={prices.data?.get(filing.ticker)} />
+                </div>
+              </details>
             </div>
           )}
           {query.isPending && <Skeleton className="h-96 w-full" />}

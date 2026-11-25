@@ -18,9 +18,10 @@ const insm = {
 }
 
 describe('moves after a filing whose news came out first', () => {
-  it('start from the price before the filing, not the last close', () => {
+  it('start from the price at filing: the pre-filing quote, else the detection quote, else the close', () => {
     expect(moveBase(insm)).toBe(170.61)
-    expect(moveBase({ ...insm, pre_filing_price: null })).toBe(149.09)
+    expect(moveBase({ ...insm, pre_filing_price: null, detected_price: 172 })).toBe(172)
+    expect(moveBase({ ...insm, pre_filing_price: null, detected_price: null })).toBe(149.09)
   })
 
   it('do not count the pre-filing jump as the market agreeing or disagreeing', () => {

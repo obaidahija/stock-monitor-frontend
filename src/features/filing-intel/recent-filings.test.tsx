@@ -34,7 +34,8 @@ function filing(i: number) {
   }
 }
 
-test('a full page offers older filings, fetched before the oldest one shown', async () => {
+// 500 rows of five price cards take a few seconds to render in jsdom.
+test('a full page offers older filings, fetched before the oldest one shown', { timeout: 20_000 }, async () => {
   const user = userEvent.setup()
   const first = Array.from({ length: RECENT_PAGE_SIZE }, (_, i) => filing(i))
   const get = vi.spyOn(apiClient, 'get').mockImplementation((url: string) =>

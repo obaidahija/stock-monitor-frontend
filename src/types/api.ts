@@ -1432,6 +1432,7 @@ export interface DigestIntelFiling {
   detected_price: number | null
   pre_filing_price: number | null
   ref_close: number | null
+  entry_price?: number | null
   market_cap?: number | null
   url: string
 }

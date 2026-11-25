@@ -1,4 +1,5 @@
 import type { FilingIntelFilingOut, QuoteOut } from '@/types/filing-intel'
+import { entryPrice } from './price-chart-model'
 
 /** A move this large against the label is worth flagging (typical next-day move is ~3.8%). */
 const MIN_MOVE_PCT = 2
@@ -9,13 +10,13 @@ const MIN_MOVE_PCT = 2
  * Uses the first close after the filing, else the current price.
  */
 export function marketDisagreement(
-  filing: Pick<FilingIntelFilingOut, 'signal' | 'ref_close' | 'close_1d' | 'pre_filing_price'>,
+  filing: Pick<FilingIntelFilingOut, 'signal' | 'ref_close' | 'close_1d' | 'pre_filing_price' | 'detected_price' | 'entry_price'>,
   now: QuoteOut | undefined,
 ): { move: number; basis: 'next close' | 'now' } | null {
   const label = filing.signal?.label
   // From the last price before the filing was public: a move already made on a press release
   // that crossed the wire before EDGAR is not the market's answer to the filing.
-  const base = filing.pre_filing_price ?? filing.ref_close
+  const base = entryPrice(filing)
   if (!base || (label !== 'positive' && label !== 'negative')) return null
   const price = filing.close_1d ?? now?.price
   if (!price) return null

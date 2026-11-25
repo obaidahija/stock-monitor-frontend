@@ -2,7 +2,8 @@ import { Badge } from '@/components/ui/badge'
 import { formatEasternDateTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { FilingIntelFilingOut, QuoteOut } from '@/types/filing-intel'
-import { PriceMove } from './price-move'
+import { priceSteps } from './price-chart-model'
+import { PriceSteps } from './price-steps'
 import { GuidanceContextBadge, SignalBadge } from './signal-badge'
 import { MarketDisagreedBadge } from './market-disagreed'
 import { MarketCapBadge } from './market-cap'
@@ -95,7 +96,9 @@ export function FilingRow({
         )}
         {filing.status === 'failed' && <Badge variant="destructive">extraction failed</Badge>}
         {filing.ticker && (
-          <PriceMove className="ml-auto" filing={filing} now={now} />
+          <div className="ml-auto w-full max-w-[30rem] sm:w-[30rem]">
+            <PriceSteps steps={priceSteps(filing, now)} size="row" />
+          </div>
         )}
       </div>
       {filing.summary?.includes(':') ? (
