@@ -65,7 +65,7 @@ export interface FilingFactOut {
 
 export type FilingFeatures = Record<string, string | number | boolean>
 
-export type SignalSource = 'disclosed' | 'results' | 'tone' | 'offering'
+export type SignalSource = 'disclosed' | 'results' | 'tone' | 'offering' | 'orders_backlog'
 
 /** earnings = Item 2.02 (or a 7.01/8.01 release reporting results); event = any other 8-K news. */
 export type FilingKind = 'earnings' | 'guidance' | 'event' | 'periodic_report' | 'offering' | 'other'
@@ -77,7 +77,7 @@ export type FilingKind = 'earnings' | 'guidance' | 'event' | 'periodic_report' |
  * deal's stated terms (size vs market cap, cash, use of proceeds, expected close).
  */
 export interface SignalContextItem {
-  source: 'guidance_vs_consensus' | 'beat_vs_raise' | 'one_time_item' | 'deal_terms' | 'portfolio_change' | 'release_highlight' | 'restatement' | 'segment_decline' | 'amendment'
+  source: 'guidance_vs_consensus' | 'beat_vs_raise' | 'one_time_item' | 'deal_terms' | 'portfolio_change' | 'release_highlight' | 'restatement' | 'segment_decline' | 'amendment' | 'preannounced' | 'backlog' | 'orders'
   direction: 'positive' | 'negative' | 'neutral'
   detail: string
   evidence: string[]

@@ -58,6 +58,9 @@ const CONTEXT_SOURCE_LABEL = {
   restatement: 'Restatement',
   segment_decline: 'Business line',
   amendment: 'Amendment',
+  preannounced: 'Already announced',
+  backlog: 'Backlog',
+  orders: 'Orders',
 } as const
 
 /** Context the label does not count, each with its numbers and the quoted sentence. */
