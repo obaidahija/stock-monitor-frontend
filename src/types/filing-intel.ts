@@ -124,6 +124,8 @@ export interface FilingIntelFilingOut {
   close_1d_date: string | null
   close_5d: number | null
   close_5d_date: string | null
+  /** Issuer market cap at read time. */
+  market_cap?: number | null
   /** Detection quote stamped at/before acceptance: the price before the filing was public (news out before EDGAR). */
   pre_filing_price?: number | null
   /** Move from the last close to that price, %. */

@@ -29,6 +29,8 @@ export function getRecentFilings(params: {
   form?: string
   coverage?: string
   kind?: string
+  signal?: string
+  before?: string
   limit?: number
 }) {
   return apiClient.get<FilingIntelFilingOut[]>(`/v1/filing-intel/recent${query(params)}`)

@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   analyzeFilings,
   getFiling,
@@ -17,6 +17,8 @@ export function useUpcomingFilings(days: number, form?: string) {
   })
 }
 
+export const RECENT_PAGE_SIZE = 500
+
 export function useRecentFilings(params: {
   hours: number
   ticker?: string
@@ -24,10 +26,15 @@ export function useRecentFilings(params: {
   form?: string
   coverage?: string
   kind?: string
+  signal?: string
 }) {
-  return useQuery({
+  // Pages of RECENT_PAGE_SIZE, newest first; the next page starts before the oldest shown.
+  return useInfiniteQuery({
     queryKey: ['filing-intel', 'recent', params],
-    queryFn: () => getRecentFilings({ ...params, limit: 200 }),
+    queryFn: ({ pageParam }) => getRecentFilings({ ...params, before: pageParam, limit: RECENT_PAGE_SIZE }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) =>
+      last.length === RECENT_PAGE_SIZE ? (last[last.length - 1].accepted_at ?? undefined) : undefined,
     refetchInterval: 30_000,
   })
 }

@@ -12,6 +12,7 @@ import type { FilingEventOut, FilingFactOut, FilingIntelFilingOut } from '@/type
 import { useCurrentPrices, useFiling, useFilingEpisodes } from './hooks'
 import { PriceTable } from './price-move'
 import { SignalReasons } from './signal-badge'
+import { MarketCapBadge } from './market-cap'
 import { MarketDisagreedBadge } from './market-disagreed'
 import { EarningsPanel } from './earnings-panel'
 import {
@@ -316,6 +317,7 @@ export function FilingDetailSheet({
                 {filing.ticker}
               </Link>
             )}
+            <MarketCapBadge value={filing?.market_cap} size="lg" />
             <span>{filing?.form ?? 'Filing'}</span>
             {filing && filing.item_codes.length > 0 && (
               <Badge variant="outline">{filing.item_codes.filter((c) => c !== '9.01').join(', ')}</Badge>

@@ -5,6 +5,7 @@ import type { FilingIntelFilingOut, QuoteOut } from '@/types/filing-intel'
 import { PriceMove } from './price-move'
 import { GuidanceContextBadge, SignalBadge } from './signal-badge'
 import { MarketDisagreedBadge } from './market-disagreed'
+import { MarketCapBadge } from './market-cap'
 import {
   COVERAGE_HINT,
   COVERAGE_LABEL,
@@ -38,6 +39,7 @@ export function FilingRow({
     >
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <span className="font-semibold">{filing.ticker ?? filing.cik}</span>
+        <MarketCapBadge value={filing.market_cap} />
         <Badge variant="outline">
           {filing.form}
           {items.length > 0 && ` · ${items.join(', ')}`}

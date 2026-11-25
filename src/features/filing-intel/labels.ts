@@ -160,7 +160,7 @@ export function parseTickers(text: string): string[] {
 
 export const COVERAGE_LABEL = { tracked: 'Your universe', extended: 'Outside universe' } as const
 export const COVERAGE_HINT =
-  'Not in your tracked tickers: an untracked US-listed company at or above the market-cap floor (default $1B).'
+  'Not in your tracked tickers: an untracked US-listed company at or above the market-cap floor (default $50M).'
 
 const SESSION_LABEL: Record<PriceSession, string> = { pre: 'pre-market', regular: 'regular', post: 'after-hours' }
 

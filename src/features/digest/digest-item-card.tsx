@@ -13,6 +13,7 @@ import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { FilingDetailSheet } from '@/features/filing-intel/filing-detail-sheet'
 import { DIRECTION_CLASS, KIND_CLASS, KIND_LABEL } from '@/features/filing-intel/labels'
+import { MarketCapBadge } from '@/features/filing-intel/market-cap'
 import type { DigestIntelFiling, DigestItem, DigestTopFiling } from '@/types/api'
 import { DigestLivePrice } from './live-quotes'
 import { useDismissDigestItem, useRestoreDigestItem } from './hooks'
@@ -49,6 +50,7 @@ function IntelFilingRow({ filing, onOpen }: { filing: DigestIntelFiling; onOpen:
       <span className="flex flex-wrap items-center gap-1.5 text-xs">
         <Badge className={DIRECTION_CLASS.positive}>{filing.strength === 'strong' ? 'Strong positive' : 'Positive'}</Badge>
         {filing.kind && <Badge className={KIND_CLASS[filing.kind]}>{KIND_LABEL[filing.kind]}</Badge>}
+        <MarketCapBadge value={filing.market_cap} />
         <Badge variant="outline">
           {filing.form}
           {items.length > 0 && ` · ${items.join(', ')}`}
