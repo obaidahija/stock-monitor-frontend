@@ -25,8 +25,8 @@ describe('moves after a filing whose news came out first', () => {
   })
 
   it('do not count the pre-filing jump as the market agreeing or disagreeing', () => {
-    const signal = { label: 'negative' } as never
-    expect(marketDisagreement({ signal, ref_close: 149.09, close_1d: 170.15, pre_filing_price: null }, undefined)).not.toBeNull()
-    expect(marketDisagreement({ signal, ref_close: 149.09, close_1d: 170.15, pre_filing_price: 170.61 }, undefined)).toBeNull()
+    const signal = { label: 'negative' as const, strength: 'single' as const, reasons: [], version: 2 }
+    expect(marketDisagreement({ ...insm, signal, pre_filing_price: null, detected_price: null }, undefined)).not.toBeNull()
+    expect(marketDisagreement({ ...insm, signal }, undefined)).toBeNull()
   })
 })

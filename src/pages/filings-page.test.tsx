@@ -10,6 +10,7 @@ const hooks = vi.hoisted(() => ({
   useUpcomingFilings: vi.fn(),
   useRecentFilings: vi.fn(),
   useFiling: vi.fn(),
+  useFilingChart: vi.fn(),
   useFilingEpisodes: vi.fn(),
   useAnalyzeFilings: vi.fn(),
   useCurrentPrices: vi.fn(),
@@ -94,12 +95,23 @@ const EXPECTED: ExpectedFilingOut = {
   detail: { history_slot: 'amc' },
 }
 
+function mockRecentFilings(...filings: FilingIntelFilingOut[]) {
+  hooks.useRecentFilings.mockReturnValue({
+    isPending: false,
+    isError: false,
+    isSuccess: true,
+    hasNextPage: false,
+    data: { pages: [filings], pageParams: [undefined] },
+  })
+}
+
 beforeEach(() => {
   hooks.useUpcomingFilings.mockReturnValue({ isPending: false, isError: false, isSuccess: true, data: [EXPECTED] })
-  hooks.useRecentFilings.mockReturnValue({ isPending: false, isError: false, isSuccess: true, data: [SLS_FINAL] })
+  mockRecentFilings(SLS_FINAL)
   hooks.useFiling.mockImplementation((accession: string | null) =>
     accession ? { isPending: false, isError: false, data: SLS_FINAL } : { isPending: false, isError: false, data: undefined },
   )
+  hooks.useFilingChart.mockReturnValue({ isSuccess: true, data: { interval: '1d', points: [] } })
   hooks.useFilingEpisodes.mockReturnValue({ data: [] })
   hooks.useCurrentPrices.mockReturnValue({
     data: new Map([['SLS', { ticker: 'SLS', price: 14.85, session: 'regular', time: '2026-11-23T16:00:00Z' }]]),
@@ -143,9 +155,11 @@ test('ticker input is normalized and deduplicated', () => {
 
 test('each filing shows the close before it, the reaction and the price now', () => {
   renderWithProviders(<FilingsPage />, ['/filings?tab=recent'])
-  expect(screen.getByText('$14.86')).toBeInTheDocument()
-  expect(screen.getByText('-8.08%')).toBeInTheDocument() // +1 day: 14.86 -> 13.66
-  expect(screen.getByText('-0.07%')).toBeInTheDocument() // now: 14.86 -> 14.85
+  const prices = within(screen.getByRole('list', { name: 'Price before and after the filing' }))
+  expect(prices.getByText('$14.86')).toBeInTheDocument()
+  expect(prices.getByText('$13.50')).toBeInTheDocument()
+  expect(prices.getByText('+1.2%')).toBeInTheDocument() // +1 day: 13.50 -> 13.66
+  expect(prices.getByText('+10.0%')).toBeInTheDocument() // now: 13.50 -> 14.85
 })
 
 test('the signal shows on the row and its reasons in the panel', async () => {
@@ -222,7 +236,7 @@ test('point guidance preserves the release wording and is excluded from the rang
       },
     ],
   }
-  hooks.useRecentFilings.mockReturnValue({ isSuccess: true, data: [withGuidance] })
+  mockRecentFilings(withGuidance)
   hooks.useFiling.mockReturnValue({ data: withGuidance })
   renderWithProviders(<FilingsPage />, ['/filings?tab=recent'])
 
