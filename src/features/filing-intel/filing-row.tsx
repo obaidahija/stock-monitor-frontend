@@ -129,6 +129,16 @@ export function FilingRow({
             </Badge>
           </div>
         )}
+        {filing.late_release && (
+          <div>
+            <Badge
+              variant="outline"
+              title="The results release was furnished after the market had already traded on this report, so it has no label of its own"
+            >
+              + release {filing.late_release.form} filed later, {formatEasternDateTime(filing.late_release.accepted_at)}
+            </Badge>
+          </div>
+        )}
         {filing.ticker && <PriceSteps steps={priceSteps(filing, now)} size="row" />}
       </div>
     </button>

@@ -371,6 +371,20 @@ export function FilingDetailSheet({
                     report repeats those figures without the release's adjusted EPS, guidance or text, so it has no
                     label of its own.
                   </p>
+                ) : filing.follows_report ? (
+                  <p className="text-sm">
+                    These results were already public in the{' '}
+                    <button
+                      type="button"
+                      className="text-primary underline-offset-2 hover:underline"
+                      onClick={() => onOpen(filing.follows_report!.accession)}
+                    >
+                      {filing.follows_report.form} of {formatEasternDateTimeWithYear(filing.follows_report.accepted_at)}
+                    </button>
+                    {filing.follows_report.label ? ` — labelled ${filing.follows_report.label} there` : ''}, and the
+                    market traded on it before this release was furnished. A label here would describe news already
+                    priced, so it has none of its own.
+                  </p>
                 ) : (
                   <SignalReasons signal={filing.signal} />
                 )}

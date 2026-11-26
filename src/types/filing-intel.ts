@@ -161,6 +161,10 @@ export interface FilingIntelFilingOut {
   follows_release?: LinkedFiling | null
   /** On a results release: the 10-Q/10-K that followed it (folded into this row). */
   periodic_report?: LinkedFiling | null
+  /** A results 8-K furnished after the market had traded on its quarter's 10-Q/10-K: that report (no label of its own). */
+  follows_report?: LinkedFiling | null
+  /** On a 10-Q/10-K: the results 8-K furnished after it (folded into this row). */
+  late_release?: LinkedFiling | null
   /** On a results release: the 10-K/A and 10-Q/As filed with it, each with its note. */
   amendments?: (LinkedFiling & { note: string | null })[]
 }
