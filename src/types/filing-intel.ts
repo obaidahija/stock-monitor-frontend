@@ -165,6 +165,8 @@ export interface FilingIntelFilingOut {
   follows_report?: LinkedFiling | null
   /** On a 10-Q/10-K: the results 8-K furnished after it (folded into this row). */
   late_release?: LinkedFiling | null
+  /** Earnings filings: EPS and revenue against consensus, year over year, quarter over quarter. */
+  scorecard?: Scorecard | null
   /** On a results release: the 10-K/A and 10-Q/As filed with it, each with its note. */
   amendments?: (LinkedFiling & { note: string | null })[]
 }
@@ -240,4 +242,27 @@ export interface PeersOut {
     mean_move_1d_pct: number | null
     mean_excess_1d: number | null
   } | null
+}
+
+export interface ScorecardRow {
+  metric: 'eps' | 'revenue'
+  basis: 'adjusted' | 'gaap' | 'reported'
+  label: string
+  unit: 'per_share' | 'usd'
+  expected: number | null
+  actual: number
+  difference: number | null
+  surprise_pct: number | null
+  result: 'beat' | 'miss' | 'in_line' | null
+  prior_year: number | null
+  yoy_pct: number | null
+  /** "release", or where the year-ago value came from when the release printed none. */
+  yoy_source?: string | null
+  prior_quarter: number | null
+  qoq_pct: number | null
+  qoq_source: string | null
+}
+
+export interface Scorecard {
+  rows: ScorecardRow[]
 }

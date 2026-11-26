@@ -79,7 +79,7 @@ export function AnalyzePanel({ onOpenFiling }: { onOpenFiling: (accession: strin
               {result.errors.map((e) => `${e.ticker ?? e.accession}: ${e.error_code}`).join(' · ')}
             </p>
           )}
-          <div className="border-border bg-card rounded-lg border">
+          <div className="space-y-3">
             {result.filings.map((filing) => (
               <FilingRow
                 key={filing.accession}

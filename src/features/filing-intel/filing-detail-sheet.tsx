@@ -17,6 +17,7 @@ import { MarketCapBadge } from './market-cap'
 import { PeerFilings } from './peer-filings'
 import { MarketDisagreedBadge } from './market-disagreed'
 import { EarningsPanel } from './earnings-panel'
+import { EarningsScorecard } from './earnings-scorecard'
 import {
   DIRECTION_CLASS,
   eventLabel,
@@ -71,8 +72,21 @@ function Step({ icon: Icon, title, children }: { icon: typeof Radar; title: stri
 
 function ProcessTimeline({ filing }: { filing: FilingIntelFilingOut }) {
   const documents = Object.entries(filing.documents)
+  const lag = lagText(filing.detection_lag_seconds)
+  const problem = filing.error_code ?? (filing.warnings.length > 0 ? `${filing.warnings.length} warning${filing.warnings.length === 1 ? '' : 's'}` : null)
+  // Closed by default: one line of how the filing was caught and read; the steps on demand.
   return (
-    <ol aria-label="Analysis process" className="border-border bg-card rounded-lg border p-4">
+    <details className="group border-border rounded-lg border">
+      <summary className="text-muted-foreground hover:text-foreground cursor-pointer list-none px-3 py-2 text-xs">
+        <span className="font-medium">How it was processed</span>
+        {' · '}
+        {lag ? `caught ${lag}` : DETECTED_VIA[filing.detected_via]}
+        {` · ${documents.length} document${documents.length === 1 ? '' : 's'} · extraction v${filing.extraction_version ?? '—'}`}
+        {problem && <span className="text-amber-600"> · {problem}</span>}
+        <span className="ml-1 group-open:hidden">▸</span>
+        <span className="ml-1 hidden group-open:inline">▾</span>
+      </summary>
+    <ol aria-label="Analysis process" className="bg-card border-t p-4">
       <Step icon={Send} title="1. Accepted by the SEC">
         {formatEasternDateTimeWithYear(filing.accepted_at)}
         {filing.period_of_report && ` · period of report ${filing.period_of_report}`}
@@ -105,6 +119,7 @@ function ProcessTimeline({ filing }: { filing: FilingIntelFilingOut }) {
         known at acceptance time.
       </Step>
     </ol>
+    </details>
   )
 }
 
@@ -390,12 +405,9 @@ export function FilingDetailSheet({
                 )}
                 <MarketDisagreedBadge filing={filing} now={prices.data?.get(filing.ticker ?? '')} />
               </section>
+              <EarningsScorecard scorecard={filing.scorecard} />
               <ProcessTimeline filing={filing} />
               {filing.ticker && <Episode ticker={filing.ticker} accession={filing.accession} onOpen={onOpen} />}
-              <section className="space-y-2">
-                <h3 className="text-sm font-semibold">Peers in the same industry</h3>
-                <PeerFilings accession={filing.accession} onOpen={onOpen} />
-              </section>
               <section className="space-y-2">
                 <h3 className="text-sm font-semibold">What the filing says</h3>
                 {filing.events.length === 0 ? (
@@ -411,6 +423,10 @@ export function FilingDetailSheet({
               <EarningsPanel filing={filing} />
               <KeyNumbers facts={filing.facts} />
               <Features features={filing.features} />
+              <section className="space-y-2">
+                <h3 className="text-sm font-semibold">Peers in the same industry</h3>
+                <PeerFilings accession={filing.accession} onOpen={onOpen} />
+              </section>
               <p className="text-muted-foreground text-xs">
                 Values are what the filing states, extracted by rules; direction is shown only where the text says it.
                 Informational only, not a recommendation.

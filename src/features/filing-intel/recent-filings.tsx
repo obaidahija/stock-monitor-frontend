@@ -179,7 +179,7 @@ export function RecentFilings({ onOpenFiling }: { onOpenFiling: (accession: stri
         />
       )}
       {query.isSuccess && filings.length > 0 && (
-        <div className="border-border bg-card rounded-lg border">
+        <div className="space-y-3">
           {filings.map((filing) => (
             <FilingRow
               key={filing.accession}

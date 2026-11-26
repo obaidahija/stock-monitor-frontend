@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils'
 import type { FilingIntelFilingOut, QuoteOut } from '@/types/filing-intel'
 import { priceSteps } from './price-chart-model'
 import { PriceSteps } from './price-steps'
+import { ScorecardMiniTable } from './earnings-scorecard'
 import { GuidanceContextBadge, SignalBadge } from './signal-badge'
 import { MarketDisagreedBadge } from './market-disagreed'
 import { MarketCapBadge } from './market-cap'
@@ -37,13 +38,21 @@ export function FilingRow({
   onOpen: (accession: string) => void
 }) {
   const items = filing.item_codes.filter((code) => code !== '9.01')
-  const tags = filing.events.filter((e) => e.event_type !== 'guidance' && !(e.event_type === 'disclosure' && e.topic === 'unclassified'))
-  const guidance = filing.events.filter(hasGuidanceRange).length
+  // An earnings row shows its numbers as a small table; the summary text and the "earnings results" /
+  // "N guidance ranges" tags would repeat them.
+  const cards = filing.kind === 'earnings' && (filing.scorecard?.rows.length ?? 0) > 0
+  const tags = filing.events.filter(
+    (e) =>
+      e.event_type !== 'guidance' &&
+      !(e.event_type === 'disclosure' && e.topic === 'unclassified') &&
+      !(cards && (e.event_type === 'earnings_results' || e.topic === 'earnings_results')),
+  )
+  const guidance = cards ? 0 : filing.events.filter(hasGuidanceRange).length
   return (
     <button
       type="button"
       onClick={() => onOpen(filing.accession)}
-      className="hover:bg-muted/50 border-border grid w-full grid-cols-1 items-start gap-3 border-b lg:grid-cols-[minmax(0,1fr)_30rem] px-4 py-3 text-left last:border-b-0"
+      className="hover:bg-muted/50 border-border bg-card grid w-full grid-cols-1 items-start gap-3 rounded-lg border px-4 py-3 text-left shadow-xs transition-colors lg:grid-cols-[minmax(0,1fr)_30rem]"
     >
       <div className="min-w-0 space-y-1.5">
         <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -92,7 +101,9 @@ export function FilingRow({
           )}
           {filing.status === 'failed' && <Badge variant="destructive">extraction failed</Badge>}
         </div>
-        {filing.summary?.includes(':') ? (
+        {cards ? (
+          <ScorecardMiniTable scorecard={filing.scorecard} events={filing.events} />
+        ) : filing.summary?.includes(':') ? (
           <p className="text-sm leading-snug">{filing.summary.replace(/^[^:]+:\s*/, '')}</p>
         ) : (
           <p className="text-muted-foreground text-sm">No typed details found by the rules — open to see the filing.</p>
