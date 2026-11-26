@@ -85,8 +85,7 @@ export function SignalContext({ signal }: { signal: FilingSignal | null }) {
         ))}
       </ul>
       <p className="text-muted-foreground text-xs">
-        Not yet validated, so not counted: EPS guidance more than 2% under consensus preceded a fall 71% of the time
-        (14 filings); a full-year raise smaller than the beat averaged -4.8% vs its sector (4 filings); only 24% of
+        Not yet validated, so not counted: a full-year raise smaller than the beat averaged -4.8% vs its sector (4 filings); only 24% of
         divestitures rose the next day (17 filings).
       </p>
     </div>
@@ -95,7 +94,11 @@ export function SignalContext({ signal }: { signal: FilingSignal | null }) {
 
 /** A filing-row flag when next-quarter guidance sits below (or above) consensus. */
 export function GuidanceContextBadge({ signal }: { signal: FilingSignal | null }) {
-  const items = (signal?.context ?? []).filter((c) => c.source === 'guidance_vs_consensus' && c.direction !== 'neutral')
+  // Guidance below consensus is a counted reason (it makes the label negative); above stays context.
+  const items = [
+    ...(signal?.reasons ?? []).filter((r) => r.source === 'guidance'),
+    ...(signal?.context ?? []).filter((c) => c.source === 'guidance_vs_consensus' && c.direction !== 'neutral'),
+  ]
   if (items.length === 0) return null
   const below = items.some((c) => c.direction === 'negative')
   const above = items.some((c) => c.direction === 'positive')
@@ -104,7 +107,7 @@ export function GuidanceContextBadge({ signal }: { signal: FilingSignal | null }
     <Badge
       variant="outline"
       className={cn(below && !above ? 'border-red-500/50 text-red-600 dark:text-red-400' : above && !below ? 'border-emerald-500/50 text-emerald-600 dark:text-emerald-400' : '')}
-      title={items.map((c) => c.detail).join('\n') + '\nNot counted in the label.'}
+      title={items.map((c) => c.detail).join('\n') + (below ? '\nGuidance below consensus makes the label negative.' : '\nNot counted in the label.')}
     >
       {text}
     </Badge>

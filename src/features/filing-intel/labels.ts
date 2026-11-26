@@ -174,6 +174,7 @@ export const SIGNAL_SOURCE_LABEL = {
   tone: 'Text tone (FinBERT)',
   offering: 'New shares offered',
   orders_backlog: 'Orders & backlog',
+  guidance: 'Guidance vs consensus',
 } as const
 
 export const KIND_LABEL = {

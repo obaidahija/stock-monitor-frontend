@@ -65,7 +65,7 @@ export interface FilingFactOut {
 
 export type FilingFeatures = Record<string, string | number | boolean>
 
-export type SignalSource = 'disclosed' | 'results' | 'tone' | 'offering' | 'orders_backlog'
+export type SignalSource = 'disclosed' | 'results' | 'tone' | 'offering' | 'orders_backlog' | 'guidance'
 
 /** earnings = Item 2.02 (or a 7.01/8.01 release reporting results); event = any other 8-K news. */
 export type FilingKind = 'earnings' | 'guidance' | 'event' | 'periodic_report' | 'offering' | 'other'

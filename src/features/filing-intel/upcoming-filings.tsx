@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { Link } from 'react-router'
 import { CalendarClock } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -38,8 +38,23 @@ function historyNote(row: ExpectedFilingOut): string | null {
 }
 
 export function UpcomingFilings({ onOpenFiling }: { onOpenFiling: (accession: string) => void }) {
-  const [days, setDays] = useState(7)
-  const [form, setForm] = useState<string | undefined>(undefined)
+  // Kept in the URL (own keys, apart from the Recent tab's) so a refresh keeps the view.
+  const [params, setParams] = useSearchParams()
+  const days = Number.parseInt(params.get('upcoming_days') ?? '', 10) || 7
+  const form = params.get('upcoming_form') ?? undefined
+  function setParam(key: string, value: string | undefined) {
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        if (value === undefined) next.delete(key)
+        else next.set(key, value)
+        return next
+      },
+      { replace: true },
+    )
+  }
+  const setDays = (value: number) => setParam('upcoming_days', value === 7 ? undefined : String(value))
+  const setForm = (value: string | undefined) => setParam('upcoming_form', value)
   const query = useUpcomingFilings(days, form)
 
   const rows = query.data ?? []

@@ -68,3 +68,25 @@ test('defaults to 24h and loads filings and prices in pages of 20 on demand', as
   await screen.findByText('Page 1 of 2')
   expect(get.mock.calls.some(([url]) => String(url).includes('page=1') && String(url).includes('hours=72'))).toBe(true)
 })
+
+test('filters and page are read from the URL, so a refresh keeps them', async () => {
+  const user = userEvent.setup()
+  const get = vi.spyOn(apiClient, 'get').mockResolvedValue({ items: [filing(1)], total: 45, page: 2, page_size: 20 } as never)
+  renderWithProviders(<RecentFilings onOpenFiling={() => {}} />, ['/filings?tab=recent&hours=168&signal=positive&kind=earnings&ticker=flo&page=2'])
+  const recent = () => get.mock.calls.map(([url]) => new URL(String(url), 'http://localhost')).filter((u) => u.pathname.endsWith('/recent'))
+
+  await waitFor(() => expect(recent().length).toBeGreaterThan(0))
+  const first = recent()[0].searchParams
+  expect(first.get('hours')).toBe('168')
+  expect(first.get('signal')).toBe('positive')
+  expect(first.get('kind')).toBe('earnings')
+  expect(first.get('ticker')).toBe('FLO')
+  expect(first.get('page')).toBe('2')
+  expect(screen.getByRole('button', { name: 'Positive' })).toHaveAttribute('aria-pressed', 'true')
+  expect(screen.getByLabelText('Ticker')).toHaveValue('flo')
+
+  // A filter change goes back to page 1.
+  await user.click(screen.getByRole('button', { name: 'Negative' }))
+  await waitFor(() => expect(recent().at(-1)!.searchParams.get('signal')).toBe('negative'))
+  expect(recent().at(-1)!.searchParams.get('page')).toBe('1')
+})
