@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   analyzeFilings,
   getFiling,
@@ -7,6 +7,7 @@ import {
   getUpcomingFilings,
   getCurrentPrices,
   getFilingChart,
+  getFilingPeers,
 } from '@/api/filing-intel'
 
 export function useUpcomingFilings(days: number, form?: string) {
@@ -18,10 +19,11 @@ export function useUpcomingFilings(days: number, form?: string) {
   })
 }
 
-export const RECENT_PAGE_SIZE = 500
+export const RECENT_PAGE_SIZE = 20
 
 export function useRecentFilings(params: {
   hours: number
+  page: number
   ticker?: string
   topic?: string
   form?: string
@@ -29,14 +31,11 @@ export function useRecentFilings(params: {
   kind?: string
   signal?: string
 }) {
-  // Pages of RECENT_PAGE_SIZE, newest first; the next page starts before the oldest shown.
-  return useInfiniteQuery({
+  return useQuery({
     queryKey: ['filing-intel', 'recent', params],
-    queryFn: ({ pageParam }) => getRecentFilings({ ...params, before: pageParam, limit: RECENT_PAGE_SIZE }),
-    initialPageParam: undefined as string | undefined,
-    getNextPageParam: (last) =>
-      last.length === RECENT_PAGE_SIZE ? (last[last.length - 1].accepted_at ?? undefined) : undefined,
+    queryFn: () => getRecentFilings({ ...params, limit: RECENT_PAGE_SIZE }),
     refetchInterval: 30_000,
+    staleTime: 30_000,
   })
 }
 
@@ -72,8 +71,7 @@ export function useCurrentPrices(tickers: string[]) {
   const unique = [...new Set(tickers.filter(Boolean))].sort()
   return useQuery({
     queryKey: ['filing-intel', 'prices', unique],
-    // A 500-row page holds more tickers than one request answers: ask in batches and merge,
-    // or every ticker after the 200th (alphabetically) showed no "Now" price.
+    // Batch large ticker lists so every requested ticker receives a price.
     queryFn: async () => {
       const batches = []
       for (let i = 0; i < unique.length; i += PRICE_BATCH) batches.push(unique.slice(i, i + PRICE_BATCH))
@@ -93,5 +91,15 @@ export function useFilingChart(accession: string | null, interval: 'auto' | '5m'
     enabled: accession !== null,
     staleTime: 5 * 60_000,
     retry: false,
+  })
+}
+
+/** Same-industry filings from the 30 days before this one, with their labels and moves. */
+export function useFilingPeers(accession: string | null) {
+  return useQuery({
+    queryKey: ['filing-intel', 'peers', accession],
+    queryFn: () => getFilingPeers(accession as string),
+    enabled: accession !== null,
+    staleTime: 10 * 60_000,
   })
 }

@@ -6,7 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { EmptyState } from '@/components/shared/empty-state'
 import { ErrorState } from '@/components/shared/error-state'
-import { useCurrentPrices, useRecentFilings } from './hooks'
+import { RECENT_PAGE_SIZE, useCurrentPrices, useRecentFilings } from './hooks'
 import { FilingRow } from './filing-row'
 import { COVERAGE_LABEL, humanize, KIND_LABEL, TOPIC_OPTIONS } from './labels'
 import { cn } from '@/lib/utils'
@@ -31,14 +31,19 @@ const SIGNAL_FILTERS = [
 ] as const
 
 export function RecentFilings({ onOpenFiling }: { onOpenFiling: (accession: string) => void }) {
-  const [hours, setHours] = useState(72)
+  const [hours, setHours] = useState(24)
   const [ticker, setTicker] = useState('')
   const [topic, setTopic] = useState<string>(ALL)
   const [form, setForm] = useState<string>(ALL)
   const [coverage, setCoverage] = useState<string>(ALL)
   const [kind, setKind] = useState<string>(ALL)
   const [signal, setSignal] = useState<string>(ALL)
+  const [pagination, setPagination] = useState({ filters: '', page: 1 })
+  const filters = JSON.stringify([hours, ticker.trim().toUpperCase(), topic, form, coverage, kind, signal])
+  const page = pagination.filters === filters ? pagination.page : 1
+  if (pagination.filters !== filters) setPagination({ filters, page: 1 })
   const query = useRecentFilings({
+    page,
     hours,
     ticker: ticker.trim().toUpperCase() || undefined,
     topic: topic === ALL ? undefined : topic,
@@ -47,7 +52,9 @@ export function RecentFilings({ onOpenFiling }: { onOpenFiling: (accession: stri
     kind: kind === ALL ? undefined : kind,
     signal: signal === ALL ? undefined : signal,
   })
-  const filings = query.data?.pages.flat() ?? []
+  const filings = query.data?.items ?? []
+  const totalPages = Math.max(1, Math.ceil((query.data?.total ?? 0) / RECENT_PAGE_SIZE))
+  if (query.isSuccess && page > totalPages) setPagination({ filters, page: totalPages })
   const prices = useCurrentPrices(filings.map((f) => f.ticker ?? ''))
 
   return (
@@ -132,7 +139,7 @@ export function RecentFilings({ onOpenFiling }: { onOpenFiling: (accession: stri
         </Select>
         {query.isSuccess && (
           <span className="text-muted-foreground text-xs">
-            {filings.length} filings{query.hasNextPage ? ' (newest shown, more below)' : ''}
+            {query.data?.total ?? 0} filings
           </span>
         )}
       </div>
@@ -158,12 +165,28 @@ export function RecentFilings({ onOpenFiling }: { onOpenFiling: (accession: stri
           ))}
         </div>
       )}
-      {query.hasNextPage && (
-        <div className="flex justify-center">
-          <Button variant="outline" size="sm" onClick={() => query.fetchNextPage()} disabled={query.isFetchingNextPage}>
-            {query.isFetchingNextPage ? 'Loading…' : 'Load older filings'}
+      {query.isSuccess && (query.data?.total ?? 0) > 0 && (
+        <nav className="flex flex-wrap items-center justify-center gap-3" aria-label="Filings pagination">
+          <Button variant="outline" size="sm" onClick={() => setPagination({ filters, page: page - 1 })} disabled={page === 1}>
+            Previous
           </Button>
-        </div>
+          {Array.from(new Set([1, ...Array.from({ length: 5 }, (_, i) => page + i - 2), totalPages]))
+            .filter((number) => number >= 1 && number <= totalPages)
+            .sort((a, b) => a - b)
+            .map((number) => (
+              <Button key={number} variant={number === page ? 'default' : 'outline'} size="sm"
+                aria-label={`Page ${number}`} aria-current={number === page ? 'page' : undefined}
+                onClick={() => setPagination({ filters, page: number })}>
+                {number}
+              </Button>
+            ))}
+          <span className="text-muted-foreground text-sm" aria-live="polite">
+            Page {page} of {totalPages}
+          </span>
+          <Button variant="outline" size="sm" onClick={() => setPagination({ filters, page: page + 1 })} disabled={page * RECENT_PAGE_SIZE >= (query.data?.total ?? 0)}>
+            Next
+          </Button>
+        </nav>
       )}
     </section>
   )

@@ -43,82 +43,93 @@ export function FilingRow({
     <button
       type="button"
       onClick={() => onOpen(filing.accession)}
-      className="hover:bg-muted/50 border-border flex w-full flex-col gap-1.5 border-b px-4 py-3 text-left last:border-b-0"
+      className="hover:bg-muted/50 border-border grid w-full grid-cols-1 items-start gap-3 border-b lg:grid-cols-[minmax(0,1fr)_30rem] px-4 py-3 text-left last:border-b-0"
     >
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        <span className="font-semibold">{filing.ticker ?? filing.cik}</span>
-        <MarketCapBadge value={filing.market_cap} />
-        <Badge variant="outline">
-          {filing.form}
-          {items.length > 0 && ` · ${items.join(', ')}`}
-        </Badge>
-        <span className="text-muted-foreground text-xs tabular-nums">{formatEasternDateTime(filing.accepted_at)}</span>
-        {filing.kind && (
-          <Badge className={KIND_CLASS[filing.kind]} title={KIND_HINT}>
-            {KIND_LABEL[filing.kind]}
-          </Badge>
+      <div className="min-w-0 space-y-1.5">
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="font-semibold">{filing.ticker ?? filing.cik}</span>
+          <MarketCapBadge value={filing.market_cap} />
+          {filing.industry_group && (
+            <span className="text-muted-foreground text-xs" title={`SEC industry: ${filing.sic_description ?? ''} (SIC ${filing.sic ?? ''})`}>
+              {filing.industry_group}
+            </span>
+          )}
+          {filing.kind && (
+            <Badge className={KIND_CLASS[filing.kind]} title={KIND_HINT}>
+              {KIND_LABEL[filing.kind]}
+            </Badge>
+          )}
+          {filing.other_events.map((name) => (
+            <Badge key={name} className={KIND_CLASS.event} title="Separate news filed in the same earnings 8-K">
+              + {name}
+            </Badge>
+          ))}
+          {filing.amendments && filing.amendments.length > 0 && (
+            <Badge
+              className={DIRECTION_CLASS.negative}
+              title={filing.amendments.map((a) => `${a.form}: ${a.note ?? 'no restatement stated'}`).join('\n')}
+            >
+              + {amendmentForms(filing.amendments)}
+              {filing.amendments.some((a) => a.note) && ' (restated)'}
+            </Badge>
+          )}
+          {filing.follows_release && (
+            <Badge
+              className={cn(filing.follows_release.label && DIRECTION_CLASS[filing.follows_release.label])}
+              title="These results were already public in the release; the report repeats them, so it takes the release's label"
+            >
+              Results released in {filing.follows_release.form}
+              {filing.follows_release.label && ` · ${filing.follows_release.label}`}
+            </Badge>
+          )}
+          <SignalBadge signal={filing.signal} />
+          <GuidanceContextBadge signal={filing.signal} />
+          <MarketDisagreedBadge filing={filing} now={now} />
+          {filing.coverage === 'extended' && (
+            <Badge variant="secondary" title={COVERAGE_HINT}>
+              {COVERAGE_LABEL.extended}
+            </Badge>
+          )}
+          {filing.status === 'failed' && <Badge variant="destructive">extraction failed</Badge>}
+        </div>
+        {filing.summary?.includes(':') ? (
+          <p className="text-sm leading-snug">{filing.summary.replace(/^[^:]+:\s*/, '')}</p>
+        ) : (
+          <p className="text-muted-foreground text-sm">No typed details found by the rules — open to see the filing.</p>
         )}
-        {filing.other_events.map((name) => (
-          <Badge key={name} className={KIND_CLASS.event} title="Separate news filed in the same earnings 8-K">
-            + {name}
+        <div className="flex flex-wrap gap-1">
+          {tags.map((event, index) => (
+            <Badge
+              key={`${event.event_type}-${index}`}
+              variant="secondary"
+              className={cn(event.direction && DIRECTION_CLASS[event.direction])}
+            >
+              {eventLabel(event)}
+              {event.direction && ` · ${event.direction}`}
+              {event.method === 'llm' && ' · AI'}
+            </Badge>
+          ))}
+          {guidance > 0 && <Badge variant="secondary">{guidance} guidance range{guidance > 1 ? 's' : ''}</Badge>}
+        </div>
+      </div>
+      <div className="w-full max-w-[30rem] space-y-1.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline">
+            {filing.form}
+            {items.length > 0 && ` · ${items.join(', ')}`}
           </Badge>
-        ))}
+          <span className="text-muted-foreground text-xs tabular-nums">
+            Filed {formatEasternDateTime(filing.accepted_at)}
+          </span>
+        </div>
         {filing.periodic_report && (
-          <Badge variant="outline" title="The quarterly report for these results; its figures are in this release's label">
-            + {filing.periodic_report.form} filed {formatEasternDateTime(filing.periodic_report.accepted_at)}
-          </Badge>
-        )}
-        {filing.amendments && filing.amendments.length > 0 && (
-          <Badge
-            className={DIRECTION_CLASS.negative}
-            title={filing.amendments.map((a) => `${a.form}: ${a.note ?? 'no restatement stated'}`).join('\n')}
-          >
-            + {amendmentForms(filing.amendments)}
-            {filing.amendments.some((a) => a.note) && ' (restated)'}
-          </Badge>
-        )}
-        {filing.follows_release && (
-          <Badge
-            className={cn(filing.follows_release.label && DIRECTION_CLASS[filing.follows_release.label])}
-            title="These results were already public in the release; the report repeats them, so it takes the release's label"
-          >
-            Results released in {filing.follows_release.form}
-            {filing.follows_release.label && ` · ${filing.follows_release.label}`}
-          </Badge>
-        )}
-        <SignalBadge signal={filing.signal} />
-        <GuidanceContextBadge signal={filing.signal} />
-        <MarketDisagreedBadge filing={filing} now={now} />
-        {filing.coverage === 'extended' && (
-          <Badge variant="secondary" title={COVERAGE_HINT}>
-            {COVERAGE_LABEL.extended}
-          </Badge>
-        )}
-        {filing.status === 'failed' && <Badge variant="destructive">extraction failed</Badge>}
-        {filing.ticker && (
-          <div className="ml-auto w-full max-w-[30rem] sm:w-[30rem]">
-            <PriceSteps steps={priceSteps(filing, now)} size="row" />
+          <div>
+            <Badge variant="outline" title="The quarterly report for these results; its figures are in this release's label">
+              + {filing.periodic_report.form} filed {formatEasternDateTime(filing.periodic_report.accepted_at)}
+            </Badge>
           </div>
         )}
-      </div>
-      {filing.summary?.includes(':') ? (
-        <p className="text-sm leading-snug">{filing.summary.replace(/^[^:]+:\s*/, '')}</p>
-      ) : (
-        <p className="text-muted-foreground text-sm">No typed details found by the rules — open to see the filing.</p>
-      )}
-      <div className="flex flex-wrap gap-1">
-        {tags.map((event, index) => (
-          <Badge
-            key={`${event.event_type}-${index}`}
-            variant="secondary"
-            className={cn(event.direction && DIRECTION_CLASS[event.direction])}
-          >
-            {eventLabel(event)}
-            {event.direction && ` · ${event.direction}`}
-            {event.method === 'llm' && ' · AI'}
-          </Badge>
-        ))}
-        {guidance > 0 && <Badge variant="secondary">{guidance} guidance range{guidance > 1 ? 's' : ''}</Badge>}
+        {filing.ticker && <PriceSteps steps={priceSteps(filing, now)} size="row" />}
       </div>
     </button>
   )

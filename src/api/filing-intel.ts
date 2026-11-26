@@ -5,6 +5,7 @@ import type {
   ExpectedFilingOut,
   FilingEpisodeOut,
   FilingIntelFilingOut,
+  PeersOut,
   PriceSeriesOut,
   QuoteOut,
 } from '@/types/filing-intel'
@@ -31,10 +32,11 @@ export function getRecentFilings(params: {
   coverage?: string
   kind?: string
   signal?: string
+  page: number
   before?: string
   limit?: number
 }) {
-  return apiClient.get<FilingIntelFilingOut[]>(`/v1/filing-intel/recent${query(params)}`)
+  return apiClient.get<{ items: FilingIntelFilingOut[]; total: number; page: number; page_size: number }>(`/v1/filing-intel/recent${query(params)}`)
 }
 
 export function getFiling(accession: string) {
@@ -57,4 +59,8 @@ export function getFilingChart(accession: string, interval: 'auto' | '5m' | '1d'
   return apiClient.get<PriceSeriesOut>(
     `/v1/filing-intel/filings/${encodeURIComponent(accession)}/chart${query({ interval })}`,
   )
+}
+
+export function getFilingPeers(accession: string) {
+  return apiClient.get<PeersOut>(`/v1/filing-intel/filings/${encodeURIComponent(accession)}/peers`)
 }

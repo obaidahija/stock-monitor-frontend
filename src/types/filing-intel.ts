@@ -122,6 +122,15 @@ export interface FilingIntelFilingOut {
   ref_close_date: string | null
   /** The reference close came from the detection quote; the evening closes job confirms it. */
   ref_close_provisional?: boolean
+  /** +1 / +5 session move minus SPY's (and the sector ETF's) over the same sessions, points. */
+  excess_1d?: number | null
+  excess_5d?: number | null
+  sector_excess_1d?: number | null
+  sector_etf?: string | null
+  /** SEC industry: SIC code, its name and its major group. */
+  sic?: string | null
+  sic_description?: string | null
+  industry_group?: string | null
   close_1d: number | null
   close_1d_date: string | null
   close_5d: number | null
@@ -199,4 +208,32 @@ export interface PriceSeriesOut {
   interval: '5m' | '1d'
   accepted_at: string
   points: PricePoint[]
+}
+
+/** Same-industry filings from the 30 days before a filing (GET /filings/{accession}/peers). */
+export interface PeerFiling {
+  accession: string
+  ticker: string
+  form: string
+  kind: FilingKind | null
+  accepted_at: string
+  summary: string | null
+  label: 'positive' | 'negative' | 'mixed' | null
+  strength: string | null
+  move_1d_pct: number | null
+  excess_1d: number | null
+  market_cap: number | null
+}
+
+export interface PeersOut {
+  basis: { level: 'sic' | 'group'; code: string; name: string | null } | null
+  filings: PeerFiling[]
+  summary: {
+    count: number
+    tickers: number
+    same_kind: number
+    positive_share: number | null
+    mean_move_1d_pct: number | null
+    mean_excess_1d: number | null
+  } | null
 }

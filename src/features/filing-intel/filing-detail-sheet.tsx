@@ -14,6 +14,7 @@ import { PriceTable } from './price-move'
 import { FilingPriceChart } from './price-chart'
 import { SignalReasons } from './signal-badge'
 import { MarketCapBadge } from './market-cap'
+import { PeerFilings } from './peer-filings'
 import { MarketDisagreedBadge } from './market-disagreed'
 import { EarningsPanel } from './earnings-panel'
 import {
@@ -319,6 +320,11 @@ export function FilingDetailSheet({
               </Link>
             )}
             <MarketCapBadge value={filing?.market_cap} size="lg" />
+            {filing?.sic_description && (
+              <Badge variant="outline" title={`SEC industry (SIC ${filing.sic}) · ${filing.industry_group ?? ''}`}>
+                {filing.sic_description}
+              </Badge>
+            )}
             <span>{filing?.form ?? 'Filing'}</span>
             {filing && filing.item_codes.length > 0 && (
               <Badge variant="outline">{filing.item_codes.filter((c) => c !== '9.01').join(', ')}</Badge>
@@ -372,6 +378,10 @@ export function FilingDetailSheet({
               </section>
               <ProcessTimeline filing={filing} />
               {filing.ticker && <Episode ticker={filing.ticker} accession={filing.accession} onOpen={onOpen} />}
+              <section className="space-y-2">
+                <h3 className="text-sm font-semibold">Peers in the same industry</h3>
+                <PeerFilings accession={filing.accession} onOpen={onOpen} />
+              </section>
               <section className="space-y-2">
                 <h3 className="text-sm font-semibold">What the filing says</h3>
                 {filing.events.length === 0 ? (

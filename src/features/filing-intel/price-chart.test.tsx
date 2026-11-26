@@ -99,17 +99,18 @@ test('after the filing, moves run from the entry: Agilent at $189.50 and $178.44
   expect(steps[4].change).toBeCloseTo(-5.8, 1) // now from the entry, not +1.4% from the close
 })
 
-test('a row shows the same five cards as the panel, with changes from the price at filing', () => {
+test('a row shows five compact price cards including the highlighted filing point', () => {
   const steps = priceSteps(insm, { ticker: 'INSM', price: 175, session: 'regular', time: null })
   render(<PriceSteps steps={steps} size="row" />)
   const cards = screen.getAllByRole('listitem')
   expect(cards.map((c) => c.textContent?.replace(/\u00a0/g, '').trim())).toEqual([
     'Prev close$149.09',
-    'At filing+14.4%$170.61', // the change first and large, the price under it
+    'At filing+14.4%$170.61',
     '+1d-0.3%$170.15',
     '+5d—not yet',
     'Now+2.6%$175.00',
   ])
+  expect(cards[1]).toHaveClass('bg-amber-500/5')
 })
 
 test('a filing after the close is measured from that day\'s market close', () => {

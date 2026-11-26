@@ -35,10 +35,11 @@ function emptyText(step: PriceStep): string {
 /**
  * Before → At filing → +1 day → +5 days → Now, each with its change from the price at filing
  * ("At filing" shows the move from the last close). `size="row"` is the list row's version:
- * the same cards, smaller.
+ * smaller cards for the list.
  */
 export function PriceSteps({ steps, size = 'panel' }: { steps: PriceStep[]; size?: 'panel' | 'row' }) {
   const compact = size === 'row'
+
   return (
     <ol
       className={cn('grid grid-cols-5', compact ? 'gap-1' : 'gap-1.5')}
