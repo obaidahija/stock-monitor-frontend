@@ -11,6 +11,9 @@ vi.mock('@/api/settings')
 vi.mock('@/features/ai-settings/ai-settings-form', () => ({
   AiSettingsForm: () => <div>AI settings form</div>,
 }))
+vi.mock('@/features/telegram-routing/telegram-routing-panel', () => ({
+  TelegramRoutingPanel: () => <div>Telegram routing panel</div>,
+}))
 
 const payload: SettingsOut = {
   categories: [
@@ -96,5 +99,12 @@ describe('SettingsPage', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Reddit' })).toBeInTheDocument())
     await userEvent.click(screen.getByRole('button', { name: 'Reddit' }))
     expect(screen.getByLabelText('Reddit intelligence enabled')).toBeInTheDocument()
+  })
+
+  it('Telegram nav opens the routing panel', async () => {
+    renderPage()
+    await userEvent.click(screen.getByRole('button', { name: 'Telegram' }))
+    expect(screen.getByText('Telegram routing panel')).toBeInTheDocument()
+    expect(screen.queryByText('AI settings form')).toBeNull()
   })
 })

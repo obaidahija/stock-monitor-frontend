@@ -1361,11 +1361,48 @@ export interface WatchlistEventOut {
   updated_at: string
 }
 
+export type TelegramCategory =
+  | 'digest'
+  | 'earnings'
+  | 'filings'
+  | 'insider'
+  | 'major_holders'
+  | 'watchlist'
+
+/** Where one message category goes, and whether the bot can post there. */
+export interface TelegramRouteOut {
+  category: TelegramCategory
+  name: string
+  chat_id: string | null
+  thread_id: number | null
+  topic_name: string | null
+  source: 'route' | 'default' | 'none'
+  ready: boolean
+  error: string | null
+}
+
 export interface TelegramStatusOut {
   configured: boolean
   ready: boolean
   error: string | null
   digest_enabled: boolean
+  routes?: TelegramRouteOut[]
+}
+
+/** A topic link, or a chat ID with an optional topic ID. */
+export type TelegramRouteIn = { link: string } | { chat_id: string; thread_id?: number | null }
+
+export interface TopicSetupItemOut {
+  category: TelegramCategory
+  name: string
+  thread_id: number | null
+  outcome: 'created' | 'kept' | 'failed' | 'not_reached'
+}
+
+export interface TopicSetupOut {
+  chat_id: string
+  items: TopicSetupItemOut[]
+  error: string | null
 }
 
 export interface DigestDeliveryOut {
