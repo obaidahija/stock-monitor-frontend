@@ -4,7 +4,9 @@ import { getSectorHeatmap } from '@/api/discover'
 import type { AnalysisExtras } from '@/api/stocks'
 import {
   askGoogleFinanceResearch,
+  analyzeNewsItem,
   extractNewsItem,
+  getNewsItemAnalysis,
   getAiResearch,
   getAnalysis,
   getAnalystPriceTargetHistory,
@@ -217,6 +219,27 @@ export function useRefreshEarnings(ticker: string) {
 
 export function useNews(ticker: string, hours: number) {
   return useQuery({ queryKey: ['news', ticker, hours], queryFn: () => getNews(ticker, hours) })
+}
+
+export function useNewsItemAnalysis(ticker: string, itemId: number | null) {
+  return useQuery({
+    queryKey: ['news-item-analysis', ticker, itemId],
+    queryFn: () => getNewsItemAnalysis(ticker, itemId!),
+    enabled: itemId !== null,
+    retry: false,
+  })
+}
+
+/** Runs (or re-runs with force) the full-article analysis and stores the result. */
+export function useAnalyzeNewsItem(ticker: string, itemId: number | null) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (force: boolean = false) => analyzeNewsItem(ticker, itemId!, force),
+    onSuccess: (result) => {
+      queryClient.setQueryData(['news-item-analysis', ticker, itemId], result)
+      queryClient.invalidateQueries({ queryKey: ['news', ticker] })
+    },
+  })
 }
 
 export function useRefreshNews(ticker: string) {

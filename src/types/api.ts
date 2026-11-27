@@ -469,6 +469,62 @@ export interface NewsClusterOut {
   sentiment_net_score: number | null
   event_category: string | null
   is_material: boolean
+  /** Full-article analysis of the cluster's article; status 'pending' until analyzed. */
+  analysis?: NewsAnalysisSummaryOut | null
+}
+
+export type NewsAnalysisLabel =
+  | 'strong_positive'
+  | 'positive'
+  | 'neutral'
+  | 'negative'
+  | 'strong_negative'
+
+export interface NewsAnalysisSummaryOut {
+  status: 'readable' | 'unreadable' | 'pending' | 'failed'
+  item_id: number
+  label?: NewsAnalysisLabel | null
+  net_score?: number | null
+  positive_count?: number | null
+  negative_count?: number | null
+  neutral_count?: number | null
+}
+
+export interface NewsAnalysisFactorOut {
+  span_id: number
+  paragraph_id: string
+  evidence: string
+  direction: 'positive' | 'negative' | 'neutral'
+  claim_type: 'reported' | 'conditional' | 'opinion'
+  event_type: string | null
+  materiality: 'low' | 'medium' | 'high'
+  score: number
+}
+
+export interface NewsAnalysisEvidenceOut {
+  span_id: number
+  paragraph_id: string
+  evidence: string
+}
+
+export interface NewsItemAnalysisOut {
+  item: NewsItemOut
+  status: 'readable' | 'unreadable' | 'failed'
+  error_code: string | null
+  label: NewsAnalysisLabel | null
+  net_score: number | null
+  positive_count: number | null
+  negative_count: number | null
+  neutral_count: number | null
+  factors: NewsAnalysisFactorOut[]
+  hidden_low_factors: number
+  price_moves: NewsAnalysisEvidenceOut[]
+  overview: { text: string | null; method: string; unsupported_numbers: string[] } | null
+  relevance: { score: number; level: string; relevant_paragraphs: number; paragraphs: number } | null
+  resolved_url: string | null
+  model_version: string | null
+  analyzed_at: string
+  seconds: number | null
 }
 
 export interface NewsItemOut {

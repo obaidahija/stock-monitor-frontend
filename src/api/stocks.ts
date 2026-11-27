@@ -16,6 +16,7 @@ import type {
   InsiderOut,
   NewsClusterDetailOut,
   NewsClusterOut,
+  NewsItemAnalysisOut,
   NewsItemExtractOut,
   NewsRefreshResult,
   PriceTargetChangeOut,
@@ -137,7 +138,7 @@ export function refreshUniverseScore(ticker: string) {
 
 export function getNews(ticker: string, hours = 24) {
   return apiClient.get<NewsClusterOut[]>(
-    `/v1/stocks/${encodeURIComponent(ticker)}/news?hours=${hours}`,
+    `/v1/stocks/${encodeURIComponent(ticker)}/news?hours=${hours}&hide_unreadable=true`,
   )
 }
 
@@ -156,6 +157,18 @@ export function getNewsClusterDetail(ticker: string, clusterId: number) {
 export function extractNewsItem(ticker: string, itemId: number) {
   return apiClient.post<NewsItemExtractOut>(
     `/v1/stocks/${encodeURIComponent(ticker)}/news/${itemId}/extract`,
+  )
+}
+
+export function getNewsItemAnalysis(ticker: string, itemId: number) {
+  return apiClient.get<NewsItemAnalysisOut | null>(
+    `/v1/stocks/${encodeURIComponent(ticker)}/news/items/${itemId}/analysis`,
+  )
+}
+
+export function analyzeNewsItem(ticker: string, itemId: number, force = false) {
+  return apiClient.post<NewsItemAnalysisOut>(
+    `/v1/stocks/${encodeURIComponent(ticker)}/news/items/${itemId}/analysis${force ? '?force=true' : ''}`,
   )
 }
 

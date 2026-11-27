@@ -12,6 +12,10 @@ vi.mock('./hooks', () => ({
 }))
 vi.mock('./sentiment-trend-chart', () => ({ SentimentTrendChart: () => <div>Sentiment trend chart</div> }))
 vi.mock('./news-cluster-detail-dialog', () => ({ NewsClusterDetailDialog: () => null }))
+vi.mock('./news-analysis-sheet', () => ({
+  NewsAnalysisSheet: ({ itemId, title }: { itemId: number | null; title?: string }) =>
+    itemId === null ? null : <div>Analysis panel for {itemId}: {title}</div>,
+}))
 
 afterEach(cleanup)
 
@@ -29,6 +33,7 @@ function cluster(id: number, overrides: Partial<NewsClusterOut> = {}): NewsClust
     sentiment_net_score: 1,
     event_category: null,
     is_material: true,
+    analysis: { status: 'readable', item_id: id * 10, label: 'positive' },
     ...overrides,
   }
 }
@@ -57,10 +62,28 @@ test('names sources the way a reader knows them', () => {
   expect(screen.getByText('TIKR, Yahoo, Google News')).toBeInTheDocument()
 })
 
-test('counts sentiment for the stories on screen', () => {
-  renderNews([cluster(1), cluster(2, { sentiment_label: 'negative' }), cluster(3, { sentiment_label: null })])
+test('counts article labels for the stories on screen', () => {
+  renderNews([
+    cluster(1, { analysis: { status: 'readable', item_id: 10, label: 'strong_positive' } }),
+    cluster(2, { analysis: { status: 'readable', item_id: 20, label: 'negative' } }),
+    cluster(3, { analysis: { status: 'pending', item_id: 30 } }),
+  ])
 
-  expect(screen.getByText('3 stories · 1 positive · 1 negative · 0 neutral · 1 unscored')).toBeInTheDocument()
+  expect(
+    screen.getByText('3 stories · 1 positive · 1 negative · 0 neutral · 1 not analyzed yet'),
+  ).toBeInTheDocument()
+  expect(screen.getByText('Strong positive')).toBeInTheDocument()
+  expect(screen.getByText('Not analyzed yet')).toBeInTheDocument()
+})
+
+test('opens the analysis in a side panel for a story', async () => {
+  const user = userEvent.setup()
+  renderNews([cluster(4)])
+
+  expect(screen.queryByText(/Analysis panel/)).not.toBeInTheDocument()
+  await user.click(screen.getByText('Story 4'))
+
+  expect(screen.getByText('Analysis panel for 40: Story 4')).toBeInTheDocument()
 })
 
 test('Material only hides routine stories', async () => {

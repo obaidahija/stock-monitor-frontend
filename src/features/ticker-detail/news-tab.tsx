@@ -7,12 +7,13 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/shared/empty-state'
 import { ErrorState } from '@/components/shared/error-state'
 import { PagedList } from '@/components/shared/paged-list'
-import { SentimentBadge } from '@/components/shared/sentiment-badge'
+import { NewsAnalysisBadge } from '@/components/shared/news-analysis-badge'
 import { formatEasternDateTime, formatRelativeTime } from '@/lib/format'
 import { formatSourceName } from '@/lib/labels'
 import { cn } from '@/lib/utils'
 import type { NewsClusterOut } from '@/types/api'
 import { useNews, useRefreshNews } from './hooks'
+import { NewsAnalysisSheet } from './news-analysis-sheet'
 import { NewsClusterDetailDialog } from './news-cluster-detail-dialog'
 import { SentimentTrendChart } from './sentiment-trend-chart'
 
@@ -24,17 +25,18 @@ const WINDOWS = [
 
 const NEWS_PAGE_SIZE = 20
 
-/** "3 stories · 1 positive · 1 negative · 0 neutral · 1 unscored" for the stories on screen. */
-function sentimentCountLine(clusters: NewsClusterOut[]): string {
+/** "3 stories · 1 positive · 1 negative · 0 neutral · 1 not analyzed yet" from the article labels. */
+function labelCountLine(clusters: NewsClusterOut[]): string {
   let positive = 0
   let negative = 0
   let neutral = 0
-  let unscored = 0
+  let pending = 0
   for (const cluster of clusters) {
-    if (cluster.sentiment_label === 'positive') positive += 1
-    else if (cluster.sentiment_label === 'negative') negative += 1
-    else if (cluster.sentiment_label === 'neutral') neutral += 1
-    else unscored += 1
+    const label = cluster.analysis?.status === 'readable' ? cluster.analysis.label : null
+    if (label === 'positive' || label === 'strong_positive') positive += 1
+    else if (label === 'negative' || label === 'strong_negative') negative += 1
+    else if (label === 'neutral') neutral += 1
+    else pending += 1
   }
   const parts = [
     `${clusters.length} ${clusters.length === 1 ? 'story' : 'stories'}`,
@@ -42,7 +44,7 @@ function sentimentCountLine(clusters: NewsClusterOut[]): string {
     `${negative} negative`,
     `${neutral} neutral`,
   ]
-  if (unscored > 0) parts.push(`${unscored} unscored`)
+  if (pending > 0) parts.push(`${pending} not analyzed yet`)
   return parts.join(' · ')
 }
 
@@ -54,6 +56,7 @@ export function NewsTab({ ticker }: { ticker: string }) {
   const [hours, setHours] = useState(24)
   const [materialOnly, setMaterialOnly] = useState(false)
   const [openClusterId, setOpenClusterId] = useState<number | null>(null)
+  const [openItem, setOpenItem] = useState<{ id: number; title: string } | null>(null)
   const { data, isPending, isError, error, refetch } = useNews(ticker, hours)
   const refreshNews = useRefreshNews(ticker)
   const visible = data ? (materialOnly ? data.filter((cluster) => cluster.is_material) : data) : []
@@ -128,7 +131,7 @@ export function NewsTab({ ticker }: { ticker: string }) {
       )}
 
       {data && data.length > 0 && (
-        <p className="text-muted-foreground text-xs">{sentimentCountLine(visible)}</p>
+        <p className="text-muted-foreground text-xs">{labelCountLine(visible)}</p>
       )}
 
       {data && data.length > 0 && visible.length === 0 && (
@@ -146,7 +149,11 @@ export function NewsTab({ ticker }: { ticker: string }) {
                 <Card
                   key={cluster.id}
                   className="hover:bg-muted/40 cursor-pointer transition-colors"
-                  onClick={() => setOpenClusterId(cluster.id)}
+                  onClick={() =>
+                    cluster.analysis
+                      ? setOpenItem({ id: cluster.analysis.item_id, title: cluster.representative_title })
+                      : setOpenClusterId(cluster.id)
+                  }
                 >
                   <CardHeader className="flex flex-row items-start justify-between gap-4">
                     <div className="space-y-1">
@@ -170,7 +177,10 @@ export function NewsTab({ ticker }: { ticker: string }) {
                         )}
                       </div>
                     </div>
-                    <SentimentBadge label={cluster.sentiment_label} score={cluster.sentiment_net_score} />
+                    <NewsAnalysisBadge
+                      label={cluster.analysis?.label}
+                      status={cluster.analysis?.status === 'failed' ? 'pending' : cluster.analysis?.status}
+                    />
                   </CardHeader>
                 </Card>
               ))}
@@ -178,6 +188,13 @@ export function NewsTab({ ticker }: { ticker: string }) {
           )}
         </PagedList>
       )}
+
+      <NewsAnalysisSheet
+        ticker={ticker}
+        itemId={openItem?.id ?? null}
+        title={openItem?.title}
+        onOpenChange={(open) => !open && setOpenItem(null)}
+      />
 
       <NewsClusterDetailDialog
         ticker={ticker}
