@@ -508,6 +508,48 @@ export interface NewsAnalysisEvidenceOut {
   evidence: string
 }
 
+export interface NewsWeeklyDayOut {
+  date: string
+  strong_positive: number
+  positive: number
+  neutral: number
+  negative: number
+  strong_negative: number
+  not_read: number
+  skipped: number
+  net: number | null
+}
+
+export interface NewsWeeklyStoryOut {
+  item_id: number
+  title: string
+  published_at: string
+  source: string | null
+  url: string | null
+  label: NewsAnalysisLabel | null
+  net_score: number | null
+  quote: string | null
+  quote_direction: 'positive' | 'negative' | 'neutral' | null
+}
+
+/** A ticker's last 7 New York days of news, counted per story (see backend news_weekly.py). */
+export interface NewsWeeklySummaryOut {
+  ticker: string
+  start_date: string
+  end_date: string
+  lean: string
+  summary: string
+  count_sentence: string
+  overview: { text: string | null; method: string; unsupported_numbers: string[] }
+  totals: Record<string, number>
+  themes: { event_type: string; factors: number }[]
+  days: NewsWeeklyDayOut[]
+  stories: NewsWeeklyStoryOut[]
+  generated_at: string
+  seconds: number | null
+  backfill: Record<string, number> | null
+}
+
 export interface NewsItemAnalysisOut {
   item: NewsItemOut
   status: 'readable' | 'unreadable' | 'failed'

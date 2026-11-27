@@ -17,6 +17,7 @@ import type {
   NewsClusterDetailOut,
   NewsClusterOut,
   NewsItemAnalysisOut,
+  NewsWeeklySummaryOut,
   NewsItemExtractOut,
   NewsRefreshResult,
   PriceTargetChangeOut,
@@ -170,6 +171,16 @@ export function analyzeNewsItem(ticker: string, itemId: number, force = false) {
   return apiClient.post<NewsItemAnalysisOut>(
     `/v1/stocks/${encodeURIComponent(ticker)}/news/items/${itemId}/analysis${force ? '?force=true' : ''}`,
   )
+}
+
+export function getNewsWeekly(ticker: string) {
+  return apiClient.get<NewsWeeklySummaryOut | null>(
+    `/v1/stocks/${encodeURIComponent(ticker)}/news/weekly`,
+  )
+}
+
+export function generateNewsWeekly(ticker: string) {
+  return apiClient.post<NewsWeeklySummaryOut>(`/v1/stocks/${encodeURIComponent(ticker)}/news/weekly`)
 }
 
 export function getCatalysts(ticker: string) {

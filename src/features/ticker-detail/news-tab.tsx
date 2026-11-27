@@ -16,6 +16,7 @@ import type { NewsClusterOut } from '@/types/api'
 import { useNews, useRefreshNews } from './hooks'
 import { NewsAnalysisSheet } from './news-analysis-sheet'
 import { NewsClusterDetailDialog } from './news-cluster-detail-dialog'
+import { NewsWeeklyCard } from './news-weekly-card'
 import { SentimentTrendChart } from './sentiment-trend-chart'
 
 const WINDOWS = [
@@ -99,6 +100,7 @@ export function NewsTab({ ticker }: { ticker: string }) {
 
   return (
     <div className="space-y-4">
+      <NewsWeeklyCard ticker={ticker} onOpenArticle={setOpenItemId} />
       <SentimentTrendChart ticker={ticker} />
 
       <div className="flex flex-wrap items-center justify-between gap-2">

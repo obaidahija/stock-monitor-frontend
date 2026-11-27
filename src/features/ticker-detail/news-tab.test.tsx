@@ -12,6 +12,7 @@ vi.mock('./hooks', () => ({
 }))
 vi.mock('./sentiment-trend-chart', () => ({ SentimentTrendChart: () => <div>Sentiment trend chart</div> }))
 vi.mock('./news-cluster-detail-dialog', () => ({ NewsClusterDetailDialog: () => null }))
+vi.mock('./news-weekly-card', () => ({ NewsWeeklyCard: () => null }))
 vi.mock('./news-analysis-sheet', () => ({
   NewsAnalysisSheet: ({ itemId, title }: { itemId: number | null; title?: string }) =>
     itemId === null ? null : <div>Analysis panel for {itemId}: {title}</div>,

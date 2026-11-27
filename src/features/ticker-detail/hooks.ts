@@ -5,6 +5,8 @@ import type { AnalysisExtras } from '@/api/stocks'
 import {
   askGoogleFinanceResearch,
   analyzeNewsItem,
+  generateNewsWeekly,
+  getNewsWeekly,
   extractNewsItem,
   getNewsItemAnalysis,
   getAiResearch,
@@ -237,6 +239,25 @@ export function useAnalyzeNewsItem(ticker: string, itemId: number | null) {
     mutationFn: (force: boolean = false) => analyzeNewsItem(ticker, itemId!, force),
     onSuccess: (result) => {
       queryClient.setQueryData(['news-item-analysis', ticker, itemId], result)
+      queryClient.invalidateQueries({ queryKey: ['news', ticker] })
+    },
+  })
+}
+
+export function useNewsWeekly(ticker: string) {
+  return useQuery({
+    queryKey: ['news-weekly', ticker],
+    queryFn: () => getNewsWeekly(ticker),
+  })
+}
+
+export function useGenerateNewsWeekly(ticker: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => generateNewsWeekly(ticker),
+    onSuccess: (result) => {
+      queryClient.setQueryData(['news-weekly', ticker], result)
+      // Generating analyzes unread articles first, so list labels change too.
       queryClient.invalidateQueries({ queryKey: ['news', ticker] })
     },
   })
