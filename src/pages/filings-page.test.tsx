@@ -14,7 +14,6 @@ const hooks = vi.hoisted(() => ({
   useFilingEpisodes: vi.fn(),
   useAnalyzeFilings: vi.fn(),
   useCurrentPrices: vi.fn(),
-  useFilingChart: vi.fn(() => ({ data: undefined, isPending: false, isError: false, isSuccess: false })),
   useFilingPeers: vi.fn(() => ({ data: undefined, isPending: false, isError: false, isSuccess: false })),
   RECENT_PAGE_SIZE: 20,
   PRICE_BATCH: 200,
@@ -104,8 +103,7 @@ function mockRecentFilings(...filings: FilingIntelFilingOut[]) {
     isPending: false,
     isError: false,
     isSuccess: true,
-    hasNextPage: false,
-    data: { pages: [filings], pageParams: [undefined] },
+    data: { items: filings, total: filings.length },
   })
 }
 
