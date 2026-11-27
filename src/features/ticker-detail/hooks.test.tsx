@@ -36,7 +36,7 @@ vi.mock('@/api/stocks', () => ({
     ticker: 'TEAM',
     scored: true,
     score: 80,
-    news_classified: 0,
+    news_analyzed: 0,
   }),
 }))
 

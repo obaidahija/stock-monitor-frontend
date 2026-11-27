@@ -21,6 +21,7 @@ function item(id: number): MacroNewsItemOut {
 }
 
 vi.mock('./hooks', () => ({
+  useMacroItemExplanation: () => ({ data: undefined, isPending: false, isError: false }),
   useMacroNews: () => ({
     data: Array.from({ length: 25 }, (_, i) => item(i + 1)),
     isPending: false,

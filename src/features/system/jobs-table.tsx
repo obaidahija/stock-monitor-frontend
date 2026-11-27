@@ -79,8 +79,8 @@ const JOB_DESCRIPTIONS: Record<string, string> = {
   macro_news_ingest: 'Fetches and stores market-wide (non-ticker) macro news.',
   macro_news_classify:
     'Tags pending macro news items with a category and sentiment.',
-  macro_sector_impact_sync:
-    'Derives which sectors a recent macro theme likely affects.',
+  macro_exposure_refresh:
+    'Weekly: measures how each stock moves against SPY when oil, yields, the dollar, gold, Bitcoin or VIX move.',
   macro_signal_eval: 'Logs a forward-looking hit-rate snapshot for macro signals, once/day.',
   twitter_best_stocks_scan:
     'Scans six phrases (Top + Latest) once daily and ranks trending tickers from ' +

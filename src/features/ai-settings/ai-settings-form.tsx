@@ -66,7 +66,7 @@ const BACKGROUND_PROFILES: {
     noun: 'Macro transmission',
     heading: 'Macro transmission',
     description:
-      'Powers macro sector-impact stance/magnitude resolution (Macro page → Sector impact).',
+      'Used by the optional LLM macro classifier (MACRO_CLASSIFIER_BACKEND=llm).',
   },
   {
     key: 'filing_analysis',

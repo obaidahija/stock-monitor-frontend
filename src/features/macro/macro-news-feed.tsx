@@ -6,6 +6,7 @@ import { ErrorState } from '@/components/shared/error-state'
 import { Skeleton } from '@/components/ui/skeleton'
 import { MacroNewsCard } from './macro-news-card'
 import { useMacroNews } from './hooks'
+import { useOpenMacroItem } from './open-item'
 
 // Opening focus stays the last 24h (the default); these let a reader check
 // whether older items still show the same pattern without leaving the page.
@@ -20,9 +21,20 @@ const MACRO_PAGE_SIZE = 20
 
 export function MacroNewsFeed() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const category = searchParams.get('category') || undefined
   const hours = Number(searchParams.get('hours')) || DEFAULT_WINDOW_HOURS
-  const query = useMacroNews({ category, hours })
+  // Relevant-only is the default; ?all=1 shows everything, noise included.
+  const relevantOnly = searchParams.get('all') !== '1'
+  const query = useMacroNews({ hours, relevantOnly })
+  const { open } = useOpenMacroItem()
+
+  function setRelevantOnly(next: boolean) {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev)
+      if (next) params.delete('all')
+      else params.set('all', '1')
+      return params
+    })
+  }
 
   function setHours(nextHours: number) {
     setSearchParams((prev) => {
@@ -36,10 +48,21 @@ export function MacroNewsFeed() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-muted-foreground text-xs">
-          {query.data ? `${query.data.length} item${query.data.length === 1 ? '' : 's'}` : ''}
-        </p>
+        <div className="flex items-center gap-2">
+          <h2 className="text-sm font-semibold">Macro news</h2>
+          <p className="text-muted-foreground text-xs">
+            {query.data ? `${query.data.length} item${query.data.length === 1 ? '' : 's'}` : ''}
+          </p>
+        </div>
         <div className="flex items-center gap-1">
+          <Button
+            size="sm"
+            variant={relevantOnly ? 'secondary' : 'ghost'}
+            aria-pressed={relevantOnly}
+            onClick={() => setRelevantOnly(!relevantOnly)}
+          >
+            Relevant only
+          </Button>
           {WINDOW_OPTIONS.map((opt) => (
             <Button
               key={opt.label}
@@ -58,15 +81,23 @@ export function MacroNewsFeed() {
       {query.data && query.data.length === 0 && (
         <EmptyState
           title="No macro news in this window"
-          description="Try a longer window, or trigger macro_news_ingest from the System page."
+          description={
+            relevantOnly
+              ? 'Nothing relevant in this window. Turn off Relevant only to see every headline.'
+              : 'Try a longer window, or trigger macro_news_ingest from the System page.'
+          }
         />
       )}
       {query.data && query.data.length > 0 && (
-        <PagedList key={`${category ?? 'all'}-${hours}`} items={query.data} pageSize={MACRO_PAGE_SIZE}>
+        <PagedList key={`${relevantOnly}-${hours}`} items={query.data} pageSize={MACRO_PAGE_SIZE}>
           {(items) => (
             <div className="space-y-2">
               {items.map((item) => (
-                <MacroNewsCard key={item.id} item={item} />
+                <MacroNewsCard
+                  key={item.id}
+                  item={item}
+                  onOpen={(clicked) => open(clicked.id)}
+                />
               ))}
             </div>
           )}

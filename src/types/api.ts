@@ -453,7 +453,8 @@ export interface UniverseScoreRefreshResult {
   score?: number
   lean?: string
   error?: string
-  news_classified: number
+  /** Articles analyzed before rescoring (their analysis is the news sentiment). */
+  news_analyzed: number
 }
 
 export interface NewsClusterOut {
@@ -554,11 +555,14 @@ export interface NewsItemExtractOut {
   error: string | null
 }
 
-export interface NewsSummaryRefreshResult {
+/** Full-article analysis run by a news refresh; counts by outcome. */
+export interface NewsAnalysisRefreshResult {
   skipped?: boolean
-  attempted: number
-  generated: number
-  failed: number
+  reason?: string
+  candidates?: number
+  readable?: number
+  unreadable?: number
+  failed?: number
 }
 
 export interface NewsRefreshResult {
@@ -567,7 +571,7 @@ export interface NewsRefreshResult {
   duplicates: number
   filtered_irrelevant: number
   errors: { source: string; error: string }[]
-  ai_summaries: NewsSummaryRefreshResult
+  news_analysis: NewsAnalysisRefreshResult
   score: UniverseScoreRefreshResult | null
 }
 
@@ -1976,6 +1980,130 @@ export interface MacroNewsItemOut {
   sentiment_score: number | null
   published_at: string
   classification_pending: boolean
+  /** A multi-story session wrap or calendar; its read summarizes many headlines. */
+  market_wrap?: boolean
+  /** Trained macro reader; null until the item has been read. */
+  model_relevance?: 'none' | 'low' | 'medium' | 'high' | null
+  model_relevant?: boolean | null
+  model_drivers?: Record<string, 'up' | 'down'> | null
+  model_magnitude?: string | null
+}
+
+export interface MacroEventOut {
+  id: number
+  title: string
+  url: string
+  source: string
+  published_at: string
+  relevance: string | null
+  magnitude: string | null
+  drivers: Record<string, 'up' | 'down'>
+  /** Near-identical headlines from other outlets folded into this one. */
+  also_reported: number
+  market_wrap?: boolean
+}
+
+export interface MacroDriverGroupOut {
+  driver: string
+  direction: 'up' | 'down'
+  events: number
+  magnitude: string
+  headlines: { id: number; title: string; url: string }[]
+}
+
+export interface MacroSectorReadOut {
+  sector: string
+  net: 'positive' | 'negative' | 'mixed'
+  pushes: {
+    driver: string
+    direction: 'up' | 'down'
+    effect: 'positive' | 'negative'
+    /** Measured reads: median move vs SPY on a typical day, and share of members agreeing. */
+    typical_move_pp?: number | null
+    consistency?: number | null
+  }[]
+  typical_move_pp?: number | null
+}
+
+export interface MacroIndustryReadOut extends MacroSectorReadOut {
+  industry: string
+  members: number
+}
+
+export interface MacroExposedIndustryOut {
+  industry: string
+  sector: string | null
+  members: number
+  typical_move_pp: number
+  consistency: number
+  significant: number
+}
+
+export interface MacroExposedStockOut {
+  ticker: string
+  industry: string | null
+  sector: string | null
+  typical_move_pp: number
+  t: number
+}
+
+export interface MacroExposureOut {
+  driver: string
+  direction: 'up' | 'down'
+  typical_driver_move: number
+  industries: { hurt: MacroExposedIndustryOut[]; helped: MacroExposedIndustryOut[] }
+  stocks: { hurt: MacroExposedStockOut[]; helped: MacroExposedStockOut[] }
+  significant_stocks: number
+  computed_at: string
+  window_start: string
+  window_end: string
+  tickers: number
+  caveat: string
+}
+
+export interface MacroMovingOut {
+  window_hours: number
+  items: number
+  items_read: number
+  relevant_items: number
+  events: MacroEventOut[]
+  drivers: MacroDriverGroupOut[]
+  sectors: MacroSectorReadOut[]
+  /** 'measured' once the weekly exposure refresh has run, else 'learned_rules'. */
+  sector_basis?: 'measured' | 'learned_rules'
+  /** Measured only: industries whose members agree (>= 70%), largest moves first. */
+  industries?: MacroIndustryReadOut[]
+  caveat: string
+  generated_at: string
+}
+
+export interface MacroItemExplanationOut {
+  item: MacroNewsItemOut
+  market_wrap?: boolean
+  /** Written overview of a long feed summary; null when the summary is short. */
+  overview?: { text: string | null; method: string; unsupported_numbers: string[] } | null
+  relevance: 'none' | 'low' | 'medium' | 'high'
+  relevant: boolean
+  p_relevant: number
+  relevance_probabilities: Record<string, number>
+  relevance_threshold: number
+  magnitude: string
+  drivers: Record<string, 'up' | 'down'>
+  driver_details: { driver: string; direction: 'up' | 'down'; confidence: number; evidence: string }[]
+  sector_effects: {
+    sector: string
+    net: 'positive' | 'negative' | 'mixed'
+    because: {
+      driver: string
+      direction: 'up' | 'down'
+      effect: 'positive' | 'negative'
+      reason: string | null
+      agree: number | null
+      cases: number | null
+    }[]
+  }[]
+  model_version: string
+  caveat: string
 }
 
 export interface MacroCategorySignal {
@@ -1998,47 +2126,6 @@ export interface MacroSignalHistoryBucketOut {
   categories: Record<string, number>
 }
 
-export interface MacroSectorImpactItemOut {
-  id: number
-  title: string
-  url: string
-  category: string
-  via_category: string | null
-  /** `insulated` only on an industry bucket: the rule says this industry does
-   * not inherit its sector's read for this headline. */
-  direction: 'positive' | 'negative' | 'insulated'
-  /** The transmission rule's own reasoning; absent on older snapshots. */
-  rationale?: string | null
-  stance: string
-  magnitude: string
-  direction_note: string
-}
-
-export interface MacroSectorImpactBucketOut {
-  positive_count: number
-  negative_count: number
-  net: 'positive' | 'negative' | 'mixed' | 'neutral' | 'insulated'
-  items: MacroSectorImpactItemOut[]
-  /** Set on industry buckets only: the sector whose read this one overrides. */
-  sector?: string | null
-}
-
-export interface MacroSectorImpactOut {
-  impact_date: string
-  window_hours: number
-  items_considered: number
-  items_resolved: number
-  sectors: Record<string, MacroSectorImpactBucketOut>
-  /** Keyed by yfinance industry; a ticker's effective read is its industry
-   * bucket when present, else its sector bucket. Absent on older snapshots. */
-  industries?: Record<string, MacroSectorImpactBucketOut>
-  generated_at: string
-}
-
-export interface MacroSectorImpactDateOut {
-  impact_date: string
-  generated_at: string
-}
 
 export type MarketEventCategory =
   | 'oil_energy'

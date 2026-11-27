@@ -310,10 +310,8 @@ function HowThisWorks() {
           </li>
           <li>
             Each event's category and directional stance are matched against MarketScout's own
-            hand-authored sector transmission rules -- the same rules behind{' '}
-            <span className="font-medium">/v1/macro/sector-impact</span> on the Macro page -- to
-            work out which sectors it plausibly hits and which way, deterministically, with no
-            extra AI guessing involved.
+            hand-authored sector transmission rules to work out which sectors it plausibly hits
+            and which way, deterministically, with no extra AI guessing involved.
           </li>
           <li>
             A few days after each event's date, MarketScout checks what the affected sector ETFs

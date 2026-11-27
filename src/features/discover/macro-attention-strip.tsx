@@ -1,8 +1,9 @@
 import { Link, useSearchParams } from 'react-router'
-import { ShieldOff, TrendingDown, TrendingUp } from 'lucide-react'
-import { useMacroSectorImpact } from '@/features/macro/hooks'
+import { TrendingDown, TrendingUp } from 'lucide-react'
+import { DriverChip } from '@/features/macro/drivers'
+import { useMacroMoving } from '@/features/macro/hooks'
 import { cn } from '@/lib/utils'
-import type { MacroSectorImpactBucketOut } from '@/types/api'
+import type { MacroIndustryReadOut, MacroSectorReadOut } from '@/types/api'
 
 const NET_TEXT_CLASSES: Record<'positive' | 'negative', string> = {
   positive: 'text-emerald-600 dark:text-emerald-400',
@@ -14,9 +15,9 @@ const NET_BORDER_TINT: Record<'positive' | 'negative', string> = {
   negative: 'border-red-500/40 bg-red-500/10',
 }
 
-function signalStrength(bucket: MacroSectorImpactBucketOut): number {
-  return Math.abs(bucket.positive_count - bucket.negative_count)
-}
+const INDUSTRIES_SHOWN = 8
+// Sector total (points vs SPY) under which the day counts as mixed.
+const MIXED_BAND_PP = 0.15
 
 type Dominant = 'negative' | 'mixed' | 'positive'
 
@@ -26,10 +27,18 @@ const DOMINANT_LABEL: Record<Dominant, string> = {
   positive: 'Predominantly bullish macro pressure today',
 }
 
+function pp(value: number): string {
+  return `${value > 0 ? '+' : '−'}${Math.abs(value).toFixed(2)}`
+}
+
+function why(read: MacroSectorReadOut): string {
+  return read.pushes
+    .map((p) => `${p.driver} ${p.direction}: ${pp(p.typical_move_pp ?? 0)}pp`)
+    .join(' · ')
+}
+
 // Red / amber / green in a fixed left-to-right order, like an actual
-// traffic light -- only the light matching today's dominant read is lit
-// (glow + pulse), the other two sit dim. A quiet row of pills doesn't pull
-// the eye on its own; one glowing dot next to the section title does.
+// traffic light -- only the light matching today's dominant read is lit.
 function TrafficLight({ dominant }: { dominant: Dominant }) {
   const lights: { key: Dominant; on: string; off: string }[] = [
     { key: 'negative', on: 'bg-red-500 shadow-[0_0_6px_2px_rgba(239,68,68,0.7)]', off: 'bg-red-500/20' },
@@ -38,7 +47,7 @@ function TrafficLight({ dominant }: { dominant: Dominant }) {
   ]
   return (
     <span
-      className="border-border flex items-center gap-1 rounded-full border bg-muted/50 px-1.5 py-1"
+      className="border-border bg-muted/50 flex items-center gap-1 rounded-full border px-1.5 py-1"
       role="img"
       aria-label={DOMINANT_LABEL[dominant]}
     >
@@ -55,92 +64,56 @@ function TrafficLight({ dominant }: { dominant: Dominant }) {
   )
 }
 
-/** Only sectors with a one-sided macro read today (net positive/negative --
- * "mixed"/"neutral" carry no directional attention), ranked strongest
- * first -- same tornado-sort as the Macro page's own leaderboard.
+/** Today's macro pressure for Discover: the same measured sector and industry
+ * reads as the Macro page (how stocks typically move vs SPY on a day today's
+ * news drivers move this way). Sectors first, strongest move first; then the
+ * most affected industries, flagged when they go against their sector (a
+ * sector median can hide airlines inside Industrials).
  *
- * Deliberately a compact pill row, not a card grid -- the Sector Heatmap
- * right below already owns the "tile with a colored background" visual
- * language for today's realized price move; reusing that same look here for
- * a different signal (forward-looking macro pressure) read as one
- * confusing double heatmap. Pills borrow MacroCategoryFilter's language
- * instead (border + low-alpha tint, no filled background), so this reads as
- * a lightweight tag/filter row, not a second data grid.
- *
- * Renders nothing when today's snapshot hasn't been computed yet or nothing
- * is flagged: this is an alert surface, not a status panel, so silence when
- * there's nothing to flag is the right default. */
+ * Renders nothing until measured exposures exist or when nothing moved: this
+ * is an alert surface, not a status panel. */
 export function MacroAttentionStrip() {
-  const { data } = useMacroSectorImpact()
+  const { data } = useMacroMoving(24)
   const [searchParams, setSearchParams] = useSearchParams()
   const activeSector = searchParams.get('sector')
-
-  const flagged = data
-    ? Object.entries(data.sectors)
-        .filter((entry): entry is [string, MacroSectorImpactBucketOut] => {
-          const [, bucket] = entry
-          return bucket.net === 'positive' || bucket.net === 'negative'
-        })
-        .sort(([, a], [, b]) => signalStrength(b) - signalStrength(a))
-    : []
-
-  // Industries whose read DIVERGES from their sector's today -- inverted
-  // (Refining negative while Energy is positive), insulated (Uranium does
-  // not inherit Energy's oil read), or flagged where the sector has no read
-  // at all (Solar on an oil headline). Same-direction refinements are
-  // omitted: the sector pill already says it.
-  const diverging = data
-    ? Object.entries(data.industries ?? {})
-        .filter(([, bucket]) => {
-          if (bucket.net !== 'positive' && bucket.net !== 'negative' && bucket.net !== 'insulated') {
-            return false
-          }
-          const sectorNet = bucket.sector ? data.sectors[bucket.sector]?.net : undefined
-          return bucket.net !== sectorNet
-        })
-        .sort(([, a], [, b]) => {
-          const ins = (b.net === 'insulated' ? 0 : 1) - (a.net === 'insulated' ? 0 : 1)
-          return ins !== 0 ? ins : signalStrength(b) - signalStrength(a)
-        })
-    : []
   const activeIndustry = searchParams.get('industry')
 
-  if (flagged.length === 0 && diverging.length === 0) return null
+  if (!data || data.sector_basis !== 'measured') return null
+  const sectors = [...data.sectors].sort(
+    (a, b) => Math.abs(b.typical_move_pp ?? 0) - Math.abs(a.typical_move_pp ?? 0),
+  )
+  const sectorNet = new Map(sectors.map((s) => [s.sector, s.net]))
+  const industries = [...(data.industries ?? [])]
+    .sort((a, b) => Math.abs(b.typical_move_pp ?? 0) - Math.abs(a.typical_move_pp ?? 0))
+    .slice(0, INDUSTRIES_SHOWN)
+  if (sectors.length === 0 && industries.length === 0) return null
 
-  const totalPositive = flagged
-    .filter(([, b]) => b.net === 'positive')
-    .reduce((sum, [, b]) => sum + signalStrength(b), 0)
-  const totalNegative = flagged
-    .filter(([, b]) => b.net === 'negative')
-    .reduce((sum, [, b]) => sum + signalStrength(b), 0)
-  const dominant: Dominant =
-    totalPositive === totalNegative ? 'mixed' : totalPositive > totalNegative ? 'positive' : 'negative'
+  const total = sectors.reduce((sum, s) => sum + (s.typical_move_pp ?? 0), 0)
+  const dominant: Dominant = Math.abs(total) < MIXED_BAND_PP ? 'mixed' : total > 0 ? 'positive' : 'negative'
+  const drivers = data.drivers.slice(0, 4)
 
-  function toggleIndustry(sector: string, industry: string) {
+  function toggleSector(sector: string) {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev)
-      if (activeSector === sector && activeIndustry === industry) {
-        next.delete('sector')
-        next.delete('industry')
-      } else {
-        next.set('sector', sector)
-        next.set('industry', industry)
-      }
+      if (activeSector === sector) next.delete('sector')
+      else next.set('sector', sector)
+      // A sector switch invalidates any industry chosen in the heatmap.
+      next.delete('industry')
       next.delete('page')
       return next
     })
   }
 
-  function toggleSector(sector: string) {
+  function toggleIndustry(read: MacroIndustryReadOut) {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev)
-      if (activeSector === sector) {
+      if (activeSector === read.sector && activeIndustry === read.industry) {
         next.delete('sector')
+        next.delete('industry')
       } else {
-        next.set('sector', sector)
+        next.set('sector', read.sector)
+        next.set('industry', read.industry)
       }
-      // A sector switch invalidates any industry chosen in the heatmap.
-      next.delete('industry')
       next.delete('page')
       return next
     })
@@ -149,26 +122,29 @@ export function MacroAttentionStrip() {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+        <h2 className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs font-semibold tracking-wide uppercase">
           <TrafficLight dominant={dominant} />
           Macro attention today
+          {drivers.map((d) => (
+            <DriverChip key={`${d.driver}-${d.direction}`} driver={d.driver} direction={d.direction} className="normal-case" />
+          ))}
         </h2>
         <Link to="/macro" className="text-muted-foreground text-xs hover:underline">
           View macro detail →
         </Link>
       </div>
       <div className="flex flex-wrap gap-1.5" role="group" aria-label="Sectors with a notable macro read today">
-        {flagged.map(([sector, bucket]) => {
-          const net = bucket.net as 'positive' | 'negative'
-          const isActive = activeSector === sector
+        {sectors.map((read) => {
+          const net = read.net === 'positive' ? 'positive' : 'negative'
+          const isActive = activeSector === read.sector
           const Icon = net === 'positive' ? TrendingUp : TrendingDown
           return (
             <button
-              key={sector}
+              key={read.sector}
               type="button"
-              onClick={() => toggleSector(sector)}
+              onClick={() => toggleSector(read.sector)}
               aria-pressed={isActive}
-              title={`${bucket.items.length} macro item${bucket.items.length === 1 ? '' : 's'} today`}
+              title={`Typical move vs SPY on a day like today — ${why(read)}`}
               className={cn(
                 'flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors',
                 isActive
@@ -177,55 +153,40 @@ export function MacroAttentionStrip() {
               )}
             >
               <Icon className={cn('size-3.5 shrink-0', NET_TEXT_CLASSES[net])} aria-hidden="true" />
-              {sector}
-              <span className={cn('tabular-nums', NET_TEXT_CLASSES[net])}>
-                {net === 'positive' ? '+' : '−'}
-                {signalStrength(bucket)}
-              </span>
+              {read.sector}
+              <span className={cn('tabular-nums', NET_TEXT_CLASSES[net])}>{pp(read.typical_move_pp ?? 0)}</span>
             </button>
           )
         })}
       </div>
-      {diverging.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Industries diverging from their sector today">
-          <span className="text-muted-foreground mr-1 text-xs">Diverging industries</span>
-          {diverging.map(([industry, bucket]) => {
-            const sector = bucket.sector ?? ''
-            const isActive = activeSector === sector && activeIndustry === industry
-            const Icon =
-              bucket.net === 'positive' ? TrendingUp : bucket.net === 'negative' ? TrendingDown : ShieldOff
-            const tone =
-              bucket.net === 'insulated'
-                ? 'text-muted-foreground'
-                : NET_TEXT_CLASSES[bucket.net as 'positive' | 'negative']
-            const title =
-              bucket.net === 'insulated'
-                ? `${industry} does not inherit ${sector}'s macro read today: ${bucket.items[0]?.rationale ?? ''}`
-                : `${industry} reads ${bucket.net} while ${sector} reads ${data?.sectors[sector]?.net ?? 'nothing'}: ${bucket.items[0]?.rationale ?? ''}`
+      {industries.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Most affected industries today">
+          <span className="text-muted-foreground mr-1 text-xs">Most affected industries</span>
+          {industries.map((read) => {
+            const net = read.net === 'positive' ? 'positive' : 'negative'
+            const against = sectorNet.has(read.sector) && sectorNet.get(read.sector) !== read.net
+            const isActive = activeSector === read.sector && activeIndustry === read.industry
+            const Icon = net === 'positive' ? TrendingUp : TrendingDown
             return (
               <button
-                key={industry}
+                key={read.industry}
                 type="button"
-                onClick={() => toggleIndustry(sector, industry)}
+                onClick={() => toggleIndustry(read)}
                 aria-pressed={isActive}
-                title={title}
-                data-testid={`diverging-industry-${industry}`}
+                title={`${read.members} stocks — ${why(read)}${against ? ` · moves against ${read.sector}` : ''}`}
+                data-testid={`macro-industry-${read.industry}`}
                 className={cn(
                   'flex items-center gap-1.5 rounded-full border border-dashed px-2.5 py-0.5 text-xs transition-colors',
                   isActive
-                    ? cn('text-foreground', bucket.net === 'insulated' ? 'bg-muted' : NET_BORDER_TINT[bucket.net as 'positive' | 'negative'])
+                    ? cn('text-foreground', NET_BORDER_TINT[net])
                     : 'border-border text-muted-foreground hover:bg-muted hover:text-foreground',
                 )}
               >
-                <Icon className={cn('size-3.5 shrink-0', tone)} aria-hidden="true" />
-                {industry}
-                <span className="text-muted-foreground/70">· {sector}</span>
-                {bucket.net !== 'insulated' && (
-                  <span className={cn('tabular-nums', tone)}>
-                    {bucket.net === 'positive' ? '+' : '−'}
-                    {signalStrength(bucket)}
-                  </span>
-                )}
+                <Icon className={cn('size-3.5 shrink-0', NET_TEXT_CLASSES[net])} aria-hidden="true" />
+                {read.industry}
+                <span className="text-muted-foreground/70">· {read.sector}</span>
+                <span className={cn('tabular-nums', NET_TEXT_CLASSES[net])}>{pp(read.typical_move_pp ?? 0)}</span>
+                {against && <span className="text-amber-600 dark:text-amber-400">vs sector</span>}
               </button>
             )
           })}

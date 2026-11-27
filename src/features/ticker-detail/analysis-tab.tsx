@@ -7,7 +7,6 @@ import {
   CalendarClock,
   ChevronRight,
   Coins,
-  Globe2,
   Layers,
   LineChart,
   MessageCircle,
@@ -85,7 +84,6 @@ const FACTOR_META: Record<string, { label: string; icon: LucideIcon }> = {
   twitter_sentiment: { label: 'Twitter/X sentiment', icon: AtSign },
   reddit_sentiment: { label: 'Reddit sentiment', icon: MessagesSquare },
   sector: { label: 'Sector strength', icon: Layers },
-  macro_sector_impact: { label: 'Macro impact', icon: Globe2 },
   asset_exposure: { label: 'Asset exposure', icon: Coins },
   market_context: { label: 'Market context', icon: BarChart3 },
   chart_pattern: { label: 'Chart pattern', icon: LineChart },
@@ -209,8 +207,8 @@ function CompositeScoreLine({
     refreshUniverseScore.mutate(undefined, {
       onSuccess: (result) => {
         if (result.scored) {
-          const newsPart = result.news_classified
-            ? `, ${result.news_classified} news article${result.news_classified === 1 ? '' : 's'} classified`
+          const newsPart = result.news_analyzed
+            ? `, ${result.news_analyzed} news article${result.news_analyzed === 1 ? '' : 's'} analyzed`
             : ''
           toast.success(
             `Refreshed universe score for ${result.ticker}: ${result.score}/100${newsPart}`,

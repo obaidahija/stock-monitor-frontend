@@ -1,47 +1,36 @@
 import { apiClient } from '@/lib/api-client'
 import type {
-  MacroBucketGranularity,
+  MacroExposureOut,
+  MacroItemExplanationOut,
+  MacroMovingOut,
   MacroNewsItemOut,
-  MacroSectorImpactDateOut,
-  MacroSectorImpactOut,
-  MacroSignalHistoryBucketOut,
-  MacroSignalOut,
   SectorRotationOut,
 } from '@/types/api'
 
 export interface MacroNewsParams {
-  category?: string
   hours?: number
+  /** Hide items the trained reader rated low or no relevance. */
+  relevantOnly?: boolean
 }
 
-export function getMacroSignal(hours = 24) {
-  return apiClient.get<MacroSignalOut>(`/v1/macro/signal?hours=${hours}`)
-}
-
-export function getMacroSignalHistory(bucket: MacroBucketGranularity = 'day', periods = 14) {
-  return apiClient.get<MacroSignalHistoryBucketOut[]>(
-    `/v1/macro/signal/history?bucket=${bucket}&periods=${periods}`,
-  )
+export function getMacroMoving(hours = 24) {
+  return apiClient.get<MacroMovingOut>(`/v1/macro/moving?hours=${hours}`)
 }
 
 export function getMacroNews(params: MacroNewsParams = {}) {
   const query = new URLSearchParams()
-  if (params.category) query.set('category', params.category)
   query.set('hours', String(params.hours ?? 24))
+  if (params.relevantOnly) query.set('relevant_only', 'true')
   return apiClient.get<MacroNewsItemOut[]>(`/v1/macro/news?${query.toString()}`)
 }
 
-export function getMacroSectorImpact(date?: string) {
-  const query = date ? `?date=${date}` : ''
-  return apiClient.get<MacroSectorImpactOut>(`/v1/macro/sector-impact${query}`)
+export function getMacroItemExplanation(itemId: number) {
+  return apiClient.get<MacroItemExplanationOut>(`/v1/macro/news/${itemId}/explanation`)
 }
 
-export function refreshMacroSectorImpact() {
-  return apiClient.post<MacroSectorImpactOut>('/v1/macro/sector-impact/refresh')
-}
-
-export function getMacroSectorImpactDates(limit = 30) {
-  return apiClient.get<MacroSectorImpactDateOut[]>(`/v1/macro/sector-impact/dates?limit=${limit}`)
+/** Who measurably reacts when a market driver (oil, yield_10y, dollar, ...) moves. */
+export function getMacroExposures(driver: string, direction: 'up' | 'down') {
+  return apiClient.get<MacroExposureOut>(`/v1/macro/exposures?driver=${driver}&direction=${direction}`)
 }
 
 export function getSectorRotation(window: 5 | 20 = 5) {
