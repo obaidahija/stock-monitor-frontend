@@ -25,6 +25,8 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useTelegramStatus, useTelegramTest } from '@/features/telegram-routing/hooks'
+import { telegramCategoryStatus } from '@/features/telegram-routing/status'
 import { formatCurrency, formatEasternDateTime } from '@/lib/format'
 import type {
   WatchlistEventComparison,
@@ -38,8 +40,6 @@ import {
   useDeleteWatchlistEvent,
   useRearmWatchlistEvent,
   useRetryWatchlistEventDelivery,
-  useSendTelegramTest,
-  useTelegramStatus,
   useUpdateWatchlistEvent,
   useWatchlistEvents,
 } from './hooks'
@@ -122,12 +122,13 @@ export function WatchlistEventsDialog({ item }: { item: WatchlistItemOut }) {
   const [sourceLevel, setSourceLevel] = useState<WatchlistSetupLevel | null>(null)
   const events = useWatchlistEvents(item.id, open)
   const telegram = useTelegramStatus(open)
+  const watchlistTelegram = telegramCategoryStatus(telegram.data, 'watchlist')
   const create = useCreateWatchlistEvent()
   const update = useUpdateWatchlistEvent()
   const rearm = useRearmWatchlistEvent()
   const remove = useDeleteWatchlistEvent()
   const retry = useRetryWatchlistEventDelivery()
-  const sendTest = useSendTelegramTest()
+  const sendTest = useTelegramTest()
   const isSaving = create.isPending || update.isPending || rearm.isPending
 
   const effectivePrice =
@@ -274,7 +275,7 @@ export function WatchlistEventsDialog({ item }: { item: WatchlistItemOut }) {
 
   async function testTelegram() {
     try {
-      await sendTest.mutateAsync()
+      await sendTest.mutateAsync('watchlist')
       toast.success('Telegram test message sent')
     } catch {
       toast.error('Telegram test failed')
@@ -293,7 +294,7 @@ export function WatchlistEventsDialog({ item }: { item: WatchlistItemOut }) {
       ruleValue >= 0 &&
       (!ruleMeta.paramWhole || Number.isInteger(ruleValue)))
   const conditionComplete = ruleType === 'price' ? numericThreshold > 0 : ruleNumberValid
-  const formComplete = conditionComplete && telegram.data?.ready === true
+  const formComplete = conditionComplete && watchlistTelegram?.ready === true
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -326,9 +327,10 @@ export function WatchlistEventsDialog({ item }: { item: WatchlistItemOut }) {
 
         <TelegramState
           pending={telegram.isPending}
-          configured={telegram.data?.configured ?? false}
-          ready={telegram.data?.ready ?? false}
-          error={telegram.data?.error}
+          configured={watchlistTelegram?.configured ?? false}
+          ready={watchlistTelegram?.ready ?? false}
+          error={watchlistTelegram?.error}
+          showLegacyConfigHint={!telegram.data?.routes}
           testing={sendTest.isPending}
           onTest={() => void testTelegram()}
         />
@@ -501,6 +503,7 @@ function TelegramState({
   configured,
   ready,
   error,
+  showLegacyConfigHint,
   testing,
   onTest,
 }: {
@@ -508,6 +511,7 @@ function TelegramState({
   configured: boolean
   ready: boolean
   error?: string | null
+  showLegacyConfigHint: boolean
   testing: boolean
   onTest: () => void
 }) {
@@ -520,7 +524,7 @@ function TelegramState({
         <>
           <AlertTriangle className="text-destructive size-4" />
           <span>{error || 'Telegram is not ready.'}</span>
-          {!configured && (
+          {!configured && showLegacyConfigHint && (
             <code className="text-xs">Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID.</code>
           )}
         </>

@@ -1,7 +1,9 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import type { WatchlistEventOut, WatchlistItemOut } from '@/types/api'
+import { apiClient } from '@/lib/api-client'
+import { renderWithProviders as render } from '@/test/render'
+import type { TelegramRouteOut, TelegramStatusOut, WatchlistEventOut, WatchlistItemOut } from '@/types/api'
 import { WatchlistEventsDialog } from './watchlist-events-dialog'
 
 const create = vi.fn()
@@ -9,25 +11,29 @@ const update = vi.fn()
 const rearm = vi.fn()
 const remove = vi.fn()
 const retry = vi.fn()
-const sendTest = vi.fn()
-let telegramReady = true
+let telegram: TelegramStatusOut
 let eventsData: WatchlistEventOut[] = []
+
+vi.mock('@/lib/api-client', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/api-client')>()),
+  apiClient: { get: vi.fn(), post: vi.fn() },
+}))
 
 vi.mock('./hooks', () => ({
   useWatchlistEvents: () => ({ data: eventsData, isPending: false }),
-  useTelegramStatus: () => ({
-    data: telegramReady
-      ? { configured: true, ready: true, error: null }
-      : { configured: false, ready: false, error: 'Telegram is not configured' },
-    isPending: false,
-  }),
   useCreateWatchlistEvent: () => ({ mutateAsync: create, isPending: false }),
   useUpdateWatchlistEvent: () => ({ mutateAsync: update, isPending: false }),
   useRearmWatchlistEvent: () => ({ mutateAsync: rearm, isPending: false }),
   useDeleteWatchlistEvent: () => ({ mutateAsync: remove, isPending: false }),
   useRetryWatchlistEventDelivery: () => ({ mutateAsync: retry, isPending: false }),
-  useSendTelegramTest: () => ({ mutateAsync: sendTest, isPending: false }),
 }))
+
+function watchlistRoute(overrides: Partial<TelegramRouteOut> = {}): TelegramRouteOut {
+  return {
+    category: 'watchlist', name: 'Watchlist', chat_id: '-100123', thread_id: 8,
+    topic_name: 'Watchlist', source: 'route', ready: true, error: null, ...overrides,
+  }
+}
 
 const item: WatchlistItemOut = {
   id: 10,
@@ -70,9 +76,11 @@ const item: WatchlistItemOut = {
 }
 
 beforeEach(() => {
-  telegramReady = true
+  telegram = { configured: true, ready: true, error: null, digest_enabled: false }
   eventsData = []
   vi.clearAllMocks()
+  vi.mocked(apiClient.get).mockImplementation(async () => telegram as never)
+  vi.mocked(apiClient.post).mockResolvedValue({ sent: true })
 })
 
 afterEach(cleanup)
@@ -110,14 +118,49 @@ test('warns for an already-satisfied custom condition', async () => {
 })
 
 test('blocks saving when Telegram is not configured', async () => {
-  telegramReady = false
+  telegram = { configured: false, ready: false, error: 'Telegram is not configured', digest_enabled: false }
   const user = userEvent.setup()
   render(<WatchlistEventsDialog item={item} />)
   await user.click(screen.getByRole('button', { name: /manage nvda events/i }))
   await user.type(screen.getByLabelText('Target price'), '200')
 
-  expect(screen.getByText(/set telegram_bot_token/i)).toBeTruthy()
+  expect(await screen.findByText(/set telegram_bot_token/i)).toBeVisible()
   expect((screen.getByRole('button', { name: 'Save event' }) as HTMLButtonElement).disabled).toBe(true)
+})
+
+test('allows saving when the watchlist topic is ready and there is no default chat', async () => {
+  telegram = {
+    ...telegram, configured: false, ready: false, error: 'Default chat is missing',
+    routes: [watchlistRoute()],
+  }
+  const user = userEvent.setup()
+  render(<WatchlistEventsDialog item={item} />)
+  await user.click(screen.getByRole('button', { name: /manage nvda events/i }))
+  await user.type(screen.getByLabelText('Target price'), '200')
+
+  expect(await screen.findByText('Telegram is ready.')).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Save event' })).toBeEnabled()
+})
+
+test('blocks saving and shows the watchlist route error even when the default chat is ready', async () => {
+  telegram.routes = [watchlistRoute({ ready: false, error: 'The bot cannot post in this chat' })]
+  const user = userEvent.setup()
+  render(<WatchlistEventsDialog item={item} />)
+  await user.click(screen.getByRole('button', { name: /manage nvda events/i }))
+  await user.type(screen.getByLabelText('Target price'), '200')
+
+  expect(await screen.findByText('The bot cannot post in this chat')).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Save event' })).toBeDisabled()
+})
+
+test('sends a test message to the watchlist category', async () => {
+  telegram.routes = [watchlistRoute()]
+  const user = userEvent.setup()
+  render(<WatchlistEventsDialog item={item} />)
+  await user.click(screen.getByRole('button', { name: /manage nvda events/i }))
+  await user.click(await screen.findByRole('button', { name: 'Test message' }))
+
+  await waitFor(() => expect(apiClient.post).toHaveBeenCalledWith('/v1/notifications/telegram/test?category=watchlist'))
 })
 
 test('shows a failed latest delivery and retries it', async () => {
@@ -385,11 +428,12 @@ test('an invalid number for a rule keeps Save disabled', async () => {
 })
 
 test('a non-price rule still needs Telegram to be ready', async () => {
-  telegramReady = false
+  telegram = { configured: false, ready: false, error: 'Telegram is not configured', digest_enabled: false }
   const user = userEvent.setup()
   render(<WatchlistEventsDialog item={item} />)
   await user.click(screen.getByRole('button', { name: /manage nvda events/i }))
   await user.selectOptions(screen.getByLabelText(/alert on/i), 'new_filing')
 
+  expect(await screen.findByText('Telegram is not configured')).toBeVisible()
   expect(screen.getByRole('button', { name: 'Save event' })).toBeDisabled()
 })

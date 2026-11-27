@@ -440,3 +440,167 @@ test('pages a long transaction list 25 at a time', () => {
   expect(screen.getByText('Insider 25')).toBeInTheDocument()
   expect(screen.queryByText('Insider 26')).not.toBeInTheDocument()
 })
+
+const PLANNED_EXECUTED = {
+  accession_number: '0001234567-26-000001',
+  form_type: '144',
+  seller_name: 'LI SUSAN J',
+  seller_cik: '0001739092',
+  relationships: ['Officer'],
+  title: 'Chief Financial Officer',
+  units_to_sell: 9196,
+  aggregate_market_value: 5720398,
+  units_outstanding: 2214472367,
+  pct_outstanding: 0.000415,
+  approx_sale_date: '2026-11-17',
+  notice_date: '2026-11-17',
+  acquisition_natures: ['Restricted Stock Unit Lapse'],
+  plan_adoption_dates: ['2025-11-25'],
+  past_3m_proceeds: 4100000,
+  status: 'executed' as const,
+  matched_shares: 9196,
+  matched_form4_accession: '0009999999-26-000001',
+  matched_form4_date: '2026-11-18',
+  is_big: true,
+  big_reasons: ['value', 'ceo_cfo'],
+  edgar_url: 'https://www.sec.gov/Archives/edgar/data/1326801/x-index.htm',
+}
+
+test('lists Form 144 planned sales with status and the big marker', () => {
+  mockData = {
+    ...EMPTY,
+    planned_sales: [
+      PLANNED_EXECUTED,
+      {
+        ...PLANNED_EXECUTED,
+        accession_number: '0001234567-26-000002',
+        seller_name: 'Mahoney Curtis J.',
+        title: null,
+        aggregate_market_value: 974375,
+        status: 'pending',
+        matched_shares: null,
+        matched_form4_accession: null,
+        matched_form4_date: null,
+        is_big: false,
+        big_reasons: [],
+      },
+    ],
+  }
+  render(<InsiderTab ticker="META" />)
+
+  const section = screen.getByRole('region', { name: /planned sales \(form 144\)/i })
+  expect(within(section).getByText('LI SUSAN J')).toBeInTheDocument()
+  expect(within(section).getByText('Chief Financial Officer')).toBeInTheDocument()
+  expect(within(section).getByText('Executed')).toBeInTheDocument()
+  expect(within(section).getByText('Pending')).toBeInTheDocument()
+  expect(within(section).getAllByText('Restricted Stock Unit Lapse')).toHaveLength(2)
+  const big = within(section).getByText('Big sale')
+  expect(big).toHaveAttribute('title', expect.stringMatching(/large dollar value.*CEO\/CFO seller/i))
+  expect(within(section).getAllByRole('link', { name: /edgar notice/i })).toHaveLength(2)
+})
+
+test('hides the planned sales section when there are none', () => {
+  mockData = { ...EMPTY, planned_sales: [] }
+  render(<InsiderTab ticker="META" />)
+
+  expect(screen.queryByRole('region', { name: /planned sales/i })).not.toBeInTheDocument()
+})
+
+const HOLDER_13D = {
+  accession_number: '0001193125-26-444399',
+  form_type: 'SCHEDULE 13D/A',
+  schedule: '13D' as const,
+  holder_name: 'SK hynix Inc.',
+  related_entities: ['HYAICO Corporation', 'SHIFTIX1 LLC'],
+  percent_of_class: 8.4,
+  shares: 6096103,
+  event_date: '2026-10-29',
+  accepted_at: '2026-10-30T21:00:00Z',
+  previous_percent: 6.1,
+  percent_change: 2.3,
+  purpose: 'The Reporting Persons intend to engage with the Board regarding a potential sale.',
+  purpose_changed: true,
+  below_threshold: false,
+  filing_count: 2,
+  edgar_url: 'https://www.sec.gov/Archives/edgar/data/1616533/x-index.htm',
+}
+
+test('lists major holders with type, change and an expandable 13D purpose', async () => {
+  mockData = {
+    ...EMPTY,
+    major_holders: [
+      HOLDER_13D,
+      {
+        ...HOLDER_13D,
+        accession_number: 'G1',
+        form_type: 'SCHEDULE 13G',
+        schedule: '13G' as const,
+        holder_name: 'Vanguard Group',
+        related_entities: [],
+        percent_of_class: 7.2,
+        previous_percent: null,
+        percent_change: null,
+        purpose: null,
+        purpose_changed: false,
+        filing_count: 1,
+      },
+      {
+        ...HOLDER_13D,
+        accession_number: 'X1',
+        schedule: '13G' as const,
+        holder_name: 'Old Fund LP',
+        related_entities: [],
+        percent_of_class: 0,
+        purpose: null,
+        purpose_changed: false,
+        below_threshold: true,
+      },
+    ],
+  }
+  render(<InsiderTab ticker="PENG" />)
+
+  const section = screen.getByRole('region', { name: /major holders \(13d\/13g\)/i })
+  expect(within(section).getByText('SK hynix Inc.')).toBeInTheDocument()
+  expect(within(section).getByText('+2 related')).toBeInTheDocument()
+  expect(within(section).getByText('13D')).toBeInTheDocument()
+  expect(within(section).getAllByText('13G')).toHaveLength(2)
+  expect(within(section).getByText('+2.3 pts')).toBeInTheDocument()
+  expect(within(section).getByText('New')).toBeInTheDocument()
+  expect(within(section).getByText('Exited')).toBeInTheDocument()
+  expect(within(section).queryByText(/engage with the Board/)).not.toBeInTheDocument()
+
+  await userEvent.click(within(section).getByRole('button', { name: /show purpose/i }))
+
+  expect(within(section).getByText(/engage with the Board/)).toBeInTheDocument()
+  expect(within(section).getByText('Purpose changed')).toBeInTheDocument()
+})
+
+test('hides the major holders section when there are none', () => {
+  mockData = { ...EMPTY, major_holders: [] }
+  render(<InsiderTab ticker="PENG" />)
+
+  expect(screen.queryByRole('region', { name: /major holders/i })).not.toBeInTheDocument()
+})
+
+test('an amendment with no earlier filing on record is not called new', () => {
+  mockData = {
+    ...EMPTY,
+    major_holders: [
+      {
+        ...HOLDER_13D,
+        form_type: 'SCHEDULE 13G/A',
+        schedule: '13G' as const,
+        previous_percent: null,
+        percent_change: null,
+        purpose: null,
+        purpose_changed: false,
+        filing_count: 1,
+      },
+    ],
+  }
+  render(<InsiderTab ticker="PENG" />)
+
+  const section = screen.getByRole('region', { name: /major holders/i })
+  expect(within(section).queryByText('New')).not.toBeInTheDocument()
+  expect(within(section).getByTitle(/earlier filing not on record/i)).toHaveTextContent('—')
+})

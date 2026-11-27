@@ -20,7 +20,8 @@ import { useMarketDate } from '@/features/digest/use-market-date'
 import { HiddenDigestTickers } from '@/features/digest/hidden-tickers'
 import { DigestResearchFirst } from '@/features/research-first/research-first-panel'
 import { useBuildDigest, useDigest, useSendMorningDigest, type DigestView } from '@/features/digest/hooks'
-import { useTelegramStatus } from '@/features/watchlists/hooks'
+import { useTelegramStatus } from '@/features/telegram-routing/hooks'
+import { telegramCategoryStatus } from '@/features/telegram-routing/status'
 import { formatEasternDateTime } from '@/lib/format'
 import type { DigestItem, DigestOut } from '@/types/api'
 
@@ -48,6 +49,7 @@ export function DigestPage() {
   const buildDigest = useBuildDigest()
   const sendDigest = useSendMorningDigest()
   const { data: telegram } = useTelegramStatus()
+  const digestTelegram = telegramCategoryStatus(telegram, 'digest')
   const [researchTickers, setResearchTickers] = useState<string[]>([])
   const [researchQuotes, setResearchQuotes] = useState<string[]>([])
   const coverageRef = useRef<HTMLDivElement>(null)
@@ -155,8 +157,8 @@ export function DigestPage() {
           </div>
           {buildButton}
           {edition === 'morning' && <Button variant="outline" size="sm"
-            onClick={() => sendDigest.mutate(selectedDate)} disabled={sendDigest.isPending || !digest || !telegram?.ready}
-            title={!telegram?.ready ? telegram?.error ?? 'Telegram is not configured'
+            onClick={() => sendDigest.mutate(selectedDate)} disabled={sendDigest.isPending || !digest || !digestTelegram?.ready}
+            title={!digestTelegram?.ready ? digestTelegram?.error ?? 'Telegram is not configured'
               : !digest ? 'There is no morning edition to send for this date' : `Send the ${selectedDate} morning edition to Telegram`}>
             <Send data-icon="inline-start" />{sendDigest.isPending ? 'Sending…' : 'Send to Telegram'}
           </Button>}

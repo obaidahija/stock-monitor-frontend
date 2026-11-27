@@ -9,7 +9,6 @@ import {
   deleteWatchlist,
   deleteWatchlistEvent,
   getSetupHistory,
-  getTelegramStatus,
   getTickerMemberships,
   getWatchlistItems,
   getWatchlistEvents,
@@ -18,7 +17,6 @@ import {
   rearmWatchlistEvent,
   renameWatchlist,
   retryWatchlistEventDelivery,
-  sendTelegramTest,
   updateWatchlistSetup,
   updateWatchlistEvent,
   type AiSetupInput,
@@ -186,23 +184,4 @@ export function useDeleteWatchlistEvent() {
 
 export function useRetryWatchlistEventDelivery() {
   return useEventMutation((id: number) => retryWatchlistEventDelivery(id))
-}
-
-export function useTelegramStatus(enabled = true) {
-  return useQuery({
-    queryKey: ['notifications', 'telegram', 'status'],
-    queryFn: getTelegramStatus,
-    enabled,
-    retry: false,
-  })
-}
-
-export function useSendTelegramTest() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: sendTelegramTest,
-    onSuccess: () => queryClient.invalidateQueries({
-      queryKey: ['notifications', 'telegram', 'status'],
-    }),
-  })
 }

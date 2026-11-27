@@ -3,9 +3,11 @@ import { PageHeader } from '@/components/shared/page-header'
 import { AiSettingsForm } from '@/features/ai-settings/ai-settings-form'
 import { SettingsCategoryForm } from '@/features/settings/category-form'
 import { useSettings } from '@/features/settings/hooks'
+import { TelegramRoutingPanel } from '@/features/telegram-routing/telegram-routing-panel'
 import { cn } from '@/lib/utils'
 
 const AI_CATEGORY = 'ai'
+const TELEGRAM_CATEGORY = 'telegram'
 
 export function SettingsPage() {
   const { data, isLoading, error } = useSettings()
@@ -34,6 +36,13 @@ export function SettingsPage() {
         <nav className="flex shrink-0 flex-row flex-wrap gap-1 md:w-56 md:flex-col md:flex-nowrap">
           <button type="button" className={navButtonClass(AI_CATEGORY)} onClick={() => setSelected(AI_CATEGORY)}>
             AI
+          </button>
+          <button
+            type="button"
+            className={navButtonClass(TELEGRAM_CATEGORY)}
+            onClick={() => setSelected(TELEGRAM_CATEGORY)}
+          >
+            Telegram
           </button>
           {categories.map((category) => (
             <button
@@ -64,6 +73,7 @@ export function SettingsPage() {
               <AiSettingsForm />
             </>
           ) : null}
+          {selected === TELEGRAM_CATEGORY ? <TelegramRoutingPanel /> : null}
           {active ? <SettingsCategoryForm category={active} /> : null}
         </div>
       </div>
