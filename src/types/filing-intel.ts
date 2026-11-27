@@ -10,6 +10,17 @@ export type ExpectedStatus = 'expected' | 'filed' | 'late'
 export type Coverage = 'tracked' | 'extended'
 export type PriceSession = 'pre' | 'regular' | 'post'
 
+export interface ListingNotice {
+  accession: string
+  accepted_at: string | null
+  exchange: string | null
+  compliance_deadline: string | null
+  named: { form: string; period: string }[]
+  outstanding: { form: string; period: string }[]
+  detail: string
+  evidence: string[]
+}
+
 export interface QuoteOut {
   ticker: string
   price: number
@@ -165,6 +176,8 @@ export interface FilingIntelFilingOut {
   follows_report?: LinkedFiling | null
   /** On a 10-Q/10-K: the results 8-K furnished after it (folded into this row). */
   late_release?: LinkedFiling | null
+  /** A 10-Q/10-K an earlier late-filing notice named as missing: the notice and what is still outstanding. Not a vote. */
+  listing_notice?: ListingNotice | null
   /** Earnings filings: EPS and revenue against consensus, year over year, quarter over quarter. */
   scorecard?: Scorecard | null
   /** On a results release: the 10-K/A and 10-Q/As filed with it, each with its note. */

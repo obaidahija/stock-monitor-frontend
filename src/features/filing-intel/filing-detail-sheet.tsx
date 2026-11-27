@@ -403,6 +403,18 @@ export function FilingDetailSheet({
                 ) : (
                   <SignalReasons signal={filing.signal} />
                 )}
+                {filing.listing_notice && (
+                  <p className="text-sm" title={filing.listing_notice.evidence[0] ?? undefined}>
+                    {filing.listing_notice.detail}{' '}
+                    <button
+                      type="button"
+                      className="text-primary underline-offset-2 hover:underline"
+                      onClick={() => onOpen(filing.listing_notice!.accession)}
+                    >
+                      Open the notice
+                    </button>
+                  </p>
+                )}
                 <MarketDisagreedBadge filing={filing} now={prices.data?.get(filing.ticker ?? '')} />
               </section>
               <EarningsScorecard scorecard={filing.scorecard} />

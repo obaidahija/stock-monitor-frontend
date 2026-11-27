@@ -150,6 +150,16 @@ export function FilingRow({
             </Badge>
           </div>
         )}
+        {filing.listing_notice && (
+          <div>
+            <Badge variant="outline" title={filing.listing_notice.detail}>
+              Late report named in a listing notice
+              {filing.listing_notice.outstanding.length > 0
+                ? ` · ${filing.listing_notice.outstanding.length} still outstanding`
+                : ' · all named reports filed'}
+            </Badge>
+          </div>
+        )}
         {filing.ticker && <PriceSteps steps={priceSteps(filing, now)} size="row" />}
       </div>
     </button>
