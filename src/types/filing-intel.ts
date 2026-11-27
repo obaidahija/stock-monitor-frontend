@@ -21,6 +21,14 @@ export interface ListingNotice {
   evidence: string[]
 }
 
+/** An 8-K furnishing a press release the market already traded on. Not a vote: the filing has no label. */
+export interface StaleRelease {
+  release_date: string
+  sessions: number
+  evidence: string | null
+  detail: string
+}
+
 export interface QuoteOut {
   ticker: string
   price: number
@@ -178,6 +186,8 @@ export interface FilingIntelFilingOut {
   late_release?: LinkedFiling | null
   /** A 10-Q/10-K an earlier late-filing notice named as missing: the notice and what is still outstanding. Not a vote. */
   listing_notice?: ListingNotice | null
+  /** The press release is dated before this filing and a session traded on it first. */
+  stale_release?: StaleRelease | null
   /** Earnings filings: EPS and revenue against consensus, year over year, quarter over quarter. */
   scorecard?: Scorecard | null
   /** On a results release: the 10-K/A and 10-Q/As filed with it, each with its note. */

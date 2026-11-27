@@ -400,6 +400,10 @@ export function FilingDetailSheet({
                     market traded on it before this release was furnished. A label here would describe news already
                     priced, so it has none of its own.
                   </p>
+                ) : filing.stale_release ? (
+                  <p className="text-sm" title={filing.stale_release.evidence ?? undefined}>
+                    {filing.stale_release.detail}
+                  </p>
                 ) : (
                   <SignalReasons signal={filing.signal} />
                 )}

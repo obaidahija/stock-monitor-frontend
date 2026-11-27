@@ -150,6 +150,19 @@ export function FilingRow({
             </Badge>
           </div>
         )}
+        {filing.stale_release && (
+          <div>
+            <Badge variant="outline" title={filing.stale_release.detail}>
+              Press release already public since{' '}
+              {new Date(`${filing.stale_release.release_date}T12:00:00Z`).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                timeZone: 'UTC',
+              })}{' '}
+              · no label
+            </Badge>
+          </div>
+        )}
         {filing.listing_notice && (
           <div>
             <Badge variant="outline" title={filing.listing_notice.detail}>
