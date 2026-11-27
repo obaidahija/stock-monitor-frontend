@@ -136,9 +136,58 @@ export interface InsiderSummaryOut {
   data_quality_warnings?: InsiderDataQualityWarningOut[]
 }
 
+/** One Form 144 notice of proposed sale. Shown, never scored. */
+export interface PlannedSaleOut {
+  accession_number: string
+  form_type: string
+  seller_name: string | null
+  seller_cik: string | null
+  relationships: string[]
+  /** From the seller's latest Form 4 for this ticker. */
+  title: string | null
+  units_to_sell: number | null
+  aggregate_market_value: number | null
+  units_outstanding: number | null
+  pct_outstanding: number | null
+  approx_sale_date: string | null
+  notice_date: string | null
+  acquisition_natures: string[]
+  plan_adoption_dates: string[]
+  past_3m_proceeds: number | null
+  status: 'executed' | 'pending' | 'no_form4'
+  matched_shares: number | null
+  matched_form4_accession: string | null
+  matched_form4_date: string | null
+  is_big: boolean
+  big_reasons: string[]
+  edgar_url: string
+}
+
+/** A 5%+ holder from its latest Schedule 13D (may seek influence) or 13G (passive). */
+export interface MajorHolderOut {
+  accession_number: string
+  form_type: string
+  schedule: '13D' | '13G' | null
+  holder_name: string | null
+  related_entities: string[]
+  percent_of_class: number | null
+  shares: number | null
+  event_date: string | null
+  accepted_at: string | null
+  previous_percent: number | null
+  percent_change: number | null
+  purpose: string | null
+  purpose_changed: boolean
+  below_threshold: boolean
+  filing_count: number
+  edgar_url: string
+}
+
 export interface InsiderOut {
   summary: InsiderSummaryOut
   transactions: InsiderTransactionOut[]
+  planned_sales?: PlannedSaleOut[]
+  major_holders?: MajorHolderOut[]
   last_successful_sync_at?: string | null
 }
 
