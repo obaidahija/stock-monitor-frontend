@@ -1,126 +1,111 @@
 # MarketScout Frontend
 
-React/TypeScript frontend for MarketScout. The Reddit workspace at `/reddit` provides a cached
-feed, explicit ticker searches, trusted subreddit and author sources, and bounded discussion
-threads. Each ticker also has an independent Reddit tab and monitoring control; Twitter and
-Reddit evidence remain separate in AI research.
+React/TypeScript (Vite) frontend for the MarketScout research API in `../stock-monitor`.
+The dev server proxies `/v1` (WebSockets included) to `http://localhost:8100`. Everything
+shown is research and information only: the app never places orders or holds broker
+credentials.
 
-Discover starts with **Research first**, a ten-stock research shortlist for the selected
-1–7-session window. Each card explains its placement, links to source and analysis,
-and shows data limits and timing risks. The Morning Digest displays the snapshots saved
-when it was built; changing the window there selects another saved snapshot.
-
-The Digest's compact view keeps twelve signal cards in one responsive grid, with
-each card's section labelled. **Show all coverage** and stage, text, or **New only** filters browse at
-most 24 cards per page; filters and the selected historical date are preserved in
-the URL. Today's edition refreshes every minute, including the early-to-late
-transition, and follows the New York calendar date. Past editions remain saved
-snapshots; the separately labelled price quotes are current and refresh only for
-cards near the viewport and the selected Research First window. Viewport changes
-are batched for 200 ms; successful quotes are reused per symbol for 30 seconds,
-including when returning to Digest. A provider outage keeps the last useful
-price visible with **Cached quote · Refresh failed**, independently for each
-symbol. Stale Research First news coverage is visible beside the compact cards
-and describes the saved edition's capture-time limitation.
-
-**News volume** is filterable even in older saved editions that recorded it only
-as a section. **New only** shows entries with an explicit saved New label; it
-explains how many otherwise-matching entries have no recorded newness and offers
-**Remove New only filter** without clearing the search or stage selection.
-
-**Headlines** expands complete saved titles and, for newly built editions, source
-links and timestamps. Older editions retain their saved text without invented
-links. Hiding a ticker offers **Undo**; **Hidden tickers** lists active seven-day
-exclusions and restores them. On narrow screens the shared market widgets start
-behind **Market overview**. A failed or skipped manual build keeps the current
-edition visible and displays the error; successful builds open today's Intraday
-update. New headline-screening rules apply to new captures, preserving old editions.
-
-## Summary-first SEC tabs
-
-The ticker's Commitments and Filings tabs open with a compact business-impact card: explicit
-Positive, Negative, Neutral, Mixed, or Unavailable status; confidence; up to three key factors;
-and a few decision-useful facts. This is business impact, not a buy/sell recommendation.
-
-Mounting either tab reads saved summaries only. The single **Refresh analysis** button runs the
-complete backend workflow and keeps the last useful result visible if refresh fails. Commitment
-Ledger, Sources, manual entry, and the data-quality Review queue remain under **Evidence &
-Advanced**. Filing references, Compare/Explain tools, filters, and raw diffs remain under
-**Evidence & All Changes**; the raw change page is not requested until that disclosure opens.
-
-Live collection is controlled by the backend's `REDDIT_INTELLIGENCE_ENABLED` flag. When disabled,
-the UI continues to show cached Reddit content and explains why refresh actions are unavailable.
-The Reddit auth banner polls every 30 seconds. During automatic recovery it shows that
-authentication is being repaired while cached discussions remain available; after a failed
-attempt it shows the recovery cooldown timestamp. A valid state removes the recovery copy.
-
-Post collection is intentionally faster than sentiment classification. Newly collected posts may
-briefly render without a sentiment badge; feed and ticker-search queries use the backend's
-`sentiment_pending` flag to refresh the existing cache every 30 seconds, then stop polling as soon
-as classification is complete. Cached posts remain rendered throughout that transition. Opening
-or refreshing one discussion loads at most 25 comments for that post, and comments do not receive
-sentiment labels.
-
-## Development checks
+## Running and checks
 
 ```bash
 npm install
-npm test
-npm run lint
-npm run build
+npm run dev      # dev server, proxies /v1 to the backend on port 8100
+npm test         # vitest
+npm run lint     # oxlint
+npm run build    # tsc + vite build
 ```
 
-The frontend never runs `rdt-cli` directly and never receives or stores Reddit browser
-credentials.
+On Windows, `..\stock-monitor\marketscout.ps1 start` starts Postgres, the backend and this dev
+server together.
 
-## AI Settings and AI Research tab
+## Pages
 
-`/ai-settings` selects independent provider/model profiles for research and summarization. Only
-the OpenRouter catalog is discovered dynamically; local and Anthropic model IDs remain editable
-text. Provider cards show configured status, but the frontend never fetches, renders, stores, or
-submits API key values.
+| Path | Page |
+|---|---|
+| `/` | Morning Digest (see below) |
+| `/discover` | Research First, upcoming macro events, macro attention, social buzz, analyst price-target changes, Google Finance Outlook, fresh catalysts, sector heatmap and the sortable tracked universe |
+| `/research` | Research First and fresh catalysts |
+| `/stocks/:ticker` | Ticker page: Analysis, AI Research, News, Earnings, Social, Filings (Insider trades / All filings) and Peers (Competitors / Pairs) |
+| `/filings` | Filing Intel: recent and expected filings, the filing detail panel, and on-demand analysis |
+| `/watchlists` | Named watchlists with setups, setup history and alert rules |
+| `/social/:view` | Social: `trending`, `twitter` or `reddit` |
+| `/macro` | Macro signal, history, sector rotation, sector impact and macro news |
+| `/events` | The week's scheduled macro events and big earnings |
+| `/system` | Health, Jobs, Signals, Research health and Archive (manual cleanup of saved research) |
+| `/settings` | Runtime settings by category, AI provider profiles and Telegram routing |
 
-Each ticker's AI Research tab shows a Google Finance Research card above the unchanged
-MarketScout Structured Report. The card is experimental and single-turn: it opens with a
-ticker-aware default question, submits one edited question at a time, and renders the latest
-answer as Markdown with the external sources Google cited (all links open in a new tab with
-`rel="noopener noreferrer"`). Nothing is cached or persisted — a second submission replaces the
-first result, and changing ticker resets the card. It costs no MarketScout LLM tokens.
+Older paths redirect: `/trending`, `/twitter` and `/reddit` to `/social/...` (keeping the query
+string), `/ai-settings` to `/settings`, and `/briefing` to `/`. Every page shares a side column
+with the oil/gold/Bitcoin price panel and the market news briefing; on narrow screens both
+start behind **Market overview**.
 
-When the backend reports `source.ok=false` or the request itself fails, the card shows the bounded
-error, keeps the question editable, and always offers a direct link to Google Finance's own
-Research page. The structured report below it — generate, refresh, live progress, and saving an
-AI setup — is unchanged and independent.
+## Morning Digest
 
-## Vite notes
+Research First is a ten-stock research shortlist for the selected 1–7-session window. Each
+card explains its placement, links to source and analysis, and shows data limits and timing
+risks. The Digest displays the snapshots saved when it was built; changing the window there
+selects another saved snapshot.
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+The compact view keeps twelve signal cards in one responsive grid, with each card's section
+labelled. **Show all coverage** and stage, text, or **New only** filters browse at most 24
+cards per page; filters and the selected historical date are preserved in the URL. Today's
+edition refreshes every minute, including the early-to-late transition, and follows the New
+York calendar date. Past editions remain saved snapshots; the separately labelled price quotes
+are current and refresh only for cards near the viewport and the selected Research First
+window. Viewport changes are batched for 200 ms; successful quotes are reused per symbol for 30
+seconds, including when returning to Digest. A provider outage keeps the last useful price
+visible with **Cached quote · Refresh failed**, independently for each symbol. Stale Research
+First news coverage is visible beside the compact cards and describes the saved edition's
+capture-time limitation.
 
-Currently, two official plugins are available:
+**News volume** is filterable even in older saved editions that recorded it only as a section.
+**New only** shows entries with an explicit saved New label; it explains how many otherwise
+matching entries have no recorded newness and offers **Remove New only filter** without
+clearing the search or stage selection.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+**Headlines** expands complete saved titles and, for newly built editions, source links and
+timestamps. Older editions retain their saved text without invented links. Hiding a ticker
+offers **Undo**; **Hidden tickers** lists active seven-day exclusions and restores them. A
+failed or skipped manual build keeps the current edition visible and displays the error;
+successful builds open today's Intraday update. Positive Filing Intel filings appear as rows
+that open the filing detail panel. The Telegram send button reads the Digest route's readiness
+from Settings → Telegram.
 
-## React Compiler
+## Social
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Twitter and Reddit stay separate, in AI research too. Reddit live collection is controlled by
+the backend's `REDDIT_INTELLIGENCE_ENABLED` flag; when it is off, cached Reddit content stays
+visible and refresh actions explain why they are unavailable. The Reddit auth banner polls
+every 30 seconds and shows automatic recovery and its cooldown.
 
-## Expanding the Oxlint configuration
+Post collection is faster than sentiment classification. New posts may briefly render without
+a sentiment badge; feed and ticker-search queries use the backend's `sentiment_pending` flag
+to refresh every 30 seconds and stop as soon as classification is complete. Opening a
+discussion loads at most 25 comments, which are not sentiment-labelled. The frontend never runs
+`rdt-cli` or `twitter-cli` and never receives or stores their credentials.
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+A ticker's Social → Twitter view has the company's own confirmed X posts, trusted-account
+mentions, and an explicit cashtag search.
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
+## AI settings and the AI Research tab
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Settings → AI selects independent provider/model profiles for research, summarization and macro
+transmission. Only the OpenRouter catalog is discovered dynamically; local and Anthropic model
+IDs remain editable text. Provider cards show configured status; the frontend never fetches,
+renders, stores, or submits API keys.
+
+Each ticker's AI Research tab shows a Google Finance Research card above the MarketScout
+structured report. The card answers a ticker-aware question and follow-ups: each follow-up
+resends the earlier turns, nothing is saved, and changing ticker resets it. Answers render as
+Markdown with the sources Google cited (links open in a new tab with
+`rel="noopener noreferrer"`). On failure the card shows the bounded error, keeps the question
+editable, and links to Google Finance's own Research page. The structured report below it
+(generate, refresh, live progress, saving an AI setup) is independent.
+
+## Telegram settings
+
+Settings → Telegram shows the bot, the default chat, and each message kind's destination
+(Digest, Earnings, Filings, Insider – Form 144, Major holders – 13D, Watchlist) with its chat
+and topic names, whether the bot can post there, and the last delivery or failure. **Set up
+topics** creates one forum topic per kind; each kind can be tested, edited or cleared. See the
+backend README's Telegram section for the group setup.

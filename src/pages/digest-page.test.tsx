@@ -10,6 +10,7 @@ import type {
   DigestOut,
   DigestPayload,
   TelegramStatusOut,
+  TelegramRouteOut,
 } from '@/types/api'
 import type { ResearchFirstReport } from '@/features/research-first/types'
 
@@ -44,6 +45,13 @@ let sendState: {
   error?: Error
 }
 let telegram: TelegramStatusOut
+
+function digestRoute(overrides: Partial<TelegramRouteOut> = {}): TelegramRouteOut {
+  return {
+    category: 'digest', name: 'Digest', chat_id: '-100123', thread_id: 12,
+    topic_name: 'Digest', source: 'route', ready: true, error: null, ...overrides,
+  }
+}
 
 let intraday: DigestOut | null
 let morningMeta: Partial<DigestOut>
@@ -85,8 +93,7 @@ vi.mock('@/features/digest/live-quotes', async (importOriginal) => ({
   },
 }))
 
-vi.mock('@/features/watchlists/hooks', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/features/watchlists/hooks')>()),
+vi.mock('@/features/telegram-routing/hooks', () => ({
   useTelegramStatus: () => ({ data: telegram }),
 }))
 
@@ -120,6 +127,28 @@ test('disables the send button when Telegram is not ready', () => {
   renderWithProviders(<DigestPage />)
 
   expect(screen.getByRole('button', { name: /send to telegram/i })).toBeDisabled()
+})
+
+test('allows a manual send when the digest topic is ready and there is no default chat', async () => {
+  telegram = {
+    ...telegram, configured: false, ready: false, error: 'Default chat is missing',
+    routes: [digestRoute()],
+  }
+  const user = userEvent.setup()
+  renderWithProviders(<DigestPage />)
+
+  await user.click(screen.getByRole('button', { name: /send to telegram/i }))
+
+  expect(sendMutate).toHaveBeenCalledTimes(1)
+})
+
+test('disables a manual send with the digest route error when the default chat is ready', () => {
+  telegram.routes = [digestRoute({ ready: false, error: 'The digest topic is unavailable' })]
+  renderWithProviders(<DigestPage />)
+
+  const send = screen.getByRole('button', { name: /send to telegram/i })
+  expect(send).toBeDisabled()
+  expect(send).toHaveAttribute('title', 'The digest topic is unavailable')
 })
 
 test('reports how many messages were delivered', () => {

@@ -12,7 +12,6 @@ import type {
   EventWindowOut,
   WatchlistRuleType,
   WatchlistSetupLevel,
-  TelegramStatusOut,
 } from '@/types/api'
 
 export type PriceEventConditionInput =
@@ -175,12 +174,4 @@ export function deleteWatchlistEvent(id: number) {
 
 export function retryWatchlistEventDelivery(id: number) {
   return apiClient.post<WatchlistEventOut>(`/v1/watchlists/events/${id}/retry-delivery`)
-}
-
-export function getTelegramStatus() {
-  return apiClient.get<TelegramStatusOut>('/v1/notifications/telegram/status')
-}
-
-export function sendTelegramTest() {
-  return apiClient.post<{ sent: boolean }>('/v1/notifications/telegram/test')
 }

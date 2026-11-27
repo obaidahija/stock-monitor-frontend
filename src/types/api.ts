@@ -1369,23 +1369,36 @@ export type TelegramCategory =
   | 'major_holders'
   | 'watchlist'
 
-/** Where one message category goes, and whether the bot can post there. */
+/** Where one message category goes, whether the bot can post there, and how its sends went. */
 export interface TelegramRouteOut {
   category: TelegramCategory
   name: string
   chat_id: string | null
+  /** The chat's title (or @username) as Telegram reports it. */
+  chat_title?: string | null
   thread_id: number | null
   topic_name: string | null
   source: 'route' | 'default' | 'none'
   ready: boolean
   error: string | null
+  last_sent_at?: string | null
+  last_failure_at?: string | null
+  last_error?: string | null
+  /** Failed sends since the last success. */
+  consecutive_failures?: number
 }
 
 export interface TelegramStatusOut {
+  /** configured/ready/error describe the default chat (TELEGRAM_CHAT_ID). */
   configured: boolean
   ready: boolean
   error: string | null
   digest_enabled: boolean
+  bot_ready?: boolean
+  bot_username?: string | null
+  bot_error?: string | null
+  default_chat_id?: string | null
+  default_chat_title?: string | null
   routes?: TelegramRouteOut[]
 }
 
@@ -1396,7 +1409,7 @@ export interface TopicSetupItemOut {
   category: TelegramCategory
   name: string
   thread_id: number | null
-  outcome: 'created' | 'kept' | 'failed' | 'not_reached'
+  outcome: 'created' | 'recreated' | 'kept' | 'failed' | 'not_reached'
 }
 
 export interface TopicSetupOut {

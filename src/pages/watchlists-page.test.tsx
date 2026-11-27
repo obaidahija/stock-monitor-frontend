@@ -114,13 +114,19 @@ vi.mock('@/features/watchlists/hooks', () => ({
   useSetupHistory: () => ({ data: [], isPending: false }),
   useCloneSetup: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useWatchlistEvents: () => ({ data: [], isPending: false }),
-  useTelegramStatus: () => ({ data: { configured: true, ready: true }, isPending: false }),
   useCreateWatchlistEvent: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateWatchlistEvent: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useRearmWatchlistEvent: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeleteWatchlistEvent: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useRetryWatchlistEventDelivery: () => ({ mutateAsync: vi.fn(), isPending: false }),
-  useSendTelegramTest: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}))
+
+vi.mock('@/features/telegram-routing/hooks', () => ({
+  useTelegramStatus: () => ({
+    data: { configured: true, ready: true, error: null, digest_enabled: false },
+    isPending: false,
+  }),
+  useTelegramTest: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 
 afterEach(() => {

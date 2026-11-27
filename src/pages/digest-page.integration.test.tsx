@@ -1,10 +1,11 @@
-import { cleanup, fireEvent, screen } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { Toaster, toast } from 'sonner'
+import { TelegramRoutingPanel } from '@/features/telegram-routing/telegram-routing-panel'
 import { ApiError, apiClient } from '@/lib/api-client'
 import { renderWithProviders } from '@/test/render'
-import type { DigestOut } from '@/types/api'
+import type { DigestOut, TelegramStatusOut } from '@/types/api'
 import { DigestPage } from './digest-page'
 
 vi.mock('@/lib/api-client', async (importOriginal) => ({
@@ -23,19 +24,53 @@ const morning: DigestOut = {
   }] },
 }
 let displayed = morning
+let telegram: TelegramStatusOut
 
 beforeEach(() => {
   displayed = morning
+  telegram = { configured: true, ready: true, error: null, digest_enabled: false }
   vi.mocked(apiClient.get).mockImplementation(async (path) => {
     if (path.startsWith('/v1/digest/morning')) return displayed as never
     if (path.startsWith('/v1/digest/intraday')) throw new ApiError(404, 'no intraday digest')
-    if (path === '/v1/notifications/telegram/status') return { configured: true, ready: true, error: null, digest_enabled: false } as never
+    if (path === '/v1/notifications/telegram/status') return telegram as never
     if (path === '/v1/digest/dismissals') return [] as never
     return {} as never
   })
   vi.mocked(apiClient.post).mockResolvedValue([])
 })
 afterEach(() => { cleanup(); toast.dismiss(); vi.clearAllMocks() })
+
+test('clearing the digest route refreshes the manual send status', async () => {
+  const user = userEvent.setup()
+  const route = {
+    category: 'digest', name: 'Digest', chat_id: '-100123', thread_id: 8, topic_name: 'Digest',
+    source: 'route', ready: true, error: null,
+  } as const
+  telegram = {
+    ...telegram, configured: false, ready: false, error: 'Default chat is missing', routes: [route],
+  }
+  vi.mocked(apiClient.delete).mockImplementation(async (path) => {
+    if (path === '/v1/notifications/telegram/routes/digest') {
+      telegram = { ...telegram, routes: [{
+        ...route, chat_id: null, thread_id: null, topic_name: null, source: 'none',
+        ready: false, error: 'No route and no default chat',
+      }] }
+    }
+    return undefined as never
+  })
+  renderWithProviders(<><TelegramRoutingPanel /><DigestPage /></>)
+
+  const clear = await screen.findByRole('button', { name: 'Clear' })
+  const send = screen.getByRole('button', { name: /send to telegram/i })
+  await waitFor(() => expect(send).toBeEnabled())
+
+  await user.click(clear)
+
+  const digestRow = screen.getByRole('row', { name: /^Digest\b/ })
+  expect(await within(digestRow).findByText('No route and no default chat')).toBeVisible()
+  expect(send).toBeDisabled()
+  expect(send).toHaveAttribute('title', 'No route and no default chat')
+})
 
 test.each([
   { status: 'failed', error: 'Calendar unavailable', detail: null, message: 'Calendar unavailable' },

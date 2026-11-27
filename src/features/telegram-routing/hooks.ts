@@ -6,12 +6,12 @@ import {
   sendTelegramCategoryTest,
   setupTelegramTopics,
 } from '@/api/telegram'
-import type { TelegramCategory, TelegramRouteIn } from '@/types/api'
+import type { TelegramCategory, TelegramRouteIn, TelegramRouteOut } from '@/types/api'
 
-const STATUS_KEY = ['telegram-status']
+const STATUS_KEY = ['notifications', 'telegram', 'status']
 
-export function useTelegramStatus() {
-  return useQuery({ queryKey: STATUS_KEY, queryFn: getTelegramRoutingStatus })
+export function useTelegramStatus(enabled = true) {
+  return useQuery({ queryKey: STATUS_KEY, queryFn: getTelegramRoutingStatus, enabled, retry: false })
 }
 
 function useInvalidateStatus() {
@@ -37,8 +37,12 @@ export function useClearTelegramRoute() {
 }
 
 export function useTelegramTest() {
+  const invalidate = useInvalidateStatus()
   return useMutation({
-    mutationFn: (category: TelegramCategory) => sendTelegramCategoryTest(category),
+    mutationFn: (
+      destination: TelegramCategory | Pick<TelegramRouteOut, 'category' | 'source' | 'chat_id' | 'thread_id'>,
+    ) => sendTelegramCategoryTest(typeof destination === 'string' ? destination : destination.category),
+    onSettled: invalidate,
   })
 }
 
