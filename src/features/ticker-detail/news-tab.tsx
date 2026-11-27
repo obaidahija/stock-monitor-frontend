@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { Card, CardHeader } from '@/components/ui/card'
@@ -56,10 +57,28 @@ export function NewsTab({ ticker }: { ticker: string }) {
   const [hours, setHours] = useState(24)
   const [materialOnly, setMaterialOnly] = useState(false)
   const [openClusterId, setOpenClusterId] = useState<number | null>(null)
-  const [openItem, setOpenItem] = useState<{ id: number; title: string } | null>(null)
+  // The open article lives in the URL (?article=<news item id>), so a refresh,
+  // a shared link or Back reopens the same panel.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const articleParam = Number(searchParams.get('article'))
+  const openItemId = Number.isInteger(articleParam) && articleParam > 0 ? articleParam : null
   const { data, isPending, isError, error, refetch } = useNews(ticker, hours)
   const refreshNews = useRefreshNews(ticker)
   const visible = data ? (materialOnly ? data.filter((cluster) => cluster.is_material) : data) : []
+  const openTitle = data?.find((cluster) => cluster.analysis?.item_id === openItemId)?.representative_title
+
+  function setOpenItemId(itemId: number | null) {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        if (itemId === null) next.delete('article')
+        else next.set('article', String(itemId))
+        return next
+      },
+      // Opening adds a history entry (Back closes the panel); closing replaces it.
+      { replace: itemId === null },
+    )
+  }
 
   function runRefresh() {
     refreshNews.mutate(undefined, {
@@ -151,7 +170,7 @@ export function NewsTab({ ticker }: { ticker: string }) {
                   className="hover:bg-muted/40 cursor-pointer transition-colors"
                   onClick={() =>
                     cluster.analysis
-                      ? setOpenItem({ id: cluster.analysis.item_id, title: cluster.representative_title })
+                      ? setOpenItemId(cluster.analysis.item_id)
                       : setOpenClusterId(cluster.id)
                   }
                 >
@@ -191,9 +210,9 @@ export function NewsTab({ ticker }: { ticker: string }) {
 
       <NewsAnalysisSheet
         ticker={ticker}
-        itemId={openItem?.id ?? null}
-        title={openItem?.title}
-        onOpenChange={(open) => !open && setOpenItem(null)}
+        itemId={openItemId}
+        title={openTitle}
+        onOpenChange={(open) => !open && setOpenItemId(null)}
       />
 
       <NewsClusterDetailDialog

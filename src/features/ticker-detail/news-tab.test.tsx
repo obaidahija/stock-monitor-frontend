@@ -38,7 +38,7 @@ function cluster(id: number, overrides: Partial<NewsClusterOut> = {}): NewsClust
   }
 }
 
-function renderNews(clusters: NewsClusterOut[]) {
+function renderNews(clusters: NewsClusterOut[], initialEntries = ['/']) {
   vi.mocked(useNews).mockReturnValue({
     data: clusters,
     isPending: false,
@@ -46,7 +46,7 @@ function renderNews(clusters: NewsClusterOut[]) {
     error: null,
     refetch: vi.fn(),
   } as never)
-  return renderWithProviders(<NewsTab ticker="NVDA" />)
+  return renderWithProviders(<NewsTab ticker="NVDA" />, initialEntries)
 }
 
 test('opens with the sentiment trend above the headlines', () => {
@@ -84,6 +84,18 @@ test('opens the analysis in a side panel for a story', async () => {
   await user.click(screen.getByText('Story 4'))
 
   expect(screen.getByText('Analysis panel for 40: Story 4')).toBeInTheDocument()
+})
+
+test('reopens the article named in the URL, e.g. after a refresh', () => {
+  renderNews([cluster(4)], ['/stocks/NVDA?tab=news&article=40'])
+
+  expect(screen.getByText('Analysis panel for 40: Story 4')).toBeInTheDocument()
+})
+
+test('ignores a malformed article link', () => {
+  renderNews([cluster(4)], ['/stocks/NVDA?tab=news&article=abc'])
+
+  expect(screen.queryByText(/Analysis panel/)).not.toBeInTheDocument()
 })
 
 test('Material only hides routine stories', async () => {

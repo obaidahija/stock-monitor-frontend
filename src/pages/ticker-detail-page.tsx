@@ -46,6 +46,8 @@ export function TickerDetailPage() {
         // A sub-view belongs to the tab it was picked on.
         next.delete('view')
         next.delete('platform')
+        // An open news article (News tab side panel) belongs to the News tab.
+        next.delete('article')
         if (tab === 'analysis') {
           next.delete('tab')
         } else {
